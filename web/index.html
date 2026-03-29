@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shadow Learning - 英语影子跟读</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 20px;
+            color: white;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .nav-tab {
+            padding: 12px 25px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav-tab:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .nav-tab.active {
+            background: white;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin: 15px 0;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-large {
+            padding: 20px 40px;
+            font-size: 1.3em;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .sentence-box {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .sentence-box h2 {
+            font-size: 1.8em;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .phonemes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        .phoneme {
+            background: white;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 25px 0;
+            flex-wrap: wrap;
+        }
+
+        .score-display {
+            text-align: center;
+            padding: 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            color: white;
+            margin: 15px 0;
+        }
+
+        .score-display .score {
+            font-size: 3.5em;
+            font-weight: bold;
+        }
+
+        .score-display .level {
+            font-size: 1.3em;
+            margin-top: 8px;
+        }
+
+        .feedback {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .feedback-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .feedback-item h4 {
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+
+        .words-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 15px 0;
+        }
+
+        .word-tag {
+            background: #fff3cd;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 1em;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+            transition: width 0.5s;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 2.2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-card .label {
+            color: #666;
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+        }
+
+        .tip {
+            background: #e7f3ff;
+            border-left: 4px solid #667eea;
+            padding: 12px;
+            margin: 12px 0;
+            border-radius: 0 10px 10px 0;
+            font-size: 0.95em;
+        }
+
+        .recording-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .recording-dot {
+            width: 12px;
+            height: 12px;
+            background: #ff4444;
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Review page styles */
+        .review-word-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+            text-align: center;
+        }
+
+        .review-word-card .word {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .quality-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .quality-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .quality-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .quality-1 { background: #ff6b6b; color: white; }
+        .quality-2 { background: #ffa94d; color: white; }
+        .quality-3 { background: #ffd43b; color: #333; }
+        .quality-4 { background: #69db7c; color: white; }
+        .quality-5 { background: #38d9a9; color: white; }
+
+        /* Export section */
+        .export-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        /* Material selection */
+        .material-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .material-item {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .material-item:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+        }
+
+        .material-item .info h3 {
+            margin-bottom: 5px;
+        }
+
+        .material-item .info p {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+            .btn-large {
+                padding: 15px 25px;
+                font-size: 1.1em;
+            }
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Shadow Learning</h1>
+        <p>英语影子跟读练习 - 说一口流利的英语！</p>
+    </header>
+
+    <div class="container">
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showPage('practice-page')">练习</button>
+            <button class="nav-tab" onclick="showPage('review-page')">复习</button>
+            <button class="nav-tab" onclick="showPage('stats-page')">统计</button>
+        </div>
+
+        <!-- Practice Page -->
+        <div id="practice-page" class="page active">
+            <!-- Material Selection -->
+            <div id="select-section" class="card">
+                <h2 style="text-align: center; margin-bottom: 20px;">选择学习材料</h2>
+
+                <div class="material-list">
+                    <div class="material-item" onclick="loadMaterial()">
+                        <div class="info">
+                            <h3>TED 演讲</h3>
+                            <p>Ken Robinson: Do schools kill creativity?</p>
+                        </div>
+                        <span>开始</span>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-secondary" onclick="selectCustomFile()">
+                        选择其他文件
+                    </button>
+                </div>
+            </div>
+
+            <!-- Practice Section -->
+            <div id="practice-section" class="hidden">
+                <div class="card">
+                    <div class="progress-bar">
+                        <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <p style="text-align: center; color: #666;">
+                        第 <span id="current-segment">1</span> / <span id="total-segments">?</span> 句
+                    </p>
+                </div>
+
+                <div class="card">
+                    <div class="sentence-box">
+                        <h2 id="sentence-text">加载中...</h2>
+                        <div id="phonemes-area" class="phonemes"></div>
+                    </div>
+
+                    <div class="controls">
+                        <button id="play-btn" class="btn btn-primary" onclick="playAudio()">
+                            播放原声
+                        </button>
+                        <button id="record-btn" class="btn btn-success btn-large" onclick="startRecording()">
+                            开始录音
+                        </button>
+                        <button id="replay-btn" class="btn btn-secondary" onclick="replayRecording()">
+                            听我的录音
+                        </button>
+                    </div>
+
+                    <div id="recording-status" class="tip hidden">
+                        <span class="recording-indicator">
+                            <span class="recording-dot"></span>
+                            录音中... 请说话
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Score Area -->
+                <div id="score-area" class="card hidden">
+                    <div class="score-display">
+                        <div class="score" id="score-value">--</div>
+                        <div class="level" id="score-level">--</div>
+                    </div>
+
+                    <div class="feedback">
+                        <div class="feedback-item">
+                            <h4>相似度</h4>
+                            <p id="similarity-score">--</p>
+                        </div>
+                        <div class="feedback-item">
+                            <h4>流利度</h4>
+                            <p id="fluency-score">--</p>
+                        </div>
+                        <div class="feedback-item">
+                            <h4>准确度</h4>
+                            <p id="accuracy-score">--</p>
+                        </div>
+                    </div>
+
+                    <div id="problem-words-area" class="hidden" style="margin-top: 15px;">
+                        <h4 style="margin-bottom: 10px;">需要注意的单词</h4>
+                        <div id="problem-words" class="words-list"></div>
+                    </div>
+
+                    <div id="grammar-area" class="hidden" style="margin-top: 15px;">
+                        <h4 style="margin-bottom: 10px;">语法要点</h4>
+                        <div id="grammar-tips"></div>
+                    </div>
+                </div>
+
+                <div class="navigation">
+                    <button class="btn btn-secondary" onclick="prevSegment()">上一句</button>
+                    <button class="btn btn-primary" onclick="nextSegment()">下一句</button>
+                </div>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-warning" onclick="finishPractice()">结束练习</button>
+                </div>
+            </div>
+
+            <!-- Finish Section -->
+            <div id="finish-section" class="card hidden">
+                <div style="text-align: center;">
+                    <h1 style="font-size: 3em;">太棒了！</h1>
+                    <p style="font-size: 1.3em; margin: 15px 0;">完成本次练习！</p>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="number" id="final-avg-score">--</div>
+                            <div class="label">平均得分</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="number" id="final-words">--</div>
+                            <div class="label">练习句子</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="number" id="final-time">--</div>
+                            <div class="label">练习时长(分钟)</div>
+                        </div>
+                    </div>
+
+                    <div style="margin: 30px 0;">
+                        <button class="btn btn-primary btn-large" onclick="restart()">再练习一次</button>
+                        <button class="btn btn-secondary" style="margin-left: 15px;" onclick="goHome()">选择其他材料</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Review Page -->
+        <div id="review-page" class="page">
+            <div class="card">
+                <h2 style="text-align: center; margin-bottom: 20px;">单词复习</h2>
+
+                <div id="review-stats" class="stats-grid">
+                    <div class="stat-card">
+                        <div class="number" id="review-due">0</div>
+                        <div class="label">待复习</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number" id="review-new">0</div>
+                        <div class="label">新单词</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number" id="review-learned">0</div>
+                        <div class="label">已学会</div>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin: 20px 0;">
+                    <button class="btn btn-success btn-large" onclick="startReview()">开始复习</button>
+                </div>
+
+                <div id="review-session" class="hidden">
+                    <div class="review-word-card">
+                        <div class="word" id="review-word">--</div>
+                        <p id="review-notes" style="color: #666;"></p>
+
+                        <div class="quality-buttons">
+                            <button class="quality-btn quality-1" onclick="submitReview(1)" title="忘记了">1</button>
+                            <button class="quality-btn quality-2" onclick="submitReview(2)" title="错误">2</button>
+                            <button class="quality-btn quality-3" onclick="submitReview(3)" title="困难">3</button>
+                            <button class="quality-btn quality-4" onclick="submitReview(4)" title="容易">4</button>
+                            <button class="quality-btn quality-5" onclick="submitReview(5)" title="完美">5</button>
+                        </div>
+                        <p style="margin-top: 15px; color: #666; font-size: 0.9em;">
+                            1=忘记 2=错误 3=困难 4=容易 5=完美
+                        </p>
+                    </div>
+
+                    <div id="review-feedback" class="tip hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Page -->
+        <div id="stats-page" class="page">
+            <div class="card">
+                <h2 style="text-align: center; margin-bottom: 20px;">学习统计</h2>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="number" id="stats-unknown">0</div>
+                        <div class="label">生词</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number" id="stats-known">0</div>
+                        <div class="label">已会</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number" id="stats-mastery">0%</div>
+                        <div class="label">平均掌握度</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number" id="stats-total-review">0</div>
+                        <div class="label">复习中</div>
+                    </div>
+                </div>
+
+                <h3 style="margin: 20px 0 15px;">掌握程度分布</h3>
+                <div class="stats-grid">
+                    <div class="stat-card" style="background: #ffebee;">
+                        <div class="number" id="stats-learning">0</div>
+                        <div class="label">学习中 (0-30%)</div>
+                    </div>
+                    <div class="stat-card" style="background: #fff8e1;">
+                        <div class="number" id="stats-practicing">0</div>
+                        <div class="label">练习中 (30-70%)</div>
+                    </div>
+                    <div class="stat-card" style="background: #e8f5e9;">
+                        <div class="number" id="stats-familiar">0</div>
+                        <div class="label">熟悉 (70-90%)</div>
+                    </div>
+                    <div class="stat-card" style="background: #e0f2f1;">
+                        <div class="number" id="stats-mastered">0</div>
+                        <div class="label">掌握 (90%+)</div>
+                    </div>
+                </div>
+
+                <h3 style="margin: 30px 0 15px;">导出词汇</h3>
+                <div class="export-buttons">
+                    <button class="btn btn-primary" onclick="exportVocabulary('json')">导出 JSON</button>
+                    <button class="btn btn-secondary" onclick="exportVocabulary('csv')">导出 CSV</button>
+                    <button class="btn btn-secondary" onclick="exportVocabulary('txt')">导出 TXT</button>
+                </div>
+                <p id="export-message" style="text-align: center; color: #666; margin-top: 10px;"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let currentSegment = 0;
+        let segments = [];
+        let scores = [];
+        let problemWords = [];
+        let startTime = null;
+        let isRecording = false;
+        let recordingPollInterval = null;
+
+        // Review state
+        let currentReviewWords = [];
+        let currentReviewIndex = 0;
+
+        // Initialize
+        window.onload = function() {
+            pywebview.api.init().then(function(result) {
+                console.log('API ready');
+                loadStatistics();
+            });
+        };
+
+        // Page navigation
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+
+            document.getElementById(pageId).classList.add('active');
+            event.target.classList.add('active');
+
+            if (pageId === 'stats-page') {
+                loadStatistics();
+            } else if (pageId === 'review-page') {
+                loadReviewStats();
+            }
+        }
+
+        // ==================== Material Loading ====================
+
+        async function loadMaterial(filename) {
+            showLoading();
+            const result = await pywebview.api.load_material(filename || '');
+
+            if (result.success) {
+                segments = result.segments;
+                currentSegment = 0;
+                scores = [];
+                problemWords = [];
+                startTime = Date.now();
+
+                document.getElementById('select-section').classList.add('hidden');
+                document.getElementById('practice-section').classList.remove('hidden');
+                document.getElementById('total-segments').textContent = segments.length;
+
+                showSegment(0);
+            } else {
+                alert('加载失败: ' + result.error);
+            }
+        }
+
+        async function selectCustomFile() {
+            const result = await pywebview.api.select_file();
+            if (result.success) {
+                loadMaterial(result.filename);
+            }
+        }
+
+        // ==================== Practice ====================
+
+        function showSegment(index) {
+            if (index < 0 || index >= segments.length) {
+                showFinish();
+                return;
+            }
+
+            currentSegment = index;
+            const segment = segments[index];
+
+            document.getElementById('current-segment').textContent = index + 1;
+            document.getElementById('sentence-text').textContent = segment.text;
+            document.getElementById('progress-fill').style.width = ((index + 1) / segments.length * 100) + '%';
+
+            // Clear previous results
+            document.getElementById('score-area').classList.add('hidden');
+            document.getElementById('problem-words-area').classList.add('hidden');
+            document.getElementById('grammar-area').classList.add('hidden');
+
+            // Show phonemes
+            const phonemesArea = document.getElementById('phonemes-area');
+            phonemesArea.innerHTML = '';
+            if (segment.phonemes && segment.phonemes.length > 0) {
+                segment.phonemes.forEach(p => {
+                    const span = document.createElement('span');
+                    span.className = 'phoneme';
+                    span.textContent = p;
+                    phonemesArea.appendChild(span);
+                });
+            }
+
+            // Auto-play
+            playAudio();
+        }
+
+        async function playAudio() {
+            await pywebview.api.play_audio(currentSegment);
+        }
+
+        // ==================== Recording (Non-blocking) ====================
+
+        async function startRecording() {
+            if (isRecording) return;
+
+            isRecording = true;
+            const btn = document.getElementById('record-btn');
+            btn.disabled = true;
+            btn.textContent = '录音中...';
+
+            document.getElementById('recording-status').classList.remove('hidden');
+
+            const result = await pywebview.api.start_recording();
+
+            if (result.success) {
+                // Start polling for completion
+                pollRecordingStatus();
+            } else {
+                alert('录音启动失败: ' + result.error);
+                resetRecordingUI();
+            }
+        }
+
+        function pollRecordingStatus() {
+            if (recordingPollInterval) {
+                clearInterval(recordingPollInterval);
+            }
+
+            recordingPollInterval = setInterval(async () => {
+                const status = await pywebview.api.get_recording_status();
+
+                if (status.complete) {
+                    clearInterval(recordingPollInterval);
+                    recordingPollInterval = null;
+                    isRecording = false;
+
+                    document.getElementById('recording-status').classList.add('hidden');
+
+                    if (status.path) {
+                        // Score the recording
+                        const scoreResult = await pywebview.api.score_recording(currentSegment);
+                        if (scoreResult.success) {
+                            showScore(scoreResult);
+                            scores.push(scoreResult.overall);
+
+                            if (scoreResult.problem_words) {
+                                scoreResult.problem_words.forEach(w => {
+                                    if (!problemWords.includes(w.word)) {
+                                        problemWords.push(w.word);
+                                    }
+                                });
+                            }
+                        } else {
+                            alert('评分失败: ' + scoreResult.error);
+                        }
+                    } else {
+                        alert('未检测到语音，请重试');
+                    }
+
+                    resetRecordingUI();
+                }
+            }, 200); // Poll every 200ms
+        }
+
+        function resetRecordingUI() {
+            const btn = document.getElementById('record-btn');
+            btn.disabled = false;
+            btn.textContent = '开始录音';
+            isRecording = false;
+        }
+
+        async function replayRecording() {
+            await pywebview.api.replay_recording();
+        }
+
+        // ==================== Scoring ====================
+
+        function showScore(result) {
+            document.getElementById('score-area').classList.remove('hidden');
+
+            document.getElementById('score-value').textContent = result.overall;
+            document.getElementById('score-level').textContent = result.level;
+
+            document.getElementById('similarity-score').textContent = result.similarity + '%';
+            document.getElementById('fluency-score').textContent = result.fluency ? result.fluency.wpm + ' WPM' : '--';
+            document.getElementById('accuracy-score').textContent = result.word_accuracy + '%';
+
+            // Problem words
+            if (result.problem_words && result.problem_words.length > 0) {
+                document.getElementById('problem-words-area').classList.remove('hidden');
+                const wordsDiv = document.getElementById('problem-words');
+                wordsDiv.innerHTML = '';
+                result.problem_words.forEach(w => {
+                    const span = document.createElement('span');
+                    span.className = 'word-tag';
+                    span.textContent = w.word + ' ' + w.suggestion;
+                    wordsDiv.appendChild(span);
+                });
+            }
+
+            // Grammar tips
+            if (result.grammar_points && result.grammar_points.length > 0) {
+                document.getElementById('grammar-area').classList.remove('hidden');
+                const tipsDiv = document.getElementById('grammar-tips');
+                tipsDiv.innerHTML = '';
+                result.grammar_points.forEach(g => {
+                    const div = document.createElement('div');
+                    div.className = 'tip';
+                    div.textContent = g.explanation;
+                    tipsDiv.appendChild(div);
+                });
+            }
+        }
+
+        // ==================== Navigation ====================
+
+        function nextSegment() {
+            showSegment(currentSegment + 1);
+        }
+
+        function prevSegment() {
+            if (currentSegment > 0) {
+                showSegment(currentSegment - 1);
+            }
+        }
+
+        function finishPractice() {
+            showFinish();
+        }
+
+        // ==================== Finish ====================
+
+        async function showFinish() {
+            document.getElementById('practice-section').classList.add('hidden');
+            document.getElementById('finish-section').classList.remove('hidden');
+
+            // Calculate stats
+            const avgScore = scores.length > 0
+                ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+                : 0;
+
+            document.getElementById('final-avg-score').textContent = avgScore;
+            document.getElementById('final-words').textContent = scores.length;
+
+            const minutes = Math.round((Date.now() - startTime) / 60000);
+            document.getElementById('final-time').textContent = minutes || '<1';
+        }
+
+        function restart() {
+            if (segments.length > 0) {
+                currentSegment = 0;
+                scores = [];
+                problemWords = [];
+                startTime = Date.now();
+
+                document.getElementById('finish-section').classList.add('hidden');
+                document.getElementById('practice-section').classList.remove('hidden');
+                showSegment(0);
+            }
+        }
+
+        function goHome() {
+            document.getElementById('practice-section').classList.add('hidden');
+            document.getElementById('finish-section').classList.add('hidden');
+            document.getElementById('select-section').classList.remove('hidden');
+        }
+
+        // ==================== Review ====================
+
+        async function loadReviewStats() {
+            const result = await pywebview.api.get_review_words(20);
+
+            if (result.success) {
+                document.getElementById('review-due').textContent = result.total_due;
+                document.getElementById('review-new').textContent = result.total_new;
+            }
+        }
+
+        async function loadStatistics() {
+            const result = await pywebview.api.get_statistics();
+
+            if (result.success) {
+                const vocab = result.vocabulary || {};
+                const review = result.review || {};
+
+                document.getElementById('stats-unknown').textContent = vocab.total_unknown_words || 0;
+                document.getElementById('stats-known').textContent = vocab.total_known_words || 0;
+                document.getElementById('stats-mastery').textContent = (vocab.average_mastery || 0) + '%';
+
+                const dist = vocab.mastery_distribution || {};
+                document.getElementById('stats-learning').textContent = dist.learning || 0;
+                document.getElementById('stats-practicing').textContent = dist.practicing || 0;
+                document.getElementById('stats-familiar').textContent = dist.familiar || 0;
+                document.getElementById('stats-mastered').textContent = dist.mastered || 0;
+
+                document.getElementById('stats-total-review').textContent = review.total_words || 0;
+                document.getElementById('review-learned').textContent = review.learned || 0;
+            }
+        }
+
+        async function startReview() {
+            const result = await pywebview.api.get_review_words(10);
+
+            if (result.success) {
+                currentReviewWords = [...result.due_words, ...result.new_words];
+                currentReviewIndex = 0;
+
+                if (currentReviewWords.length === 0) {
+                    alert('暂无需要复习的单词！');
+                    return;
+                }
+
+                document.getElementById('review-session').classList.remove('hidden');
+                showReviewWord();
+            }
+        }
+
+        function showReviewWord() {
+            if (currentReviewIndex >= currentReviewWords.length) {
+                document.getElementById('review-session').classList.add('hidden');
+                alert('复习完成！');
+                loadReviewStats();
+                return;
+            }
+
+            const word = currentReviewWords[currentReviewIndex];
+            document.getElementById('review-word').textContent = word.word;
+            document.getElementById('review-notes').textContent = word.notes || '';
+            document.getElementById('review-feedback').classList.add('hidden');
+        }
+
+        async function submitReview(quality) {
+            if (currentReviewIndex >= currentReviewWords.length) return;
+
+            const word = currentReviewWords[currentReviewIndex];
+            const result = await pywebview.api.submit_review(word.word, quality);
+
+            if (result.success) {
+                const feedback = document.getElementById('review-feedback');
+                feedback.classList.remove('hidden');
+                feedback.textContent = result.message || '已记录！';
+
+                setTimeout(() => {
+                    currentReviewIndex++;
+                    showReviewWord();
+                }, 800);
+            }
+        }
+
+        // ==================== Export ====================
+
+        async function exportVocabulary(format) {
+            const result = await pywebview.api.export_vocabulary(format);
+
+            if (result.success) {
+                document.getElementById('export-message').textContent = result.message;
+                document.getElementById('export-message').style.color = 'green';
+            } else {
+                document.getElementById('export-message').textContent = '导出失败: ' + result.error;
+                document.getElementById('export-message').style.color = 'red';
+            }
+        }
+
+        // ==================== Utilities ====================
+
+        function showLoading() {
+            document.getElementById('sentence-text').textContent = '加载中...';
+        }
+    </script>
+</body>
+</html>
