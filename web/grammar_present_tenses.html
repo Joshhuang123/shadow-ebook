@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📚 现在进行时 vs 一般现在时</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        header {
+            text-align: center;
+            padding: 30px 20px;
+            color: white;
+        }
+        header h1 { font-size: 2.2em; margin-bottom: 10px; }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin: 15px 0;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .card h2 { color: #667eea; margin-bottom: 15px; font-size: 1.3em; }
+        .card h3 { color: #764ba2; margin: 15px 0 10px; font-size: 1.1em; }
+
+        .tense-box {
+            padding: 20px;
+            border-radius: 15px;
+            margin: 15px 0;
+        }
+        .tense-present-continuous {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border-left: 5px solid #1976d2;
+        }
+        .tense-simple-present {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            border-left: 5px solid #388e3c;
+        }
+
+        .formula {
+            background: #1a1a2e;
+            color: #eee;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.2em;
+            margin: 15px 0;
+            text-align: center;
+        }
+
+        .example {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        .example-en {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .example-cn {
+            color: #666;
+            font-size: 0.95em;
+        }
+        .highlight {
+            color: #667eea;
+            font-weight: bold;
+        }
+        .highlight-green {
+            color: #388e3c;
+            font-weight: bold;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .comparison-table th, .comparison-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .comparison-table th {
+            background: #667eea;
+            color: white;
+        }
+        .comparison-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .arrow-box {
+            background: #fff3e0;
+            border-left: 5px solid #ff9800;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .step-num {
+            width: 35px;
+            height: 35px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+        .step-content {
+            flex: 1;
+        }
+
+        .diff-box {
+            background: #fce4ec;
+            border-left: 5px solid #e91e63;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 1em;
+            cursor: pointer;
+            text-decoration: none;
+            margin: 10px 5px;
+        }
+        .btn:hover { opacity: 0.9; transform: scale(1.02); }
+
+        .nav { text-align: center; padding: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 现在进行时 vs 一般现在时</h1>
+            <p>英语两种最重要的时态对比</p>
+        </header>
+
+        <!-- 时态对比表 -->
+        <div class="card">
+            <h2>🔍 快速对比</h2>
+            <table class="comparison-table">
+                <tr>
+                    <th></th>
+                    <th>现在进行时</th>
+                    <th>一般现在时</th>
+                </tr>
+                <tr>
+                    <td><strong>用法</strong></td>
+                    <td>正在发生的动作</td>
+                    <td>习惯性/经常性的动作</td>
+                </tr>
+                <tr>
+                    <td><strong>时间</strong></td>
+                    <td>此时此刻</td>
+                    <td>一直/每天/每周</td>
+                </tr>
+                <tr>
+                    <td><strong>关键词</strong></td>
+                    <td>now, right now, at the moment</td>
+                    <td>always, usually, often, every day</td>
+                </tr>
+                <tr>
+                    <td><strong>结构</strong></td>
+                    <td>主语 + <span class="highlight">be</span> + 动词<span class="highlight">ing</span></td>
+                    <td>主语 + 动词（第三人称单数加s）</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- 现在进行时 -->
+        <div class="card">
+            <h2>🔵 现在进行时 (Present Continuous)</h2>
+
+            <div class="tense-box tense-present-continuous">
+                <div class="formula">主语 + <span class="highlight">be</span> + 动词<span class="highlight">ing</span></div>
+
+                <h3>什么时候用？</h3>
+                <p>✅ 说话<strong>此时此刻</strong>正在发生的动作</p>
+
+                <h3>关键词 (Signal Words)</h3>
+                <p><span class="highlight">now</span> (现在) · <span class="highlight">right now</span> (马上) · <span class="highlight">at the moment</span> (此刻)</p>
+
+                <h3>例子</h3>
+                <div class="example">
+                    <div class="example-en">I <span class="highlight">am reading</span> a book.</div>
+                    <div class="example-cn">我正在读一本书。（现在正在读）</div>
+                </div>
+                <div class="example">
+                    <div class="example-en">She <span class="highlight">is watching</span> TV <span class="highlight">now</span>.</div>
+                    <div class="example-cn">她现在正在看电视。</div>
+                </div>
+                <div class="example">
+                    <div class="example-en">They <span class="highlight">are playing</span> football <span class="highlight">at the moment</span>.</div>
+                    <div class="example-cn">他们此刻正在踢足球。</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 一般现在时 -->
+        <div class="card">
+            <h2>🟢 一般现在时 (Simple Present)</h2>
+
+            <div class="tense-box tense-simple-present">
+                <div class="formula">主语 + 动词（+s第三人称单数）</div>
+
+                <h3>什么时候用？</h3>
+                <p>✅ <strong>习惯性</strong>、<strong>经常性</strong>发生的动作</p>
+
+                <h3>关键词 (Signal Words)</h3>
+                <p><span class="highlight-green">always</span> (总是) · <span class="highlight-green">usually</span> (通常) · <span class="highlight-green">often</span> (经常) · <span class="highlight-green">every day</span> (每天)</p>
+
+                <h3>例子</h3>
+                <div class="example">
+                    <div class="example-en">I <span class="highlight-green">read</span> books every day.</div>
+                    <div class="example-cn">我每天读书。（习惯）</div>
+                </div>
+                <div class="example">
+                    <div class="example-en">She <span class="highlight-green">watches</span> TV <span class="highlight-green">every evening</span>.</div>
+                    <div class="example-cn">她每天晚上看电视。（习惯）</div>
+                </div>
+                <div class="example">
+                    <div class="example-en">They <span class="highlight-green">always play</span> football on Sundays.</div>
+                    <div class="example-cn">他们每个周日都踢足球。（习惯）</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 核心区别 -->
+        <div class="card">
+            <h2>⚡ 核心区别</h2>
+
+            <div class="diff-box">
+                <h3>🎯 关键区别：正在 VS 习惯</h3>
+                <div class="example">
+                    <div class="example-en">I <span class="highlight">am eating</span> dinner <span class="highlight">now</span>. (正在吃)</div>
+                    <div class="example-cn">此时此刻正在吃晚饭</div>
+                </div>
+                <div class="example">
+                    <div class="example-en">I <span class="highlight-green">eat</span> dinner <span class="highlight-green">at 7pm every day</span>. (习惯)</div>
+                    <div class="example-cn">每天7点吃晚饭（习惯）</div>
+                </div>
+            </div>
+
+            <h3>🔄 一个口诀</h3>
+            <p style="font-size:1.1em; padding:15px; background:#e8f0fe; border-radius:10px;">
+                <strong>此时此刻用 <span class="highlight">ing</span>，</strong><br>
+                <strong>习惯动作用原形（加s）！</strong>
+            </p>
+        </div>
+
+        <!-- 转换方法 -->
+        <div class="card">
+            <h2>🔄 如何把现在进行时变成一般现在时？</h2>
+
+            <div class="arrow-box">
+                <h3>🎯 转换公式</h3>
+                <div class="formula">
+                    现在进行时：主语 + <span class="highlight">be</span> + 动词<span class="highlight">ing</span><br>
+                    ↓ 去 be + 去 ing + 看主语<br>
+                    一般现在时：主语 + 动词（+s）
+                </div>
+            </div>
+
+            <h3>📝 转换步骤</h3>
+
+            <div class="step">
+                <div class="step-num">1</div>
+                <div class="step-content">
+                    <strong>去掉 be 动词</strong> (am/is/are)<br>
+                    <small>现在进行时需要 be 动词，一般现在时不需要</small>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-num">2</div>
+                <div class="step-content">
+                    <strong>去掉动词后面的 ing</strong><br>
+                    <small>reading → read, watching → watch, playing → play</small>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-num">3</div>
+                <div class="step-content">
+                    <strong>第三人称单数要加 s</strong><br>
+                    <small>he/she/it + 动词 + s（如：reads, watches, plays）</small>
+                </div>
+            </div>
+
+            <h3>📖 完整例子</h3>
+
+            <div class="example">
+                <div class="example-en">I <span class="highlight">am reading</span> a book. (现在进行时)</div>
+                <div class="example-en">↓</div>
+                <div class="example-en">I <span class="highlight-green">read</span> a book. (一般现在时)</div>
+                <div class="example-cn">我每天读书。</div>
+            </div>
+
+            <div class="example">
+                <div class="example-en">She <span class="highlight">is watching</span> TV <span class="highlight">now</span>. (现在进行时)</div>
+                <div class="example-en">↓</div>
+                <div class="example-en">She <span class="highlight-green">watches</span> TV <span class="highlight-green">every evening</span>. (一般现在时)</div>
+                <div class="example-cn">她每天晚上看电视。</div>
+            </div>
+
+            <div class="example">
+                <div class="example-en">They <span class="highlight">are playing</span> football. (现在进行时)</div>
+                <div class="example-en">↓</div>
+                <div class="example-en">They <span class="highlight-green">play</span> football <span class="highlight-green">on Sundays</span>. (一般现在时)</div>
+                <div class="example-cn">他们每个周日踢足球。</div>
+            </div>
+
+            <div class="example">
+                <div class="example-en">He <span class="highlight">is working</span> from home <span class="highlight">now</span>. (现在进行时)</div>
+                <div class="example-en">↓</div>
+                <div class="example-en">He <span class="highlight-green">works</span> from home <span class="highlight-green">every day</span>. (一般现在时)</div>
+                <div class="example-cn">他每天在家工作。</div>
+            </div>
+        </div>
+
+        <!-- 练习 -->
+        <div class="card">
+            <h2>✏️ 小练习</h2>
+            <p>把下列句子从现在进行时变成一般现在时：</p>
+
+            <div class="example">
+                <strong>1. I am eating lunch now.</strong><br>
+                → I <span class="highlight-green">_________</span> lunch at 12pm every day.
+            </div>
+
+            <div class="example">
+                <strong>2. She is reading a novel at the moment.</strong><br>
+                → She <span class="highlight-green">_________</span> novels in her free time.
+            </div>
+
+            <div class="example">
+                <strong>3. They are playing games now.</strong><br>
+                → They <span class="highlight-green">_________</span> games on weekends.
+            </div>
+
+            <details style="margin-top:20px; padding:15px; background:#f8f9fa; border-radius:10px;">
+                <summary style="cursor:pointer; font-weight:bold; color:#667eea;">📝 查看答案</summary>
+                <div style="margin-top:15px;">
+                    <p>1. eat</p>
+                    <p>2. reads</p>
+                    <p>3. play</p>
+                </div>
+            </details>
+        </div>
+
+        <div class="nav">
+            <a href="tutor.html" class="btn">← 返回跟读练习</a>
+            <a href="grammar_present_tenses.html" class="btn">🔄 再学一遍</a>
+        </div>
+
+        <div style="text-align:center; color:white; padding:20px; opacity:0.7;">
+            <p>📚 Shadow Learning - 新概念英语青少版2A</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📖 电子书 - 跟读学习</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+
+        header {
+            text-align: center;
+            padding: 20px;
+            color: white;
+        }
+        header h1 { font-size: 1.8em; margin-bottom: 5px; }
+        header p { opacity: 0.7; font-size: 0.9em; }
+
+        .book-selector {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .book-selector h2 { color: #667eea; margin-bottom: 15px; }
+        .book-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .book-item:hover { background: #e8f0fe; transform: translateX(5px); }
+        .btn-delete {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            margin-left: auto;
+            flex-shrink: 0;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 14px;
+            line-height: 24px;
+            text-align: center;
+        }
+        .book-item:hover .btn-delete { opacity: 1; }
+
+        .ebook-view {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            min-height: 500px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .book-title {
+            text-align: center;
+            color: #667eea;
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .chapter-nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .chapter-nav select {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+        .stats-bar span { cursor: pointer; }
+        .stats-bar span:hover { text-decoration: underline; }
+
+        .progress-bar {
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 6px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.3s;
+        }
+
+        .text-container {
+            font-size: 1.2em;
+            line-height: 2;
+            text-align: justify;
+            padding: 20px 0;
+            min-height: 300px;
+        }
+
+        .sentence {
+            padding: 4px 2px;
+            border-radius: 4px;
+            transition: all 0.2s;
+            cursor: pointer;
+            display: inline;
+        }
+        .sentence:hover {
+            background: #ffe0b2;
+        }
+        .sentence.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .sentence.read {
+            background: #c8e6c9;
+        }
+
+        .word {
+            cursor: pointer;
+            border-bottom: 1px dashed #667eea;
+            transition: all 0.2s;
+        }
+        .word:hover {
+            background: #e3f2fd;
+            border-bottom: 1px solid #667eea;
+        }
+        .word.looked {
+            background: #fff3e0;
+            border-bottom: 1px solid #ff9800;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-primary:hover { transform: scale(1.05); }
+        .btn-secondary { background: #e8f0fe; color: #667eea; }
+        .btn-secondary:hover { background: #d0e0ff; }
+        .btn-danger { background: #ff6b6b; color: white; }
+        .btn-success { background: #51cf66; color: white; }
+
+        .status {
+            text-align: center;
+            padding: 12px;
+            border-radius: 10px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+        .status-playing { background: #e3f2fd; color: #1976d2; }
+        .status-done { background: #e8f5e9; color: #388e3c; }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 15px;
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* 声波动画 */
+        .audio-visualizer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 3px;
+            height: 30px;
+            margin: 10px 0;
+        }
+        .audio-bar {
+            width: 4px;
+            background: linear-gradient(to top, #667eea, #764ba2);
+            border-radius: 2px;
+            transition: height 0.1s ease;
+        }
+
+        /* 顶部进度条 */
+        .reading-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: rgba(255,255,255,0.1);
+            z-index: 100;
+        }
+        .reading-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s;
+        }
+
+        /* 词典弹出框 */
+        .word-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: none;
+        }
+        .word-popup.show { display: block; }
+        .word-popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            display: none;
+        }
+        .word-popup-overlay.show { display: block; }
+
+        .word-popup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .word-popup-word {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .word-popup-phonetic {
+            color: #888;
+            font-size: 0.9em;
+        }
+        .word-popup-close {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #888;
+        }
+        .word-popup-meaning {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .word-popup-part { color: #667eea; font-weight: bold; }
+        .word-popup-def { margin-top: 5px; }
+        .word-popup-example {
+            font-style: italic;
+            color: #666;
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+        .word-popup-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .word-popup-actions .btn { flex: 1; text-align: center; font-size: 0.9em; padding: 10px; }
+
+        /* 生词本面板 */
+        .vocab-panel {
+            position: fixed;
+            top: 0;
+            right: -350px;
+            width: 350px;
+            height: 100vh;
+            background: white;
+            box-shadow: -5px 0 20px rgba(0,0,0,0.2);
+            z-index: 1001;
+            transition: right 0.3s;
+            overflow-y: auto;
+        }
+        .vocab-panel.show { right: 0; }
+        .vocab-panel-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .vocab-panel-header h3 { margin: 0; }
+        .vocab-panel-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5em;
+            cursor: pointer;
+        }
+        .vocab-list {
+            padding: 15px;
+        }
+        .vocab-item {
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .vocab-word { font-weight: bold; color: #333; }
+        .vocab-phonetic { color: #888; font-size: 0.85em; }
+        .vocab-meaning { color: #666; font-size: 0.9em; margin-top: 5px; }
+        .vocab-book {
+            font-size: 0.8em;
+            color: #667eea;
+            margin-top: 5px;
+        }
+        .vocab-empty {
+            text-align: center;
+            color: #888;
+            padding: 40px;
+        }
+
+        .import-status {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 500;
+        }
+        .import-status.loading { background: #e3f2fd; color: #1976d2; }
+        .import-status.success { background: #e8f5e9; color: #388e3c; }
+        .import-status.error { background: #ffebee; color: #c62828; }
+        .import-progress {
+            margin-top: 10px;
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .import-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s;
+            width: 0%;
+        }
+
+        /* AR值面板 */
+        .ar-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: none;
+        }
+        .ar-panel.show { display: block; }
+        .ar-title {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        .ar-value {
+            font-size: 3em;
+            font-weight: bold;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .ar-label {
+            text-align: center;
+            color: #888;
+            margin-bottom: 20px;
+        }
+        .ar-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .ar-stat {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .ar-stat-value { font-size: 1.3em; font-weight: bold; color: #667eea; }
+        .ar-stat-label { font-size: 0.8em; color: #888; }
+    </style>
+</head>
+<body>
+    <div class="reading-progress">
+        <div class="reading-progress-fill" id="top-progress" style="width: 0%"></div>
+    </div>
+
+    <div class="word-popup-overlay" id="word-overlay" onclick="closeWordPopup()"></div>
+    <div class="word-popup" id="word-popup">
+        <div class="word-popup-header">
+            <div>
+                <div class="word-popup-word" id="popup-word">word</div>
+                <div class="word-popup-phonetic" id="popup-phonetic">/wɜːrd/</div>
+            </div>
+            <button class="word-popup-close" onclick="closeWordPopup()">×</button>
+        </div>
+        <div class="word-popup-meaning" id="popup-meaning">
+            <div class="word-popup-part">noun</div>
+            <div class="word-popup-def">A single distinct meaningful element of speech or writing</div>
+            <div class="word-popup-example">"He used exactly the right word"</div>
+        </div>
+        <div class="word-popup-actions">
+            <button class="btn btn-secondary" onclick="playPronunciation()">🔊 发音</button>
+            <button class="btn btn-success" id="btn-add-word" onclick="addToVocab()">+ 加入生词本</button>
+        </div>
+    </div>
+
+    <div class="vocab-panel" id="vocab-panel">
+        <div class="vocab-panel-header">
+            <h3>📝 生词本</h3>
+            <button class="vocab-panel-close" onclick="closeVocabPanel()">×</button>
+        </div>
+        <div class="vocab-list" id="vocab-list">
+            <div class="vocab-empty">还没有生词</div>
+        </div>
+    </div>
+
+    <div class="ar-panel" id="ar-panel">
+        <button class="word-popup-close" onclick="closeARPanel()" style="position:absolute;top:10px;right:15px;">×</button>
+        <div class="ar-title">📊 阅读等级评估</div>
+        <div class="ar-value" id="ar-value">5.0</div>
+        <div class="ar-label">ATOS (AR) 阅读水平</div>
+        <div class="ar-stats">
+            <div class="ar-stat">
+                <div class="ar-stat-value" id="ar-words">0</div>
+                <div class="ar-stat-label">总单词数</div>
+            </div>
+            <div class="ar-stat">
+                <div class="ar-stat-value" id="ar-sentences">0</div>
+                <div class="ar-stat-label">总句数</div>
+            </div>
+            <div class="ar-stat">
+                <div class="ar-stat-value" id="ar-unique">0</div>
+                <div class="ar-stat-label">不重复词数</div>
+            </div>
+            <div class="ar-stat">
+                <div class="ar-stat-value" id="ar-avg">0</div>
+                <div class="ar-stat-label">平均词长</div>
+            </div>
+        </div>
+        <div style="margin-top:20px;text-align:center;">
+            <button class="btn btn-primary" onclick="closeARPanel()">关闭</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <a href="tutor.html" class="back-link">← 返回跟读系统</a>
+            <h1>📖 电子书跟读</h1>
+            <p>点击单词查词 · 自动累计生词本</p>
+        </header>
+
+        <!-- 书籍选择 -->
+        <div class="book-selector" id="book-selector">
+            <h2>📚 选择书籍</h2>
+            <div id="book-list">
+                <div class="loading">加载中...</div>
+            </div>
+            <div class="book-item" onclick="document.getElementById('import-file').click()" style="border: 2px dashed #667eea; background: #f8f9fa;">
+                <span>➕ 导入新书 (EPUB)</span>
+                <span style="color:#888;font-size:0.85em;">点击选择 EPUB 文件</span>
+            </div>
+            <input type="file" id="import-file" accept=".epub" style="display:none" onchange="importBook(this.files[0])">
+            <div class="import-status hidden" id="import-status"></div>
+        </div>
+
+        <!-- 电子书阅读区 -->
+        <div class="ebook-view hidden" id="ebook-view">
+            <div class="book-title" id="book-title">Loading...</div>
+
+            <div class="stats-bar">
+                <span onclick="showARPanel()">📊 AR值</span>
+                <span onclick="showVocabPanel()">📝 生词本 (<span id="vocab-count">0</span>)</span>
+            </div>
+
+            <div class="chapter-nav">
+                <select id="chapter-select" onchange="selectChapter(this.value)">
+                    <option value="">选择章节</option>
+                </select>
+            </div>
+
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+            </div>
+
+            <div class="text-container" id="text-container">
+                <div class="loading">加载中...</div>
+            </div>
+
+            <div class="audio-visualizer hidden" id="audio-visualizer">
+                <div class="audio-bar" style="height:5px;"></div>
+                <div class="audio-bar" style="height:5px;"></div>
+                <div class="audio-bar" style="height:5px;"></div>
+                <div class="audio-bar" style="height:5px;"></div>
+                <div class="audio-bar" style="height:5px;"></div>
+                <div class="audio-bar" style="height:5px;"></div>
+                <div class="audio-bar" style="height:5px;"></div>
+                <div class="audio-bar" style="height:5px;"></div>
+            </div>
+
+            <div class="status status-playing hidden" id="status">🔊 正在朗读...</div>
+
+            <div class="controls">
+                <button class="btn btn-secondary" onclick="prevSentence()">← 上一个</button>
+                <button class="btn btn-primary" id="btn-play" onclick="playCurrentSentence()">🔊 朗读</button>
+                <button class="btn btn-danger" id="btn-stop" onclick="stopPlayback()" disabled>⏹ 停止</button>
+                <button class="btn btn-secondary" onclick="nextSentence()">下一个 →</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 状态
+        let bookData = null;
+        let currentChapterIndex = 0;
+        let currentSentenceIndex = 0;
+        let sentences = [];
+        let audioElement = null;
+        let animationId = null;
+        let isPlaying = false;
+        let currentWord = null;
+        let vocabulary = JSON.parse(localStorage.getItem('vocabulary') || '[]');
+        let lookedWords = JSON.parse(localStorage.getItem('lookedWords') || '{}');
+
+        // 初始化
+        updateVocabCount();
+        loadBookList();
+
+        // 加载书籍列表
+        async function loadBookList() {
+            try {
+                const res = await fetch('/api/books');
+                const data = await res.json();
+                const list = document.getElementById('book-list');
+
+                if (data.success && data.books.length > 0) {
+                    list.innerHTML = data.books.map(b => `
+                        <div class="book-item" onclick="loadBook('${b.id}')">
+                            <span>📖 ${b.title}</span>
+                            <span style="color:#888;font-size:0.85em;">${b.chapters}章 · ${b.sentences}句</span>
+                            <button class="btn-delete" onclick="event.stopPropagation(); deleteBook('${b.id}', '${b.title}')">×</button>
+                        </div>
+                    `).join('');
+                } else {
+                    list.innerHTML = '<div style="padding:20px;color:#888;text-align:center;">还没有书籍，请导入 EPUB</div>';
+                }
+            } catch (err) {
+                console.error('Failed to load book list:', err);
+                document.getElementById('book-list').innerHTML = '<div style="padding:20px;color:#f66;">加载失败</div>';
+            }
+        }
+
+        // 删除书籍
+        async function deleteBook(bookId, bookTitle) {
+            if (!confirm(`确定要删除《${bookTitle}》吗？此操作不可恢复。`)) return;
+
+            try {
+                const res = await fetch(`/api/book/${bookId}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    loadBookList();  // 刷新列表
+                } else {
+                    alert('删除失败');
+                }
+            } catch (err) {
+                console.error('Delete error:', err);
+                alert('删除失败');
+            }
+        }
+
+        // 加载书籍
+        async function loadBook(bookId) {
+            try {
+                const res = await fetch(`/api/book/${bookId}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    bookData = data.book;
+                    document.getElementById('book-selector').classList.add('hidden');
+                    document.getElementById('ebook-view').classList.remove('hidden');
+                    document.getElementById('book-title').textContent = bookData.book || bookData.title;
+
+                    const select = document.getElementById('chapter-select');
+                    select.innerHTML = '<option value="">选择章节</option>';
+                    bookData.chapters.forEach((ch, i) => {
+                        select.innerHTML += `<option value="${i}">${ch.name} (${ch.sentences.length}句)</option>`;
+                    });
+
+                    selectChapter(0);
+                }
+            } catch (err) {
+                console.error('Failed to load book:', err);
+                alert('加载书籍失败');
+            }
+        }
+
+        // 导入新书
+        function importBook(file) {
+            if (!file) return;
+            if (!file.name.endsWith('.epub')) {
+                alert('请选择 EPUB 格式的文件');
+                return;
+            }
+
+            const status = document.getElementById('import-status');
+            status.classList.remove('hidden', 'loading', 'success', 'error');
+            status.classList.add('loading');
+            status.innerHTML = `<div>📤 正在上传: ${file.name}</div>
+                <div class="import-progress"><div class="import-progress-bar" id="import-progress"></div></div>`;
+
+            const formData = new FormData();
+            formData.append('epub', file);
+
+            fetch('/api/book/import', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                status.classList.remove('loading');
+                if (data.success) {
+                    status.classList.add('success');
+                    status.innerHTML = `✅ ${data.book_title} 导入成功！共 ${data.total_chapters} 章，${data.total_sentences} 句`;
+                    setTimeout(() => {
+                        status.classList.add('hidden');
+                        loadBookList();  // 刷新列表
+                    }, 1500);
+                } else {
+                    status.classList.add('error');
+                    status.innerHTML = `❌ 导入失败: ${data.error}`;
+                }
+            })
+            .catch(err => {
+                status.classList.remove('loading');
+                status.classList.add('error');
+                status.innerHTML = `❌ 错误: ${err}`;
+            });
+        }
+
+        // 选择章节
+        function selectChapter(chapterIndex) {
+            currentChapterIndex = parseInt(chapterIndex);
+            sentences = bookData.chapters[currentChapterIndex].sentences;
+            currentSentenceIndex = 0;
+            updateDisplay();
+        }
+
+        // 更新显示
+        function updateDisplay() {
+            const container = document.getElementById('text-container');
+
+            let html = '';
+            sentences.forEach((sent, i) => {
+                let className = 'sentence';
+                if (i < currentSentenceIndex) className += ' read';
+                if (i === currentSentenceIndex) className += ' active';
+
+                // 将句子中的每个单词变成可点击
+                const words = sent.split(/(\s+)/);
+                const processedWords = words.map(w => {
+                    if (/^[a-zA-Z]+$/.test(w)) {
+                        const isLooked = lookedWords[w.toLowerCase()];
+                        return `<span class="word ${isLooked ? 'looked' : ''}" onclick="lookupWord('${w}', this)">${w}</span>`;
+                    }
+                    return w;
+                }).join('');
+
+                html += `<span class="${className}" onclick="jumpTo(${i})">${processedWords} </span>`;
+            });
+
+            container.innerHTML = html;
+
+            const progress = sentences.length > 0 ? (currentSentenceIndex / sentences.length) * 100 : 0;
+            document.getElementById('progress-fill').style.width = progress + '%';
+            document.getElementById('top-progress').style.width = progress + '%';
+        }
+
+        // 查词
+        async function lookupWord(word, element) {
+            const cleanWord = word.replace(/[^a-zA-Z]/g, '').toLowerCase();
+            if (!cleanWord) return;
+
+            currentWord = cleanWord;
+            element.classList.add('looked');
+            lookedWords[cleanWord] = true;
+            localStorage.setItem('lookedWords', JSON.stringify(lookedWords));
+
+            // 显示加载中
+            document.getElementById('popup-word').textContent = cleanWord;
+            document.getElementById('popup-phonetic').textContent = '加载中...';
+            document.getElementById('popup-meaning').innerHTML = '<div class="loading">查询中...</div>';
+            document.getElementById('word-popup').classList.add('show');
+            document.getElementById('word-overlay').classList.add('show');
+
+            try {
+                // 先查英文词典
+                const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`);
+                const data = await res.json();
+
+                if (data && data.length > 0) {
+                    const entry = data[0];
+                    let phonetic = entry.phonetic || '';
+                    document.getElementById('popup-phonetic').textContent = phonetic;
+
+                    // 收集英文释义和例句
+                    let englishDefs = [];
+                    entry.meanings.forEach(m => {
+                        m.definitions.slice(0, 2).forEach(def => {
+                            englishDefs.push({ part: m.partOfSpeech, def: def.definition, example: def.example || '' });
+                        });
+                    });
+
+                    // 翻译成中文
+                    let meaningsHtml = '';
+                    for (const item of englishDefs) {
+                        let chineseDef = item.def;
+                        let chineseExample = item.example;
+
+                        try {
+                            // 使用 MyMemory 翻译 (免费，无需API Key)
+                            if (item.def) {
+                                const transRes = await fetch(
+                                    `https://api.mymemory.translated.net/get?q=${encodeURIComponent(item.def)}&langpair=en|zh-CN`
+                                );
+                                const transData = await transRes.json();
+                                if (transData.responseStatus === 200 && transData.responseData?.translatedText) {
+                                    chineseDef = transData.responseData.translatedText;
+                                }
+                            }
+                            if (item.example) {
+                                const exRes = await fetch(
+                                    `https://api.mymemory.translated.net/get?q=${encodeURIComponent(item.example)}&langpair=en|zh-CN`
+                                );
+                                const exData = await exRes.json();
+                                if (exData.responseStatus === 200 && exData.responseData?.translatedText) {
+                                    chineseExample = exData.responseData.translatedText;
+                                }
+                            }
+                        } catch (e) {
+                            console.log('Translation failed, showing English');
+                        }
+
+                        meaningsHtml += `
+                            <div class="word-popup-part">${item.part}</div>
+                            <div class="word-popup-def">${chineseDef}</div>
+                            ${chineseExample ? `<div class="word-popup-example">"${chineseExample}"</div>` : ''}
+                        `;
+                    }
+                    document.getElementById('popup-meaning').innerHTML = meaningsHtml || '<div>未找到释义</div>';
+                } else {
+                    document.getElementById('popup-phonetic').textContent = '';
+                    document.getElementById('popup-meaning').innerHTML = '<div>未找到释义</div>';
+                }
+            } catch (err) {
+                console.error('Dictionary error:', err);
+                document.getElementById('popup-meaning').innerHTML = '<div>查询失败</div>';
+            }
+        }
+
+        // 播放发音
+        async function playPronunciation() {
+            if (!currentWord) return;
+            try {
+                const res = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: currentWord })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    const audio = new Audio(data.audio_url);
+                    audio.play();
+                }
+            } catch (err) {
+                console.error('Pronunciation error:', err);
+            }
+        }
+
+        // 加入生词本
+        function addToVocab() {
+            if (!currentWord) return;
+
+            // 检查是否已存在
+            if (vocabulary.find(v => v.word === currentWord)) {
+                alert('这个词已经在生词本里了！');
+                return;
+            }
+
+            // 获取当前释义
+            const meaningEl = document.getElementById('popup-meaning');
+            const parts = meaningEl.querySelectorAll('.word-popup-part');
+            const defs = meaningEl.querySelectorAll('.word-popup-def');
+
+            let meaning = '';
+            parts.forEach((p, i) => {
+                if (defs[i]) {
+                    meaning += `${p.textContent}: ${defs[i].textContent}; `;
+                }
+            });
+
+            vocabulary.push({
+                word: currentWord,
+                meaning: meaning || '未找到释义',
+                book: bookData?.book || 'Unknown',
+                chapter: bookData?.chapters[currentChapterIndex]?.name || 'Unknown',
+                date: new Date().toLocaleDateString()
+            });
+
+            localStorage.setItem('vocabulary', JSON.stringify(vocabulary));
+            updateVocabCount();
+            alert(`"${currentWord}" 已加入生词本！`);
+        }
+
+        // 更新生词数量
+        function updateVocabCount() {
+            document.getElementById('vocab-count').textContent = vocabulary.length;
+        }
+
+        // 显示生词本
+        function showVocabPanel() {
+            renderVocabList();
+            document.getElementById('vocab-panel').classList.add('show');
+        }
+
+        // 关闭生词本
+        function closeVocabPanel() {
+            document.getElementById('vocab-panel').classList.remove('show');
+        }
+
+        // 渲染生词列表
+        function renderVocabList() {
+            const list = document.getElementById('vocab-list');
+            if (vocabulary.length === 0) {
+                list.innerHTML = '<div class="vocab-empty">还没有生词<br><br>点击文章中的单词开始积累吧！</div>';
+                return;
+            }
+
+            list.innerHTML = vocabulary.map(v => `
+                <div class="vocab-item">
+                    <div class="vocab-word">${v.word}</div>
+                    <div class="vocab-phonetic">/.../</div>
+                    <div class="vocab-meaning">${v.meaning}</div>
+                    <div class="vocab-book">${v.book} · ${v.chapter}</div>
+                </div>
+            `).join('');
+        }
+
+        // 计算AR值
+        function calculateAR() {
+            if (!bookData) return;
+
+            let totalWords = 0;
+            let totalSentences = 0;
+            let uniqueWords = new Set();
+            let totalSyllables = 0;
+
+            bookData.chapters.forEach(ch => {
+                ch.sentences.forEach(sent => {
+                    const words = sent.split(/\s+/).filter(w => /^[a-zA-Z]+$/.test(w));
+                    totalWords += words.length;
+                    totalSentences++;
+                    words.forEach(w => {
+                        uniqueWords.add(w.toLowerCase());
+                        totalSyllables += countSyllables(w);
+                    });
+                });
+            });
+
+            const avgWordLength = totalWords > 0 ? (totalSyllables / totalWords) : 0;
+            const avgSentenceLength = totalSentences > 0 ? (totalWords / totalSentences) : 0;
+
+            // ATOS (AR) 公式近似
+            const ar = 4.86 + (0.12 * avgSentenceLength) + (0.05 * avgWordLength);
+
+            document.getElementById('ar-words').textContent = totalWords;
+            document.getElementById('ar-sentences').textContent = totalSentences;
+            document.getElementById('ar-unique').textContent = uniqueWords.size;
+            document.getElementById('ar-avg').textContent = avgWordLength.toFixed(1);
+            document.getElementById('ar-value').textContent = ar.toFixed(1);
+        }
+
+        // 计算音节数
+        function countSyllables(word) {
+            word = word.toLowerCase();
+            if (word.length <= 3) return 1;
+            word = word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, '');
+            word = word.replace(/^y/, '');
+            const matches = word.match(/[aeiouy]{1,2}/g);
+            return matches ? matches.length : 1;
+        }
+
+        // 显示AR面板
+        function showARPanel() {
+            calculateAR();
+            document.getElementById('ar-panel').classList.add('show');
+            document.getElementById('word-overlay').classList.add('show');
+        }
+
+        // 关闭AR面板
+        function closeARPanel() {
+            document.getElementById('ar-panel').classList.remove('show');
+            document.getElementById('word-overlay').classList.remove('show');
+        }
+
+        // 关闭词典弹出
+        function closeWordPopup() {
+            document.getElementById('word-popup').classList.remove('show');
+            document.getElementById('word-overlay').classList.remove('show');
+        }
+
+        // 跳转到句子并自动朗读
+        function jumpTo(index) {
+            currentSentenceIndex = index;
+            updateDisplay();
+            playCurrentSentence();
+        }
+
+        // 播放当前句子
+        async function playCurrentSentence() {
+            if (!sentences || sentences.length === 0) return;
+
+            const text = sentences[currentSentenceIndex];
+            const btn = document.getElementById('btn-play');
+            const status = document.getElementById('status');
+            const visualizer = document.getElementById('audio-visualizer');
+
+            btn.disabled = true;
+            status.classList.remove('hidden');
+            status.textContent = '🔊 正在生成音频...';
+            visualizer.classList.remove('hidden');
+            startWaveAnimation();
+
+            try {
+                const res = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                const data = await res.json();
+
+                if (data.success && data.audio_url) {
+                    status.textContent = '🔊 正在朗读...';
+
+                    if (audioElement) audioElement.pause();
+                    audioElement = new Audio(data.audio_url);
+                    isPlaying = true;
+                    document.getElementById('btn-stop').disabled = false;
+
+                    audioElement.onended = () => {
+                        isPlaying = false;
+                        stopWaveAnimation();
+                        // 不自动跳转，用户点击哪句读哪句
+                        btn.disabled = false;
+                        document.getElementById('btn-stop').disabled = true;
+                        status.classList.add('hidden');
+                        visualizer.classList.add('hidden');
+                    };
+
+                    audioElement.onerror = () => {
+                        status.textContent = '❌ 播放失败';
+                        btn.disabled = false;
+                        stopWaveAnimation();
+                        visualizer.classList.add('hidden');
+                    };
+
+                    audioElement.play();
+                } else {
+                    status.textContent = '❌ TTS失败';
+                    btn.disabled = false;
+                    stopWaveAnimation();
+                    visualizer.classList.add('hidden');
+                }
+            } catch (err) {
+                status.textContent = '❌ 错误';
+                btn.disabled = false;
+                stopWaveAnimation();
+                visualizer.classList.add('hidden');
+                console.error(err);
+            }
+        }
+
+        // 声波动画
+        function startWaveAnimation() {
+            const bars = document.querySelectorAll('.audio-bar');
+            const heights = [10, 15, 25, 35, 25, 15, 20, 30];
+            function animate() {
+                if (!isPlaying) return;
+                bars.forEach((bar, i) => {
+                    bar.style.height = heights[Math.floor(Math.random() * heights.length)] + 'px';
+                });
+                animationId = requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        function stopWaveAnimation() {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            document.querySelectorAll('.audio-bar').forEach(bar => bar.style.height = '5px');
+        }
+
+        // 停止播放
+        function stopPlayback() {
+            if (audioElement) {
+                audioElement.pause();
+                audioElement = null;
+            }
+            isPlaying = false;
+            stopWaveAnimation();
+            document.getElementById('btn-play').disabled = false;
+            document.getElementById('btn-stop').disabled = true;
+            document.getElementById('status').classList.add('hidden');
+            document.getElementById('audio-visualizer').classList.add('hidden');
+        }
+
+        // 导航
+        function prevSentence() {
+            if (currentSentenceIndex > 0) {
+                currentSentenceIndex--;
+                updateDisplay();
+            }
+        }
+
+        function nextSentence() {
+            if (currentSentenceIndex < sentences.length - 1) {
+                currentSentenceIndex++;
+                updateDisplay();
+            }
+        }
+
+        // 键盘快捷键
+        document.addEventListener('keydown', (e) => {
+            if (document.getElementById('ebook-view').classList.contains('hidden')) return;
+            if (document.getElementById('word-popup').classList.contains('show')) return;
+
+            if (e.key === 'ArrowLeft') prevSentence();
+            else if (e.key === 'ArrowRight') nextSentence();
+            else if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                playCurrentSentence();
+            } else if (e.key === 'Escape') {
+                stopPlayback();
+                closeWordPopup();
+                closeVocabPanel();
+                closeARPanel();
+            }
+        });
+
+        // 滚动更新进度
+        window.addEventListener('scroll', () => {
+            const scrollTop = window.scrollY;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+            document.getElementById('top-progress').style.width = progress + '%';
+        });
+    </script>
+</body>
+</html>

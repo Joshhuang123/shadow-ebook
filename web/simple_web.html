@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shadow Learning - 英语影子跟读</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        header {
+            text-align: center;
+            padding: 30px 20px;
+            color: white;
+        }
+        header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin: 15px 0;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .card h2 { color: #667eea; margin-bottom: 15px; }
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-primary:hover { opacity: 0.9; transform: scale(1.02); }
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        .material-list { list-style: none; }
+        .material-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .material-item:last-child { border-bottom: none; }
+        .material-name { font-weight: 500; }
+        .segment-list { list-style: none; max-height: 300px; overflow-y: auto; }
+        .segment-item {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            margin: 8px 0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .segment-item:hover { background: #f8f9ff; border-color: #667eea; }
+        .segment-item.active { background: #667eea; color: white; }
+        .segment-text { font-size: 1.1em; }
+        .segment-time { font-size: 0.85em; color: #888; margin-top: 5px; }
+        .controls { display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
+        .status { padding: 10px 15px; border-radius: 10px; margin: 10px 0; }
+        .status-info { background: #e3f2fd; color: #1976d2; }
+        .status-success { background: #e8f5e9; color: #388e3c; }
+        .status-error { background: #ffebee; color: #d32f2f; }
+        .score-display {
+            font-size: 3em;
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        .score-label { font-size: 0.4em; opacity: 0.9; }
+        .grammar-analysis { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-top: 15px; }
+        .grammar-point { margin: 10px 0; padding: 10px; background: white; border-radius: 8px; }
+        .grammar-pattern { color: #667eea; font-weight: bold; }
+        .vocab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+        .vocab-item { background: #f8f9fa; padding: 12px; border-radius: 8px; }
+        .vocab-word { font-weight: bold; color: #333; }
+        .vocab-meaning { color: #666; font-size: 0.9em; }
+        .loading { text-align: center; padding: 20px; color: #888; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🦊 Shadow Learning</h1>
+            <p>英语影子跟读练习系统 - 新概念英语青少版2A</p>
+        </header>
+
+        <!-- 加载材料 -->
+        <div class="card" id="materials-section">
+            <h2>📚 选择学习材料</h2>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="loadMaterials()">🔄 刷新材料列表</button>
+            </div>
+            <ul class="material-list" id="material-list">
+                <li class="loading">点击按钮加载材料...</li>
+            </ul>
+        </div>
+
+        <!-- 跟读练习 -->
+        <div class="card" id="practice-section" style="display:none;">
+            <h2>🎯 跟读练习</h2>
+            <div class="controls">
+                <button class="btn btn-secondary" onclick="showMaterials()">← 返回材料列表</button>
+                <button class="btn btn-primary" onclick="playCurrent()">▶ 播放原音</button>
+                <button class="btn btn-primary" onclick="startRecord()">🎤 开始录音</button>
+                <button class="btn btn-secondary" onclick="stopRecord()">⏹ 停止录音</button>
+            </div>
+            <div id="current-segment" class="status status-info">
+                请选择一个片段开始练习
+            </div>
+            <div id="record-status" class="status status-info" style="display:none;">
+                准备就绪
+            </div>
+            <h3 style="margin: 15px 0 10px;">📝 片段列表</h3>
+            <ul class="segment-list" id="segment-list">
+                <li class="loading">加载中...</li>
+            </ul>
+        </div>
+
+        <!-- 评分结果 -->
+        <div class="card" id="score-section" style="display:none;">
+            <h2>📊 评分结果</h2>
+            <div class="score-display">
+                <span id="score-value">0</span>
+                <div class="score-label">综合评分</div>
+            </div>
+            <div id="score-details"></div>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="practiceAgain()">🔄 再练一次</button>
+                <button class="btn btn-secondary" onclick="nextSegment()">下一个片段 →</button>
+            </div>
+        </div>
+
+        <!-- 语法分析 -->
+        <div class="card" id="grammar-section">
+            <h2>📖 语法分析</h2>
+            <div class="controls">
+                <input type="text" id="grammar-input" placeholder="输入英文句子分析语法..."
+                       style="flex:1; padding:12px; border:1px solid #ddd; border-radius:25px; font-size:1em;">
+                <button class="btn btn-primary" onclick="analyzeGrammar()">分析</button>
+            </div>
+            <div id="grammar-result"></div>
+        </div>
+
+        <!-- 词汇复习 -->
+        <div class="card" id="vocab-section">
+            <h2>📝 词汇复习 (新概念2A)</h2>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="loadVocab()">📚 加载词汇</button>
+            </div>
+            <div id="vocab-list" class="vocab-grid"></div>
+        </div>
+
+        <!-- 统计 -->
+        <div class="card">
+            <h2>📈 学习统计</h2>
+            <button class="btn btn-secondary" onclick="loadStats()">🔄 刷新统计</button>
+            <div id="stats-display" style="margin-top:15px;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+        let currentMaterial = null;
+        let currentSegmentIndex = 0;
+        let segments = [];
+        let isRecording = false;
+
+        // 加载材料列表
+        async function loadMaterials() {
+            const list = document.getElementById('material-list');
+            list.innerHTML = '<li class="loading">加载中...</li>';
+            try {
+                const res = await fetch(API_BASE + '/api/materials');
+                const data = await res.json();
+                if (data.success && data.materials.length > 0) {
+                    list.innerHTML = data.materials.map(m => `
+                        <li class="material-item">
+                            <span class="material-name">${m.name}</span>
+                            <button class="btn btn-secondary" onclick="loadMaterial('${m.name}')">加载</button>
+                        </li>
+                    `).join('');
+                } else {
+                    list.innerHTML = '<li class="loading">没有找到音频文件，请把mp3/wav文件放到 audio 文件夹</li>';
+                }
+            } catch (e) {
+                list.innerHTML = '<li class="status-error">加载失败: ' + e.message + '</li>';
+            }
+        }
+
+        // 加载材料
+        async function loadMaterial(filename) {
+            try {
+                const res = await fetch(API_BASE + '/api/load', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({filename})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    currentMaterial = filename;
+                    document.getElementById('materials-section').style.display = 'none';
+                    document.getElementById('practice-section').style.display = 'block';
+                    loadSegments();
+                } else {
+                    alert('加载失败: ' + data.error);
+                }
+            } catch (e) {
+                alert('加载失败: ' + e.message);
+            }
+        }
+
+        // 加载片段
+        async function loadSegments() {
+            const res = await fetch(API_BASE + '/api/segments');
+            const data = await res.json();
+            if (data.success) {
+                segments = data.segments;
+                const list = document.getElementById('segment-list');
+                list.innerHTML = segments.map((s, i) => `
+                    <li class="segment-item" onclick="selectSegment(${i})" id="seg-${i}">
+                        <div class="segment-text">${s.text || '(无文本)'}</div>
+                        <div class="segment-time">${formatTime(s.start)} - ${formatTime(s.end)}</div>
+                    </li>
+                `).join('');
+                if (segments.length > 0) selectSegment(0);
+            }
+        }
+
+        // 选择片段
+        function selectSegment(index) {
+            currentSegmentIndex = index;
+            document.querySelectorAll('.segment-item').forEach((el, i) => {
+                el.classList.toggle('active', i === index);
+            });
+            const seg = segments[index];
+            document.getElementById('current-segment').innerHTML = `
+                <strong>当前片段:</strong> ${seg.text || '(无文本)'}
+                <br><small>时长: ${seg.duration.toFixed(1)}秒</small>
+            `;
+        }
+
+        // 播放原音
+        async function playCurrent() {
+            await fetch(API_BASE + '/api/play/' + currentSegmentIndex);
+        }
+
+        // 录音
+        async function startRecord() {
+            const status = document.getElementById('record-status');
+            status.style.display = 'block';
+            status.className = 'status status-info';
+            status.textContent = '正在录音...';
+            await fetch(API_BASE + '/api/record/start');
+            isRecording = true;
+        }
+
+        async function stopRecord() {
+            if (!isRecording) return;
+            await fetch(API_BASE + '/api/record/stop');
+            isRecording = false;
+            const status = document.getElementById('record-status');
+            status.textContent = '录音完成，正在评分...';
+            setTimeout(scoreRecording, 500);
+        }
+
+        // 评分
+        async function scoreRecording() {
+            const res = await fetch(API_BASE + '/api/score/' + currentSegmentIndex);
+            const data = await res.json();
+            if (data.success) {
+                showScore(data);
+            } else {
+                alert('评分失败: ' + data.error);
+            }
+        }
+
+        // 显示分数
+        function showScore(data) {
+            document.getElementById('practice-section').style.display = 'none';
+            document.getElementById('score-section').style.display = 'block';
+            document.getElementById('score-value').textContent = Math.round(data.score.overall_score || 0);
+            document.getElementById('score-details').innerHTML = `
+                <p><strong>相似度:</strong> ${Math.round((data.score.similarity || 0) * 100)}%</p>
+                <p><strong>流利度:</strong> ${Math.round((data.score.fluency || 0) * 100)}%</p>
+                <p><strong>单词准确度:</strong> ${Math.round((data.score.word_accuracy || 0) * 100)}%</p>
+            `;
+        }
+
+        // 再练一次
+        function practiceAgain() {
+            document.getElementById('score-section').style.display = 'none';
+            document.getElementById('practice-section').style.display = 'block';
+        }
+
+        // 下一个片段
+        function nextSegment() {
+            if (currentSegmentIndex < segments.length - 1) {
+                selectSegment(currentSegmentIndex + 1);
+                practiceAgain();
+            } else {
+                alert('已经是最后一个片段了！');
+            }
+        }
+
+        // 返回材料列表
+        function showMaterials() {
+            document.getElementById('practice-section').style.display = 'none';
+            document.getElementById('score-section').style.display = 'none';
+            document.getElementById('materials-section').style.display = 'block';
+        }
+
+        // 语法分析
+        async function analyzeGrammar() {
+            const input = document.getElementById('grammar-input').value.trim();
+            if (!input) return;
+            const res = await fetch(API_BASE + '/api/grammar/' + encodeURIComponent(input));
+            const data = await res.json();
+            if (data.success) {
+                const analysis = data.analysis;
+                let html = '<div class="grammar-analysis">';
+                if (analysis.grammar_points && analysis.grammar_points.length > 0) {
+                    analysis.grammar_points.forEach(p => {
+                        html += `<div class="grammar-point">
+                            <div class="grammar-pattern">${p.pattern}</div>
+                            <div>${p.explanation}</div>
+                            <div><em>例句: ${p.examples ? p.examples[0] : ''}</em></div>
+                        </div>`;
+                    });
+                } else {
+                    html += '<p>未识别出特定语法点</p>';
+                }
+                html += `<p><strong>句子结构:</strong> ${analysis.structure?.type || 'unknown'}</p>`;
+                html += `<p><strong>动词形式:</strong> ${(analysis.verb_forms || []).join(', ') || '未识别'}</p>`;
+                html += '</div>';
+                document.getElementById('grammar-result').innerHTML = html;
+            }
+        }
+
+        // 加载词汇
+        async function loadVocab() {
+            const res = await fetch(API_BASE + '/api/vocabulary');
+            const data = await res.json();
+            if (data.vocabulary) {
+                const vocab = data.vocabulary;
+                let html = '';
+                if (vocab.unknown_words) {
+                    vocab.unknown_words.slice(0, 20).forEach(w => {
+                        html += `<div class="vocab-item">
+                            <div class="vocab-word">${w.word}</div>
+                            <div class="vocab-meaning">${w.phonetic || ''} ${w.meaning || ''}</div>
+                        </div>`;
+                    });
+                }
+                if (!html) html = '<p>暂无词汇数据</p>';
+                document.getElementById('vocab-list').innerHTML = html;
+            }
+        }
+
+        // 加载统计
+        async function loadStats() {
+            const res = await fetch(API_BASE + '/api/stats');
+            const data = await res.json();
+            if (data.success) {
+                const s = data;
+                document.getElementById('stats-display').innerHTML = `
+                    <p><strong>学习统计:</strong></p>
+                    <p>总单词数: ${s.vocabulary?.total_words_encountered || 0}</p>
+                    <p>陌生单词: ${s.vocabulary?.total_unknown_words || 0}</p>
+                    <p>熟练度分布: 陌生 ${s.vocabulary?.mastery_distribution?.learning || 0},
+                       学习中 ${s.vocabulary?.mastery_distribution?.practicing || 0},
+                       熟练 ${s.vocabulary?.mastery_distribution?.mastered || 0}</p>
+                `;
+            }
+        }
+
+        // 格式化时间
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        // 初始化
+        loadMaterials();
+        loadStats();
+    </script>
+</body>
+</html>
