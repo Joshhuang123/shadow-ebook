@@ -530,6 +530,157 @@
             justify-content: center;
         }
 
+        /* 跟读录音按钮 */
+        .record-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #EF4444, #F97316);
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+            margin: 0 auto;
+        }
+
+        .record-btn:hover {
+            transform: scale(1.08);
+        }
+
+        .record-btn.recording {
+            animation: pulse 1.5s ease infinite;
+            background: linear-gradient(135deg, #DC2626, #B91C1C);
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            50% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+        }
+
+        .record-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 发音评分面板 */
+        .pronunciation-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        .pronunciation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .score-circle {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: conic-gradient(var(--secondary) 0deg, var(--bg-dark) 0deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .score-circle::before {
+            content: '';
+            position: absolute;
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            background: var(--bg-card);
+        }
+
+        .score-value {
+            position: relative;
+            font-size: 1.4em;
+            font-weight: 700;
+            color: var(--secondary);
+        }
+
+        .score-label {
+            text-align: center;
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        .score-level {
+            font-size: 1.1em;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .score-level.excellent { color: #22C55E; }
+        .score-level.great { color: #10B981; }
+        .score-level.good { color: #3B82F6; }
+        .score-level.practice { color: #F59E0B; }
+        .score-level.try { color: #EF4444; }
+
+        .transcription-result {
+            margin-top: 12px;
+            padding: 12px;
+            background: var(--bg-dark);
+            border-radius: 10px;
+            font-size: 0.9em;
+        }
+
+        .transcription-label {
+            color: var(--text-secondary);
+            font-size: 0.8em;
+            margin-bottom: 6px;
+        }
+
+        .transcription-text {
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        .record-hint {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            margin-top: 12px;
+        }
+
+        /* 跟读模式切换 */
+        .mode-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+            justify-content: center;
+        }
+
         .nav-btn:hover:not(:disabled) {
             background: var(--primary);
             border-color: var(--primary);
@@ -977,6 +1128,39 @@
                 </div>
 
                 <div class="sidebar">
+                    <!-- 跟读评分 -->
+                    <div class="pronunciation-card">
+                        <div class="sidebar-title">🎤 跟读评分</div>
+
+                        <div class="mode-toggle">
+                            <button class="mode-btn active" id="mode-read" onclick="setMode('read')">阅读</button>
+                            <button class="mode-btn" id="mode-shadow" onclick="setMode('shadow')">跟读</button>
+                        </div>
+
+                        <div style="text-align:center;">
+                            <button class="record-btn" id="btn-record" onclick="toggleRecord()">🎙️</button>
+                        </div>
+
+                        <div id="score-display" style="display:none;">
+                            <div style="display:flex;justify-content:center;margin-top:16px;">
+                                <div style="text-align:center;">
+                                    <div class="score-circle" id="score-circle">
+                                        <span class="score-value" id="score-value">--</span>
+                                    </div>
+                                    <div class="score-level" id="score-level">等待评分</div>
+                                </div>
+                            </div>
+                            <div class="transcription-result" id="transcription-result" style="display:none;">
+                                <div class="transcription-label">你说的是：</div>
+                                <div class="transcription-text" id="transcription-text"></div>
+                            </div>
+                        </div>
+
+                        <div class="record-hint" id="record-hint">
+                            点击麦克风，录音跟读
+                        </div>
+                    </div>
+
                     <div class="sidebar-card">
                         <div class="sidebar-title">📝 句子翻译</div>
                         <div class="translation-content" id="translation-content">
@@ -1080,6 +1264,13 @@
         let currentWord = null;
         let vocabulary = JSON.parse(localStorage.getItem('vocabulary') || '[]');
         let lookedWords = JSON.parse(localStorage.getItem('lookedWords') || '{}');
+
+        // 录音状态
+        let isRecording = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let recognition = null;
+        let currentMode = 'read';  // 'read' 或 'shadow'
 
         // 初始化
         updateVocabCount();
@@ -1685,6 +1876,178 @@
         document.getElementById('word-modal').addEventListener('click', (e) => {
             if (e.target.id === 'word-modal') closeWordModal();
         });
+
+        // ========== 跟读评分功能 ==========
+
+        // 切换阅读/跟读模式
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('mode-read').classList.toggle('active', mode === 'read');
+            document.getElementById('mode-shadow').classList.toggle('active', mode === 'shadow');
+            document.getElementById('record-hint').textContent = mode === 'read'
+                ? '阅读模式下跳过评分'
+                : '点击麦克风，录音跟读';
+            document.getElementById('score-display').style.display = 'none';
+
+            // 停止任何正在进行的识别
+            if (recognition && isRecording) {
+                recognition.stop();
+                isRecording = false;
+            }
+        }
+
+        // 切换录音
+        function toggleRecord() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
+        // 开始录音识别
+        function startRecording() {
+            if (!sentences || sentences.length === 0) return;
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                document.getElementById('record-hint').textContent = '❌ 浏览器不支持语音识别';
+                return;
+            }
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.continuous = true;
+            recognition.interimResults = true;
+
+            isRecording = true;
+            document.getElementById('btn-record').classList.add('recording');
+            document.getElementById('btn-record').textContent = '⏹';
+            document.getElementById('record-hint').textContent = '🎤 正在听... 说完自动停止';
+
+            // 先播放参考音频
+            playReferenceAudio();
+
+            recognition.onresult = (event) => {
+                const results = event.results;
+                const transcript = results[results.length - 1][0].transcript.trim();
+
+                // 如果是最终结果
+                if (results[results.length - 1].isFinal) {
+                    stopRecording();
+                    const original = sentences[currentSentenceIndex];
+                    showPronunciationScore(original, transcript);
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                    document.getElementById('record-hint').textContent = '❌ 识别出错: ' + event.error;
+                }
+                stopRecording();
+            };
+
+            recognition.onend = () => {
+                if (isRecording) {
+                    // 意外结束，重新开始
+                    try { recognition.start(); } catch(e) {}
+                }
+            };
+
+            try {
+                recognition.start();
+            } catch (err) {
+                console.error('Failed to start recognition:', err);
+                document.getElementById('record-hint').textContent = '❌ 无法启动识别';
+                stopRecording();
+            }
+        }
+
+        // 停止录音
+        function stopRecording() {
+            isRecording = false;
+            document.getElementById('btn-record').classList.remove('recording');
+            document.getElementById('btn-record').textContent = '🎙️';
+            if (recognition) {
+                recognition.stop();
+            }
+        }
+
+        // 播放参考音频
+        async function playReferenceAudio() {
+            if (!sentences || sentences.length === 0) return;
+            try {
+                const ttsRes = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: sentences[currentSentenceIndex] })
+                });
+                const data = await ttsRes.json();
+                if (data.success) {
+                    setTimeout(() => {
+                        const audio = new Audio(data.audio_url);
+                        audio.play();
+                    }, 100);
+                }
+            } catch (err) {
+                console.error('TTS error:', err);
+            }
+        }
+
+        // 显示发音评分
+        function showPronunciationScore(original, transcribed) {
+            const score = calculateSimilarity(original, transcribed);
+            const level = getScoreLevel(score);
+
+            document.getElementById('score-display').style.display = 'block';
+            document.getElementById('score-value').textContent = score;
+            document.getElementById('score-level').textContent = level.text;
+            document.getElementById('score-level').className = 'score-level ' + level.class;
+
+            // 更新圆形进度
+            const degrees = (score / 100) * 360;
+            document.getElementById('score-circle').style.background =
+                `conic-gradient(${level.color} ${degrees}deg, var(--bg-dark) ${degrees}deg)`;
+
+            // 显示识别结果
+            document.getElementById('transcription-result').style.display = 'block';
+            document.getElementById('transcription-text').textContent = transcribed;
+
+            document.getElementById('record-hint').textContent = '点击麦克风再读一遍';
+        }
+
+        // 计算相似度
+        function calculateSimilarity(original, transcribed) {
+            const orig = original.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+            const trans = transcribed.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+
+            if (!trans) return 0;
+            if (orig === trans) return 100;
+
+            const origWords = orig.split(/\s+/);
+            const transWords = trans.split(/\s+/);
+
+            let matchCount = 0;
+            transWords.forEach(w => {
+                if (origWords.includes(w)) matchCount++;
+            });
+
+            // 综合考虑匹配率和完整度
+            const matchRate = matchCount / transWords.length;
+            const coverage = matchCount / origWords.length;
+            const score = Math.round((matchRate * 0.6 + coverage * 0.4) * 100);
+
+            return Math.min(100, score);
+        }
+
+        // 获取评分等级
+        function getScoreLevel(score) {
+            if (score >= 90) return { text: '🌟 非常棒！', class: 'excellent', color: '#22C55E' };
+            if (score >= 75) return { text: '👍 很棒！', class: 'great', color: '#10B981' };
+            if (score >= 60) return { text: '📚 不错！', class: 'good', color: '#3B82F6' };
+            if (score >= 40) return { text: '💪 继续加油', class: 'practice', color: '#F59E0B' };
+            return { text: '📖 多读几遍', class: 'try', color: '#EF4444' };
+        }
     </script>
 </body>
 </html>

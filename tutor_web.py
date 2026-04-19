@@ -146,7 +146,12 @@ COMPREHENSION_QUESTIONS = {
 
 @app.route('/')
 def index():
-    return render_template('tutor.html')
+    return send_from_directory(app.root_path + '/web', 'ebook.html')
+
+@app.route('/tutor')
+def tutor_page():
+    """跟读辅导页面"""
+    return send_from_directory(app.root_path + '/web', 'tutor.html')
 
 @app.route('/grammar/<page>')
 def grammar_page(page):
