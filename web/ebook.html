@@ -3,575 +3,952 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📖 电子书 - 跟读学习</title>
+    <title>Shadow Ebook - 英语电子书阅读</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-light: #818CF8;
+            --secondary: #10B981;
+            --bg-dark: #0F172A;
+            --bg-card: #1E293B;
+            --text-primary: #F8FAFC;
+            --text-secondary: #94A3B8;
+            --border: #334155;
+            --accent: #F59E0B;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
             min-height: 100vh;
-            color: #333;
+            color: var(--text-primary);
+            line-height: 1.6;
         }
-        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
 
-        header {
-            text-align: center;
-            padding: 20px;
-            color: white;
-        }
-        header h1 { font-size: 1.8em; margin-bottom: 5px; }
-        header p { opacity: 0.7; font-size: 0.9em; }
-
-        .book-selector {
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        .book-selector h2 { color: #667eea; margin-bottom: 15px; }
-        .book-item {
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 10px;
-            margin: 10px 0;
-            cursor: pointer;
-            transition: all 0.2s;
+        /* 顶部导航 */
+        .top-nav {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        .book-item:hover { background: #e8f0fe; transform: translateX(5px); }
-        .btn-delete {
-            background: #ff6b6b;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            cursor: pointer;
-            margin-left: auto;
-            flex-shrink: 0;
-            opacity: 0;
-            transition: opacity 0.2s;
-            font-size: 14px;
-            line-height: 24px;
-            text-align: center;
-        }
-        .book-item:hover .btn-delete { opacity: 1; }
 
-        .ebook-view {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            min-height: 500px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-        }
-
-        .book-title {
-            text-align: center;
-            color: #667eea;
-            font-size: 1.3em;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #eee;
-        }
-
-        .chapter-nav {
+        .nav-brand {
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 10px;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            font-size: 1.1em;
         }
-        .chapter-nav select {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
+
+        .nav-brand .logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
             border-radius: 8px;
-            font-size: 1em;
-        }
-
-        .stats-bar {
             display: flex;
-            justify-content: space-between;
-            padding: 10px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            font-size: 0.9em;
-        }
-        .stats-bar span { cursor: pointer; }
-        .stats-bar span:hover { text-decoration: underline; }
-
-        .progress-bar {
-            background: #e9ecef;
-            border-radius: 10px;
-            height: 6px;
-            margin: 10px 0;
-            overflow: hidden;
-        }
-        .progress-fill {
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            height: 100%;
-            border-radius: 10px;
-            transition: width 0.3s;
-        }
-
-        .text-container {
-            font-size: 1.2em;
-            line-height: 2;
-            text-align: justify;
-            padding: 20px 0;
-            min-height: 300px;
-        }
-
-        .sentence {
-            padding: 4px 2px;
-            border-radius: 4px;
-            transition: all 0.2s;
-            cursor: pointer;
-            display: inline;
-        }
-        .sentence:hover {
-            background: #ffe0b2;
-        }
-        .sentence.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        .sentence.read {
-            background: #c8e6c9;
-        }
-
-        .word {
-            cursor: pointer;
-            border-bottom: 1px dashed #667eea;
-            transition: all 0.2s;
-        }
-        .word:hover {
-            background: #e3f2fd;
-            border-bottom: 1px solid #667eea;
-        }
-        .word.looked {
-            background: #fff3e0;
-            border-bottom: 1px solid #ff9800;
-        }
-
-        .controls {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin: 20px 0;
-        }
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 50px;
-            font-size: 1em;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
             align-items: center;
+            justify-content: center;
+        }
+
+        .nav-links {
+            display: flex;
             gap: 8px;
         }
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        .btn-primary:hover { transform: scale(1.05); }
-        .btn-secondary { background: #e8f0fe; color: #667eea; }
-        .btn-secondary:hover { background: #d0e0ff; }
-        .btn-danger { background: #ff6b6b; color: white; }
-        .btn-success { background: #51cf66; color: white; }
 
-        .status {
-            text-align: center;
-            padding: 12px;
-            border-radius: 10px;
-            margin: 10px 0;
-            font-weight: 500;
-        }
-        .status-playing { background: #e3f2fd; color: #1976d2; }
-        .status-done { background: #e8f5e9; color: #388e3c; }
-
-        .back-link {
-            display: inline-block;
-            margin-bottom: 15px;
-            color: white;
+        .nav-link {
+            color: var(--text-secondary);
             text-decoration: none;
             padding: 8px 16px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 20px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            transition: all 0.2s;
         }
-        .back-link:hover { background: rgba(255,255,255,0.2); }
 
-        .loading {
+        .nav-link:hover {
+            color: var(--text-primary);
+            background: var(--bg-card);
+        }
+
+        .nav-link.active {
+            color: var(--text-primary);
+            background: var(--primary);
+        }
+
+        /* 主容器 */
+        .main-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 100px 24px 40px;
+        }
+
+        /* 书籍选择页 */
+        .book-list-page {
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .hero-section {
             text-align: center;
-            padding: 40px;
-            color: #888;
+            padding: 60px 20px;
         }
 
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        /* 声波动画 */
-        .audio-visualizer {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 3px;
-            height: 30px;
-            margin: 10px 0;
-        }
-        .audio-bar {
-            width: 4px;
-            background: linear-gradient(to top, #667eea, #764ba2);
-            border-radius: 2px;
-            transition: height 0.1s ease;
+        .hero-title {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--primary-light), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        /* 顶部进度条 */
-        .reading-progress {
-            position: fixed;
+        .hero-subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1em;
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--text-secondary);
+        }
+
+        .book-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 40px;
+        }
+
+        .book-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .book-card::before {
+            content: '';
+            position: absolute;
             top: 0;
             left: 0;
             right: 0;
             height: 3px;
-            background: rgba(255,255,255,0.1);
-            z-index: 100;
-        }
-        .reading-progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            transition: width 0.3s;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            opacity: 0;
+            transition: opacity 0.3s;
         }
 
-        /* 词典弹出框 */
-        .word-popup {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            z-index: 1000;
-            display: none;
+        .book-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(79, 70, 229, 0.2);
         }
-        .word-popup.show { display: block; }
-        .word-popup-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 999;
-            display: none;
-        }
-        .word-popup-overlay.show { display: block; }
 
-        .word-popup-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
+        .book-card:hover::before {
+            opacity: 1;
         }
-        .word-popup-word {
-            font-size: 1.5em;
-            font-weight: bold;
-            color: #667eea;
-        }
-        .word-popup-phonetic {
-            color: #888;
-            font-size: 0.9em;
-        }
-        .word-popup-close {
-            background: none;
+
+        .book-card .delete-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(239, 68, 68, 0.2);
             border: none;
-            font-size: 1.5em;
+            color: #EF4444;
             cursor: pointer;
-            color: #888;
-        }
-        .word-popup-meaning {
-            margin: 10px 0;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
-        .word-popup-part { color: #667eea; font-weight: bold; }
-        .word-popup-def { margin-top: 5px; }
-        .word-popup-example {
-            font-style: italic;
-            color: #666;
-            margin-top: 5px;
-            font-size: 0.9em;
-        }
-        .word-popup-actions {
+            opacity: 0;
+            transition: all 0.2s;
+            font-size: 16px;
             display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        .word-popup-actions .btn { flex: 1; text-align: center; font-size: 0.9em; padding: 10px; }
-
-        /* 生词本面板 */
-        .vocab-panel {
-            position: fixed;
-            top: 0;
-            right: -350px;
-            width: 350px;
-            height: 100vh;
-            background: white;
-            box-shadow: -5px 0 20px rgba(0,0,0,0.2);
-            z-index: 1001;
-            transition: right 0.3s;
-            overflow-y: auto;
-        }
-        .vocab-panel.show { right: 0; }
-        .vocab-panel-header {
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: center;
         }
-        .vocab-panel-header h3 { margin: 0; }
-        .vocab-panel-close {
-            background: none;
-            border: none;
+
+        .book-card:hover .delete-btn {
+            opacity: 1;
+        }
+
+        .book-card .delete-btn:hover {
+            background: #EF4444;
             color: white;
-            font-size: 1.5em;
+        }
+
+        .book-card-title {
+            font-weight: 600;
+            font-size: 1.05em;
+            margin-bottom: 8px;
+            padding-right: 40px;
+        }
+
+        .book-card-meta {
+            color: var(--text-secondary);
+            font-size: 0.85em;
+        }
+
+        .book-card-icon {
+            font-size: 2em;
+            margin-bottom: 12px;
+        }
+
+        /* 导入卡片 */
+        .import-card {
+            background: transparent;
+            border: 2px dashed var(--border);
+            border-radius: 16px;
+            padding: 40px 20px;
             cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            min-height: 160px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
-        .vocab-list {
-            padding: 15px;
+
+        .import-card:hover {
+            border-color: var(--primary);
+            background: rgba(79, 70, 229, 0.1);
         }
-        .vocab-item {
-            padding: 12px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            margin-bottom: 10px;
+
+        .import-card .icon {
+            font-size: 2.5em;
+            margin-bottom: 12px;
         }
-        .vocab-word { font-weight: bold; color: #333; }
-        .vocab-phonetic { color: #888; font-size: 0.85em; }
-        .vocab-meaning { color: #666; font-size: 0.9em; margin-top: 5px; }
-        .vocab-book {
+
+        .import-card .text {
+            color: var(--text-secondary);
+            font-size: 0.95em;
+        }
+
+        .import-card .hint {
+            color: var(--text-secondary);
             font-size: 0.8em;
-            color: #667eea;
-            margin-top: 5px;
-        }
-        .vocab-empty {
-            text-align: center;
-            color: #888;
-            padding: 40px;
+            margin-top: 4px;
+            opacity: 0.7;
         }
 
-        .import-status {
-            margin-top: 15px;
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            font-weight: 500;
+        /* 阅读器页 */
+        .reader-page {
+            display: none;
+            animation: fadeIn 0.3s ease;
         }
-        .import-status.loading { background: #e3f2fd; color: #1976d2; }
-        .import-status.success { background: #e8f5e9; color: #388e3c; }
-        .import-status.error { background: #ffebee; color: #c62828; }
-        .import-progress {
-            margin-top: 10px;
+
+        .reader-page.active {
+            display: block;
+        }
+
+        .reader-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9em;
+            transition: color 0.2s;
+        }
+
+        .back-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .reader-title {
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+
+        /* 阅读器主体 */
+        .reader-main {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .reader-main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 文本区域 */
+        .text-panel {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 32px;
+            min-height: 500px;
+        }
+
+        .chapter-select-wrap {
+            margin-bottom: 24px;
+        }
+
+        .chapter-select-wrap select {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 0.95em;
+            cursor: pointer;
+        }
+
+        .chapter-select-wrap select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .sentence-display {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 1.25em;
+            line-height: 2.2;
+            color: var(--text-primary);
+        }
+
+        .sentence-item {
+            display: inline;
+            padding: 2px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .sentence-item:hover {
+            background: rgba(79, 70, 229, 0.2);
+        }
+
+        .sentence-item.active {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white;
+        }
+
+        .sentence-item.read {
+            color: var(--text-secondary);
+        }
+
+        .word-inline {
+            cursor: pointer;
+            border-bottom: 1px dashed var(--primary-light);
+            transition: all 0.2s;
+        }
+
+        .word-inline:hover {
+            background: rgba(79, 70, 229, 0.2);
+            border-bottom-color: var(--primary);
+        }
+
+        .word-inline.looked {
+            background: rgba(245, 158, 11, 0.2);
+            border-bottom-color: var(--accent);
+        }
+
+        /* 播放控制 */
+        .playback-controls {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin: 32px 0 24px;
+        }
+
+        .play-btn {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 24px rgba(79, 70, 229, 0.4);
+        }
+
+        .play-btn:hover {
+            transform: scale(1.08);
+            box-shadow: 0 12px 32px rgba(79, 70, 229, 0.5);
+        }
+
+        .play-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .nav-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* 进度条 */
+        .progress-wrap {
+            margin-bottom: 24px;
+        }
+
+        .progress-bar {
             height: 4px;
-            background: #e0e0e0;
+            background: var(--bg-card);
             border-radius: 2px;
             overflow: hidden;
         }
-        .import-progress-bar {
+
+        .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #667eea, #764ba2);
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
             transition: width 0.3s;
-            width: 0%;
         }
 
-        /* AR值面板 */
-        .ar-panel {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            z-index: 1000;
-            display: none;
+        .progress-text {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 0.8em;
+            color: var(--text-secondary);
         }
-        .ar-panel.show { display: block; }
-        .ar-title {
+
+        /* 侧边栏 */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .sidebar-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        .sidebar-title {
+            font-weight: 600;
+            font-size: 0.95em;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* 翻译面板 */
+        .translation-panel {
+            min-height: 100px;
+        }
+
+        .translation-content {
+            color: var(--text-secondary);
+            font-size: 0.95em;
+            line-height: 1.7;
+        }
+
+        .translation-loading {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+
+        /* 生词本 */
+        .vocab-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .vocab-empty {
+            color: var(--text-secondary);
+            font-size: 0.9em;
             text-align: center;
-            color: #667eea;
-            margin-bottom: 20px;
+            padding: 20px 0;
         }
-        .ar-value {
-            font-size: 3em;
-            font-weight: bold;
-            text-align: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+
+        .vocab-item {
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
         }
-        .ar-label {
-            text-align: center;
-            color: #888;
-            margin-bottom: 20px;
+
+        .vocab-item:last-child {
+            border-bottom: none;
         }
+
+        .vocab-word {
+            font-weight: 600;
+            color: var(--primary-light);
+        }
+
+        .vocab-meaning {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* AR 面板 */
         .ar-stats {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 20px;
+            gap: 12px;
         }
+
         .ar-stat {
             text-align: center;
-            padding: 15px;
-            background: #f8f9fa;
+            padding: 12px;
+            background: var(--bg-dark);
             border-radius: 10px;
         }
-        .ar-stat-value { font-size: 1.3em; font-weight: bold; color: #667eea; }
-        .ar-stat-label { font-size: 0.8em; color: #888; }
+
+        .ar-stat-value {
+            font-size: 1.4em;
+            font-weight: 700;
+            color: var(--primary-light);
+        }
+
+        .ar-stat-label {
+            font-size: 0.75em;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .ar-level {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .ar-level-value {
+            font-size: 2.5em;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-light), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* 单词弹窗 */
+        .word-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .word-modal-overlay.show {
+            display: flex;
+        }
+
+        .word-modal {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 28px;
+            width: 100%;
+            max-width: 420px;
+            animation: modalIn 0.3s ease;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .word-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .word-modal-word {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: var(--primary-light);
+        }
+
+        .word-modal-phonetic {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            margin-top: 4px;
+        }
+
+        .word-modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--bg-dark);
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .word-modal-close:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .word-modal-meanings {
+            margin-bottom: 20px;
+        }
+
+        .word-meaning-item {
+            padding: 12px;
+            background: var(--bg-dark);
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .word-meaning-part {
+            color: var(--secondary);
+            font-weight: 600;
+            font-size: 0.85em;
+            margin-bottom: 6px;
+        }
+
+        .word-meaning-def {
+            color: var(--text-primary);
+            font-size: 0.95em;
+        }
+
+        .word-meaning-example {
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            font-style: italic;
+            margin-top: 6px;
+        }
+
+        .word-modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .word-modal-actions button {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 0.95em;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-translate {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-translate:hover {
+            background: var(--primary-light);
+        }
+
+        .btn-vocab {
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-vocab:hover {
+            border-color: var(--secondary);
+            color: var(--secondary);
+        }
+
+        /* 句子翻译弹窗 */
+        .sentence-translation {
+            padding: 16px;
+            background: var(--bg-dark);
+            border-radius: 10px;
+            margin-top: 16px;
+        }
+
+        .sentence-translation-label {
+            font-size: 0.8em;
+            color: var(--secondary);
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .sentence-translation-text {
+            color: var(--text-primary);
+            font-size: 0.95em;
+            line-height: 1.7;
+        }
+
+        /* 状态提示 */
+        .status-playing {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 12px;
+            background: rgba(79, 70, 229, 0.2);
+            border-radius: 10px;
+            margin-bottom: 16px;
+            color: var(--primary-light);
+            font-size: 0.9em;
+        }
+
+        .audio-bars {
+            display: flex;
+            gap: 3px;
+            align-items: flex-end;
+            height: 16px;
+        }
+
+        .audio-bar {
+            width: 3px;
+            background: var(--primary-light);
+            border-radius: 2px;
+            animation: audioWave 0.8s ease infinite;
+        }
+
+        .audio-bar:nth-child(1) { animation-delay: 0s; }
+        .audio-bar:nth-child(2) { animation-delay: 0.1s; }
+        .audio-bar:nth-child(3) { animation-delay: 0.2s; }
+        .audio-bar:nth-child(4) { animation-delay: 0.3s; }
+
+        @keyframes audioWave {
+            0%, 100% { height: 4px; }
+            50% { height: 16px; }
+        }
+
+        /* 隐藏 */
+        .hidden {
+            display: none !important;
+        }
+
+        /* 滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
     </style>
 </head>
 <body>
-    <div class="reading-progress">
-        <div class="reading-progress-fill" id="top-progress" style="width: 0%"></div>
-    </div>
+    <!-- 顶部导航 -->
+    <nav class="top-nav">
+        <div class="nav-brand">
+            <div class="logo">📖</div>
+            <span>Shadow Ebook</span>
+        </div>
+        <div class="nav-links">
+            <a href="tutor.html" class="nav-link">跟读学习</a>
+            <a href="grammar_present_tenses.html" class="nav-link">语法学习</a>
+        </div>
+    </nav>
 
-    <div class="word-popup-overlay" id="word-overlay" onclick="closeWordPopup()"></div>
-    <div class="word-popup" id="word-popup">
-        <div class="word-popup-header">
-            <div>
-                <div class="word-popup-word" id="popup-word">word</div>
-                <div class="word-popup-phonetic" id="popup-phonetic">/wɜːrd/</div>
+    <div class="main-container">
+        <!-- 书籍选择页 -->
+        <div class="book-list-page" id="book-list-page">
+            <div class="hero-section">
+                <h1 class="hero-title">Shadow Ebook</h1>
+                <p class="hero-subtitle">英语电子书阅读 · 点击查词 · 句子翻译 · 蓝思值评估</p>
             </div>
-            <button class="word-popup-close" onclick="closeWordPopup()">×</button>
-        </div>
-        <div class="word-popup-meaning" id="popup-meaning">
-            <div class="word-popup-part">noun</div>
-            <div class="word-popup-def">A single distinct meaningful element of speech or writing</div>
-            <div class="word-popup-example">"He used exactly the right word"</div>
-        </div>
-        <div class="word-popup-actions">
-            <button class="btn btn-secondary" onclick="playPronunciation()">🔊 发音</button>
-            <button class="btn btn-success" id="btn-add-word" onclick="addToVocab()">+ 加入生词本</button>
-        </div>
-    </div>
 
-    <div class="vocab-panel" id="vocab-panel">
-        <div class="vocab-panel-header">
-            <h3>📝 生词本</h3>
-            <button class="vocab-panel-close" onclick="closeVocabPanel()">×</button>
-        </div>
-        <div class="vocab-list" id="vocab-list">
-            <div class="vocab-empty">还没有生词</div>
-        </div>
-    </div>
+            <h2 class="section-title">我的书架</h2>
+            <div class="book-grid" id="book-grid">
+                <!-- 动态加载 -->
+            </div>
 
-    <div class="ar-panel" id="ar-panel">
-        <button class="word-popup-close" onclick="closeARPanel()" style="position:absolute;top:10px;right:15px;">×</button>
-        <div class="ar-title">📊 阅读等级评估</div>
-        <div class="ar-value" id="ar-value">5.0</div>
-        <div class="ar-label">ATOS (AR) 阅读水平</div>
-        <div class="ar-stats">
-            <div class="ar-stat">
-                <div class="ar-stat-value" id="ar-words">0</div>
-                <div class="ar-stat-label">总单词数</div>
-            </div>
-            <div class="ar-stat">
-                <div class="ar-stat-value" id="ar-sentences">0</div>
-                <div class="ar-stat-label">总句数</div>
-            </div>
-            <div class="ar-stat">
-                <div class="ar-stat-value" id="ar-unique">0</div>
-                <div class="ar-stat-label">不重复词数</div>
-            </div>
-            <div class="ar-stat">
-                <div class="ar-stat-value" id="ar-avg">0</div>
-                <div class="ar-stat-label">平均词长</div>
-            </div>
-        </div>
-        <div style="margin-top:20px;text-align:center;">
-            <button class="btn btn-primary" onclick="closeARPanel()">关闭</button>
-        </div>
-    </div>
-
-    <div class="container">
-        <header>
-            <a href="tutor.html" class="back-link">← 返回跟读系统</a>
-            <h1>📖 电子书跟读</h1>
-            <p>点击单词查词 · 自动累计生词本</p>
-        </header>
-
-        <!-- 书籍选择 -->
-        <div class="book-selector" id="book-selector">
-            <h2>📚 选择书籍</h2>
-            <div id="book-list">
-                <div class="loading">加载中...</div>
-            </div>
-            <div class="book-item" onclick="document.getElementById('import-file').click()" style="border: 2px dashed #667eea; background: #f8f9fa;">
-                <span>➕ 导入新书 (EPUB)</span>
-                <span style="color:#888;font-size:0.85em;">点击选择 EPUB 文件</span>
-            </div>
             <input type="file" id="import-file" accept=".epub" style="display:none" onchange="importBook(this.files[0])">
-            <div class="import-status hidden" id="import-status"></div>
         </div>
 
-        <!-- 电子书阅读区 -->
-        <div class="ebook-view hidden" id="ebook-view">
-            <div class="book-title" id="book-title">Loading...</div>
-
-            <div class="stats-bar">
-                <span onclick="showARPanel()">📊 AR值</span>
-                <span onclick="showVocabPanel()">📝 生词本 (<span id="vocab-count">0</span>)</span>
+        <!-- 阅读器页 -->
+        <div class="reader-page" id="reader-page">
+            <div class="reader-header">
+                <a href="#" class="back-btn" onclick="showBookList()">
+                    <span>←</span>
+                    <span>返回书架</span>
+                </a>
+                <div class="reader-title" id="reader-title">Loading...</div>
             </div>
 
-            <div class="chapter-nav">
-                <select id="chapter-select" onchange="selectChapter(this.value)">
-                    <option value="">选择章节</option>
-                </select>
+            <div class="reader-main">
+                <div class="text-panel">
+                    <div class="chapter-select-wrap">
+                        <select id="chapter-select" onchange="selectChapter(this.value)"></select>
+                    </div>
+
+                    <div class="progress-wrap">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                        <div class="progress-text">
+                            <span id="progress-text">0 / 0</span>
+                            <span id="progress-percent">0%</span>
+                        </div>
+                    </div>
+
+                    <div class="status-playing hidden" id="status-playing">
+                        <div class="audio-bars">
+                            <div class="audio-bar"></div>
+                            <div class="audio-bar"></div>
+                            <div class="audio-bar"></div>
+                            <div class="audio-bar"></div>
+                        </div>
+                        <span>正在朗读...</span>
+                    </div>
+
+                    <div class="sentence-display" id="sentence-display"></div>
+
+                    <div class="playback-controls">
+                        <button class="nav-btn" id="btn-prev" onclick="prevSentence()">←</button>
+                        <button class="play-btn" id="btn-play" onclick="playCurrentSentence()">▶</button>
+                        <button class="nav-btn" id="btn-next" onclick="nextSentence()">→</button>
+                    </div>
+                </div>
+
+                <div class="sidebar">
+                    <div class="sidebar-card">
+                        <div class="sidebar-title">📝 句子翻译</div>
+                        <div class="translation-content" id="translation-content">
+                            点击上方句子，查看翻译
+                        </div>
+                    </div>
+
+                    <div class="sidebar-card">
+                        <div class="sidebar-title">📚 生词本 <span id="vocab-count" style="color:var(--text-secondary);font-weight:400;font-size:0.85em;">(0)</span></div>
+                        <div class="vocab-list" id="vocab-list">
+                            <div class="vocab-empty">点击单词加入生词本</div>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-card" style="cursor:pointer;" onclick="showARPanel()">
+                        <div class="sidebar-title">📊 阅读等级</div>
+                        <div class="ar-level">
+                            <div class="ar-level-value" id="ar-display">--</div>
+                        </div>
+                        <div class="ar-stats">
+                            <div class="ar-stat">
+                                <div class="ar-stat-value" id="ar-words">--</div>
+                                <div class="ar-stat-label">单词数</div>
+                            </div>
+                            <div class="ar-stat">
+                                <div class="ar-stat-value" id="ar-sentences">--</div>
+                                <div class="ar-stat-label">句子数</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
+        </div>
+    </div>
 
-            <div class="progress-bar">
-                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+    <!-- 单词弹窗 -->
+    <div class="word-modal-overlay" id="word-modal">
+        <div class="word-modal">
+            <div class="word-modal-header">
+                <div>
+                    <div class="word-modal-word" id="modal-word">word</div>
+                    <div class="word-modal-phonetic" id="modal-phonetic">/wɜːrd/</div>
+                </div>
+                <button class="word-modal-close" onclick="closeWordModal()">×</button>
             </div>
-
-            <div class="text-container" id="text-container">
-                <div class="loading">加载中...</div>
+            <div class="word-modal-meanings" id="modal-meanings">
+                <div class="word-meaning-item">
+                    <div class="word-meaning-part">noun</div>
+                    <div class="word-meaning-def">单词</div>
+                    <div class="word-meaning-example">"例句"</div>
+                </div>
             </div>
-
-            <div class="audio-visualizer hidden" id="audio-visualizer">
-                <div class="audio-bar" style="height:5px;"></div>
-                <div class="audio-bar" style="height:5px;"></div>
-                <div class="audio-bar" style="height:5px;"></div>
-                <div class="audio-bar" style="height:5px;"></div>
-                <div class="audio-bar" style="height:5px;"></div>
-                <div class="audio-bar" style="height:5px;"></div>
-                <div class="audio-bar" style="height:5px;"></div>
-                <div class="audio-bar" style="height:5px;"></div>
+            <div class="word-modal-actions">
+                <button class="btn-translate" onclick="playPronunciation()">🔊 发音</button>
+                <button class="btn-vocab" id="btn-add-vocab" onclick="addToVocab()">+ 生词本</button>
             </div>
+        </div>
+    </div>
 
-            <div class="status status-playing hidden" id="status">🔊 正在朗读...</div>
-
-            <div class="controls">
-                <button class="btn btn-secondary" onclick="prevSentence()">← 上一个</button>
-                <button class="btn btn-primary" id="btn-play" onclick="playCurrentSentence()">🔊 朗读</button>
-                <button class="btn btn-danger" id="btn-stop" onclick="stopPlayback()" disabled>⏹ 停止</button>
-                <button class="btn btn-secondary" onclick="nextSentence()">下一个 →</button>
+    <!-- AR 面板 -->
+    <div class="word-modal-overlay" id="ar-modal" onclick="closeARPanel()">
+        <div class="word-modal" onclick="event.stopPropagation()">
+            <div class="word-modal-header">
+                <div class="sidebar-title">📊 阅读等级评估</div>
+                <button class="word-modal-close" onclick="closeARPanel()">×</button>
+            </div>
+            <div class="ar-level">
+                <div class="ar-level-value" id="modal-ar-value">--</div>
+                <div style="color:var(--text-secondary);font-size:0.9em;">ATOS 阅读水平</div>
+            </div>
+            <div class="ar-stats">
+                <div class="ar-stat">
+                    <div class="ar-stat-value" id="modal-ar-words">--</div>
+                    <div class="ar-stat-label">总单词数</div>
+                </div>
+                <div class="ar-stat">
+                    <div class="ar-stat-value" id="modal-ar-sentences">--</div>
+                    <div class="ar-stat-label">总句数</div>
+                </div>
+                <div class="ar-stat">
+                    <div class="ar-stat-value" id="modal-ar-unique">--</div>
+                    <div class="ar-stat-label">不重复词</div>
+                </div>
+                <div class="ar-stat">
+                    <div class="ar-stat-value" id="modal-ar-avg">--</div>
+                    <div class="ar-stat-label">平均词长</div>
+                </div>
             </div>
         </div>
     </div>
@@ -579,11 +956,11 @@
     <script>
         // 状态
         let bookData = null;
+        let currentBookId = null;
         let currentChapterIndex = 0;
         let currentSentenceIndex = 0;
         let sentences = [];
         let audioElement = null;
-        let animationId = null;
         let isPlaying = false;
         let currentWord = null;
         let vocabulary = JSON.parse(localStorage.getItem('vocabulary') || '[]');
@@ -593,45 +970,49 @@
         updateVocabCount();
         loadBookList();
 
+        // 显示书籍列表
+        function showBookList() {
+            document.getElementById('book-list-page').classList.remove('hidden');
+            document.getElementById('reader-page').classList.remove('active');
+            loadBookList();
+        }
+
+        // 显示阅读器
+        function showReader() {
+            document.getElementById('book-list-page').classList.add('hidden');
+            document.getElementById('reader-page').classList.add('active');
+        }
+
         // 加载书籍列表
         async function loadBookList() {
             try {
                 const res = await fetch('/api/books');
                 const data = await res.json();
-                const list = document.getElementById('book-list');
+                const grid = document.getElementById('book-grid');
 
                 if (data.success && data.books.length > 0) {
-                    list.innerHTML = data.books.map(b => `
-                        <div class="book-item" onclick="loadBook('${b.id}')">
-                            <span>📖 ${b.title}</span>
-                            <span style="color:#888;font-size:0.85em;">${b.chapters}章 · ${b.sentences}句</span>
-                            <button class="btn-delete" onclick="event.stopPropagation(); deleteBook('${b.id}', '${b.title}')">×</button>
+                    grid.innerHTML = data.books.map(b => `
+                        <div class="book-card" onclick="loadBook('${b.id}')">
+                            <button class="delete-btn" onclick="event.stopPropagation(); deleteBook('${b.id}', '${b.title.replace(/'/g, "\\'")}')">×</button>
+                            <div class="book-card-icon">📚</div>
+                            <div class="book-card-title">${b.title}</div>
+                            <div class="book-card-meta">${b.chapters} 章节 · ${b.sentences} 句子</div>
                         </div>
                     `).join('');
                 } else {
-                    list.innerHTML = '<div style="padding:20px;color:#888;text-align:center;">还没有书籍，请导入 EPUB</div>';
+                    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-secondary);padding:40px;">还没有书籍，请导入 EPUB</div>';
                 }
+
+                // 添加导入卡片
+                grid.innerHTML += `
+                    <div class="import-card" onclick="document.getElementById('import-file').click()">
+                        <div class="icon">➕</div>
+                        <div class="text">导入新书</div>
+                        <div class="hint">支持 EPUB 格式</div>
+                    </div>
+                `;
             } catch (err) {
                 console.error('Failed to load book list:', err);
-                document.getElementById('book-list').innerHTML = '<div style="padding:20px;color:#f66;">加载失败</div>';
-            }
-        }
-
-        // 删除书籍
-        async function deleteBook(bookId, bookTitle) {
-            if (!confirm(`确定要删除《${bookTitle}》吗？此操作不可恢复。`)) return;
-
-            try {
-                const res = await fetch(`/api/book/${bookId}`, { method: 'DELETE' });
-                const data = await res.json();
-                if (data.success) {
-                    loadBookList();  // 刷新列表
-                } else {
-                    alert('删除失败');
-                }
-            } catch (err) {
-                console.error('Delete error:', err);
-                alert('删除失败');
             }
         }
 
@@ -643,107 +1024,123 @@
 
                 if (data.success) {
                     bookData = data.book;
-                    document.getElementById('book-selector').classList.add('hidden');
-                    document.getElementById('ebook-view').classList.remove('hidden');
-                    document.getElementById('book-title').textContent = bookData.book || bookData.title;
+                    currentBookId = bookId;
+                    document.getElementById('reader-title').textContent = bookData.book;
 
                     const select = document.getElementById('chapter-select');
-                    select.innerHTML = '<option value="">选择章节</option>';
+                    select.innerHTML = '';
                     bookData.chapters.forEach((ch, i) => {
                         select.innerHTML += `<option value="${i}">${ch.name} (${ch.sentences.length}句)</option>`;
                     });
 
                     selectChapter(0);
+                    showReader();
+                    calculateAR();
                 }
             } catch (err) {
                 console.error('Failed to load book:', err);
-                alert('加载书籍失败');
             }
-        }
-
-        // 导入新书
-        function importBook(file) {
-            if (!file) return;
-            if (!file.name.endsWith('.epub')) {
-                alert('请选择 EPUB 格式的文件');
-                return;
-            }
-
-            const status = document.getElementById('import-status');
-            status.classList.remove('hidden', 'loading', 'success', 'error');
-            status.classList.add('loading');
-            status.innerHTML = `<div>📤 正在上传: ${file.name}</div>
-                <div class="import-progress"><div class="import-progress-bar" id="import-progress"></div></div>`;
-
-            const formData = new FormData();
-            formData.append('epub', file);
-
-            fetch('/api/book/import', {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                status.classList.remove('loading');
-                if (data.success) {
-                    status.classList.add('success');
-                    status.innerHTML = `✅ ${data.book_title} 导入成功！共 ${data.total_chapters} 章，${data.total_sentences} 句`;
-                    setTimeout(() => {
-                        status.classList.add('hidden');
-                        loadBookList();  // 刷新列表
-                    }, 1500);
-                } else {
-                    status.classList.add('error');
-                    status.innerHTML = `❌ 导入失败: ${data.error}`;
-                }
-            })
-            .catch(err => {
-                status.classList.remove('loading');
-                status.classList.add('error');
-                status.innerHTML = `❌ 错误: ${err}`;
-            });
         }
 
         // 选择章节
-        function selectChapter(chapterIndex) {
-            currentChapterIndex = parseInt(chapterIndex);
+        function selectChapter(index) {
+            currentChapterIndex = parseInt(index);
             sentences = bookData.chapters[currentChapterIndex].sentences;
             currentSentenceIndex = 0;
             updateDisplay();
+            clearTranslation();
         }
 
         // 更新显示
         function updateDisplay() {
-            const container = document.getElementById('text-container');
+            const container = document.getElementById('sentence-display');
 
             let html = '';
             sentences.forEach((sent, i) => {
-                let className = 'sentence';
+                let className = 'sentence-item';
                 if (i < currentSentenceIndex) className += ' read';
                 if (i === currentSentenceIndex) className += ' active';
 
-                // 将句子中的每个单词变成可点击
                 const words = sent.split(/(\s+)/);
                 const processedWords = words.map(w => {
                     if (/^[a-zA-Z]+$/.test(w)) {
                         const isLooked = lookedWords[w.toLowerCase()];
-                        return `<span class="word ${isLooked ? 'looked' : ''}" onclick="lookupWord('${w}', this)">${w}</span>`;
+                        return `<span class="word-inline ${isLooked ? 'looked' : ''}" onclick="lookupWord('${w}', this, event)">${w}</span>`;
                     }
                     return w;
                 }).join('');
 
-                html += `<span class="${className}" onclick="jumpTo(${i})">${processedWords} </span>`;
+                html += `<span class="${className}" onclick="jumpTo(${i})">${processedWords} </span> `;
             });
 
             container.innerHTML = html;
 
-            const progress = sentences.length > 0 ? (currentSentenceIndex / sentences.length) * 100 : 0;
-            document.getElementById('progress-fill').style.width = progress + '%';
-            document.getElementById('top-progress').style.width = progress + '%';
+            // 更新进度
+            const total = sentences.length;
+            const current = currentSentenceIndex + 1;
+            const percent = total > 0 ? Math.round((currentSentenceIndex / total) * 100) : 0;
+            document.getElementById('progress-fill').style.width = percent + '%';
+            document.getElementById('progress-text').textContent = `${current} / ${total}`;
+            document.getElementById('progress-percent').textContent = percent + '%';
+
+            // 更新按钮状态
+            document.getElementById('btn-prev').disabled = currentSentenceIndex === 0;
+            document.getElementById('btn-next').disabled = currentSentenceIndex >= sentences.length - 1;
+        }
+
+        // 跳转到句子
+        function jumpTo(index) {
+            currentSentenceIndex = index;
+            updateDisplay();
+            translateSentence(sentences[index]);
+            playCurrentSentence();
+        }
+
+        // 导航
+        function prevSentence() {
+            if (currentSentenceIndex > 0) {
+                currentSentenceIndex--;
+                updateDisplay();
+                translateSentence(sentences[currentSentenceIndex]);
+            }
+        }
+
+        function nextSentence() {
+            if (currentSentenceIndex < sentences.length - 1) {
+                currentSentenceIndex++;
+                updateDisplay();
+                translateSentence(sentences[currentSentenceIndex]);
+            }
+        }
+
+        // 翻译句子
+        async function translateSentence(sentence) {
+            const el = document.getElementById('translation-content');
+            el.innerHTML = '<div class="translation-loading">翻译中...</div>';
+
+            try {
+                const res = await fetch(
+                    `https://api.mymemory.translated.net/get?q=${encodeURIComponent(sentence)}&langpair=en|zh-CN`
+                );
+                const data = await res.json();
+
+                if (data.responseStatus === 200 && data.responseData?.translatedText) {
+                    el.innerHTML = `<div class="sentence-translation-text">${data.responseData.translatedText}</div>`;
+                } else {
+                    el.innerHTML = '<div class="translation-content">翻译失败</div>';
+                }
+            } catch (err) {
+                el.innerHTML = '<div class="translation-content">翻译失败</div>';
+            }
+        }
+
+        function clearTranslation() {
+            document.getElementById('translation-content').innerHTML = '点击上方句子，查看翻译';
         }
 
         // 查词
-        async function lookupWord(word, element) {
+        async function lookupWord(word, element, event) {
+            event.stopPropagation();
             const cleanWord = word.replace(/[^a-zA-Z]/g, '').toLowerCase();
             if (!cleanWord) return;
 
@@ -752,79 +1149,51 @@
             lookedWords[cleanWord] = true;
             localStorage.setItem('lookedWords', JSON.stringify(lookedWords));
 
-            // 显示加载中
-            document.getElementById('popup-word').textContent = cleanWord;
-            document.getElementById('popup-phonetic').textContent = '加载中...';
-            document.getElementById('popup-meaning').innerHTML = '<div class="loading">查询中...</div>';
-            document.getElementById('word-popup').classList.add('show');
-            document.getElementById('word-overlay').classList.add('show');
+            const modal = document.getElementById('word-modal');
+            document.getElementById('modal-word').textContent = cleanWord;
+            document.getElementById('modal-phonetic').textContent = '加载中...';
+            document.getElementById('modal-meanings').innerHTML = '<div class="translation-loading">查询中...</div>';
+            modal.classList.add('show');
+
+            // 更新生词本按钮状态
+            const vocabBtn = document.getElementById('btn-add-vocab');
+            vocabBtn.textContent = vocabulary.find(v => v.word === cleanWord) ? '✓ 已收录' : '+ 生词本';
+            vocabBtn.disabled = !!vocabulary.find(v => v.word === cleanWord);
 
             try {
-                // 先查英文词典
                 const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`);
                 const data = await res.json();
 
                 if (data && data.length > 0) {
                     const entry = data[0];
-                    let phonetic = entry.phonetic || '';
-                    document.getElementById('popup-phonetic').textContent = phonetic;
+                    document.getElementById('modal-phonetic').textContent = entry.phonetic || '';
 
-                    // 收集英文释义和例句
-                    let englishDefs = [];
-                    entry.meanings.forEach(m => {
+                    let html = '';
+                    entry.meanings.slice(0, 3).forEach(m => {
                         m.definitions.slice(0, 2).forEach(def => {
-                            englishDefs.push({ part: m.partOfSpeech, def: def.definition, example: def.example || '' });
+                            html += `
+                                <div class="word-meaning-item">
+                                    <div class="word-meaning-part">${m.partOfSpeech}</div>
+                                    <div class="word-meaning-def">${def.definition}</div>
+                                    ${def.example ? `<div class="word-meaning-example">"${def.example}"</div>` : ''}
+                                </div>
+                            `;
                         });
                     });
-
-                    // 翻译成中文
-                    let meaningsHtml = '';
-                    for (const item of englishDefs) {
-                        let chineseDef = item.def;
-                        let chineseExample = item.example;
-
-                        try {
-                            // 使用 MyMemory 翻译 (免费，无需API Key)
-                            if (item.def) {
-                                const transRes = await fetch(
-                                    `https://api.mymemory.translated.net/get?q=${encodeURIComponent(item.def)}&langpair=en|zh-CN`
-                                );
-                                const transData = await transRes.json();
-                                if (transData.responseStatus === 200 && transData.responseData?.translatedText) {
-                                    chineseDef = transData.responseData.translatedText;
-                                }
-                            }
-                            if (item.example) {
-                                const exRes = await fetch(
-                                    `https://api.mymemory.translated.net/get?q=${encodeURIComponent(item.example)}&langpair=en|zh-CN`
-                                );
-                                const exData = await exRes.json();
-                                if (exData.responseStatus === 200 && exData.responseData?.translatedText) {
-                                    chineseExample = exData.responseData.translatedText;
-                                }
-                            }
-                        } catch (e) {
-                            console.log('Translation failed, showing English');
-                        }
-
-                        meaningsHtml += `
-                            <div class="word-popup-part">${item.part}</div>
-                            <div class="word-popup-def">${chineseDef}</div>
-                            ${chineseExample ? `<div class="word-popup-example">"${chineseExample}"</div>` : ''}
-                        `;
-                    }
-                    document.getElementById('popup-meaning').innerHTML = meaningsHtml || '<div>未找到释义</div>';
+                    document.getElementById('modal-meanings').innerHTML = html || '<div>未找到释义</div>';
                 } else {
-                    document.getElementById('popup-phonetic').textContent = '';
-                    document.getElementById('popup-meaning').innerHTML = '<div>未找到释义</div>';
+                    document.getElementById('modal-meanings').innerHTML = '<div>未找到释义</div>';
                 }
             } catch (err) {
-                console.error('Dictionary error:', err);
-                document.getElementById('popup-meaning').innerHTML = '<div>查询失败</div>';
+                document.getElementById('modal-meanings').innerHTML = '<div>查询失败</div>';
             }
         }
 
-        // 播放发音
+        function closeWordModal() {
+            document.getElementById('word-modal').classList.remove('show');
+        }
+
+        // 发音
         async function playPronunciation() {
             if (!currentWord) return;
             try {
@@ -835,34 +1204,23 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    const audio = new Audio(data.audio_url);
-                    audio.play();
+                    new Audio(data.audio_url).play();
                 }
-            } catch (err) {
-                console.error('Pronunciation error:', err);
-            }
+            } catch (err) {}
         }
 
-        // 加入生词本
+        // 生词本
         function addToVocab() {
             if (!currentWord) return;
+            if (vocabulary.find(v => v.word === currentWord)) return;
 
-            // 检查是否已存在
-            if (vocabulary.find(v => v.word === currentWord)) {
-                alert('这个词已经在生词本里了！');
-                return;
-            }
-
-            // 获取当前释义
-            const meaningEl = document.getElementById('popup-meaning');
-            const parts = meaningEl.querySelectorAll('.word-popup-part');
-            const defs = meaningEl.querySelectorAll('.word-popup-def');
+            const meaningEl = document.getElementById('modal-meanings');
+            const parts = meaningEl.querySelectorAll('.word-meaning-part');
+            const defs = meaningEl.querySelectorAll('.word-meaning-def');
 
             let meaning = '';
             parts.forEach((p, i) => {
-                if (defs[i]) {
-                    meaning += `${p.textContent}: ${defs[i].textContent}; `;
-                }
+                if (defs[i]) meaning += `${p.textContent}: ${defs[i].textContent}; `;
             });
 
             vocabulary.push({
@@ -875,51 +1233,36 @@
 
             localStorage.setItem('vocabulary', JSON.stringify(vocabulary));
             updateVocabCount();
-            alert(`"${currentWord}" 已加入生词本！`);
-        }
-
-        // 更新生词数量
-        function updateVocabCount() {
-            document.getElementById('vocab-count').textContent = vocabulary.length;
-        }
-
-        // 显示生词本
-        function showVocabPanel() {
             renderVocabList();
-            document.getElementById('vocab-panel').classList.add('show');
+
+            const vocabBtn = document.getElementById('btn-add-vocab');
+            vocabBtn.textContent = '✓ 已收录';
+            vocabBtn.disabled = true;
         }
 
-        // 关闭生词本
-        function closeVocabPanel() {
-            document.getElementById('vocab-panel').classList.remove('show');
+        function updateVocabCount() {
+            document.getElementById('vocab-count').textContent = `(${vocabulary.length})`;
         }
 
-        // 渲染生词列表
         function renderVocabList() {
             const list = document.getElementById('vocab-list');
             if (vocabulary.length === 0) {
-                list.innerHTML = '<div class="vocab-empty">还没有生词<br><br>点击文章中的单词开始积累吧！</div>';
+                list.innerHTML = '<div class="vocab-empty">点击单词加入生词本</div>';
                 return;
             }
-
-            list.innerHTML = vocabulary.map(v => `
+            list.innerHTML = vocabulary.slice(-10).reverse().map(v => `
                 <div class="vocab-item">
                     <div class="vocab-word">${v.word}</div>
-                    <div class="vocab-phonetic">/.../</div>
-                    <div class="vocab-meaning">${v.meaning}</div>
-                    <div class="vocab-book">${v.book} · ${v.chapter}</div>
+                    <div class="vocab-meaning">${v.meaning.substring(0, 50)}${v.meaning.length > 50 ? '...' : ''}</div>
                 </div>
             `).join('');
         }
 
-        // 计算AR值
+        // AR 计算
         function calculateAR() {
             if (!bookData) return;
 
-            let totalWords = 0;
-            let totalSentences = 0;
-            let uniqueWords = new Set();
-            let totalSyllables = 0;
+            let totalWords = 0, totalSentences = 0, uniqueWords = new Set(), totalSyllables = 0;
 
             bookData.chapters.forEach(ch => {
                 ch.sentences.forEach(sent => {
@@ -935,18 +1278,13 @@
 
             const avgWordLength = totalWords > 0 ? (totalSyllables / totalWords) : 0;
             const avgSentenceLength = totalSentences > 0 ? (totalWords / totalSentences) : 0;
-
-            // ATOS (AR) 公式近似
             const ar = 4.86 + (0.12 * avgSentenceLength) + (0.05 * avgWordLength);
 
+            document.getElementById('ar-display').textContent = ar.toFixed(1);
             document.getElementById('ar-words').textContent = totalWords;
             document.getElementById('ar-sentences').textContent = totalSentences;
-            document.getElementById('ar-unique').textContent = uniqueWords.size;
-            document.getElementById('ar-avg').textContent = avgWordLength.toFixed(1);
-            document.getElementById('ar-value').textContent = ar.toFixed(1);
         }
 
-        // 计算音节数
         function countSyllables(word) {
             word = word.toLowerCase();
             if (word.length <= 3) return 1;
@@ -956,46 +1294,45 @@
             return matches ? matches.length : 1;
         }
 
-        // 显示AR面板
         function showARPanel() {
+            if (!bookData) return;
             calculateAR();
-            document.getElementById('ar-panel').classList.add('show');
-            document.getElementById('word-overlay').classList.add('show');
+            document.getElementById('modal-ar-value').textContent = document.getElementById('ar-display').textContent;
+            document.getElementById('modal-ar-words').textContent = document.getElementById('ar-words').textContent;
+            document.getElementById('modal-ar-sentences').textContent = document.getElementById('ar-sentences').textContent;
+
+            let totalWords = 0, totalSentences = 0, uniqueWords = new Set(), totalSyllables = 0;
+            bookData.chapters.forEach(ch => {
+                ch.sentences.forEach(sent => {
+                    const words = sent.split(/\s+/).filter(w => /^[a-zA-Z]+$/.test(w));
+                    totalWords += words.length;
+                    totalSentences++;
+                    words.forEach(w => {
+                        uniqueWords.add(w.toLowerCase());
+                        totalSyllables += countSyllables(w);
+                    });
+                });
+            });
+            document.getElementById('modal-ar-unique').textContent = uniqueWords.size;
+            document.getElementById('modal-ar-avg').textContent = (totalWords > 0 ? (totalSyllables / totalWords) : 0).toFixed(1);
+
+            document.getElementById('ar-modal').classList.add('show');
         }
 
-        // 关闭AR面板
         function closeARPanel() {
-            document.getElementById('ar-panel').classList.remove('show');
-            document.getElementById('word-overlay').classList.remove('show');
+            document.getElementById('ar-modal').classList.remove('show');
         }
 
-        // 关闭词典弹出
-        function closeWordPopup() {
-            document.getElementById('word-popup').classList.remove('show');
-            document.getElementById('word-overlay').classList.remove('show');
-        }
-
-        // 跳转到句子并自动朗读
-        function jumpTo(index) {
-            currentSentenceIndex = index;
-            updateDisplay();
-            playCurrentSentence();
-        }
-
-        // 播放当前句子
+        // TTS 播放
         async function playCurrentSentence() {
             if (!sentences || sentences.length === 0) return;
 
             const text = sentences[currentSentenceIndex];
             const btn = document.getElementById('btn-play');
-            const status = document.getElementById('status');
-            const visualizer = document.getElementById('audio-visualizer');
+            const status = document.getElementById('status-playing');
 
             btn.disabled = true;
             status.classList.remove('hidden');
-            status.textContent = '🔊 正在生成音频...';
-            visualizer.classList.remove('hidden');
-            startWaveAnimation();
 
             try {
                 const res = await fetch('/api/tts', {
@@ -1006,121 +1343,95 @@
                 const data = await res.json();
 
                 if (data.success && data.audio_url) {
-                    status.textContent = '🔊 正在朗读...';
-
                     if (audioElement) audioElement.pause();
                     audioElement = new Audio(data.audio_url);
                     isPlaying = true;
-                    document.getElementById('btn-stop').disabled = false;
 
                     audioElement.onended = () => {
                         isPlaying = false;
-                        stopWaveAnimation();
-                        // 不自动跳转，用户点击哪句读哪句
                         btn.disabled = false;
-                        document.getElementById('btn-stop').disabled = true;
                         status.classList.add('hidden');
-                        visualizer.classList.add('hidden');
                     };
 
                     audioElement.onerror = () => {
-                        status.textContent = '❌ 播放失败';
+                        isPlaying = false;
                         btn.disabled = false;
-                        stopWaveAnimation();
-                        visualizer.classList.add('hidden');
+                        status.classList.add('hidden');
                     };
 
                     audioElement.play();
                 } else {
-                    status.textContent = '❌ TTS失败';
                     btn.disabled = false;
-                    stopWaveAnimation();
-                    visualizer.classList.add('hidden');
+                    status.classList.add('hidden');
                 }
             } catch (err) {
-                status.textContent = '❌ 错误';
                 btn.disabled = false;
-                stopWaveAnimation();
-                visualizer.classList.add('hidden');
-                console.error(err);
+                status.classList.add('hidden');
             }
         }
 
-        // 声波动画
-        function startWaveAnimation() {
-            const bars = document.querySelectorAll('.audio-bar');
-            const heights = [10, 15, 25, 35, 25, 15, 20, 30];
-            function animate() {
-                if (!isPlaying) return;
-                bars.forEach((bar, i) => {
-                    bar.style.height = heights[Math.floor(Math.random() * heights.length)] + 'px';
-                });
-                animationId = requestAnimationFrame(animate);
+        // 导入书籍
+        async function importBook(file) {
+            if (!file || !file.name.endsWith('.epub')) {
+                alert('请选择 EPUB 格式文件');
+                return;
             }
-            animate();
-        }
 
-        function stopWaveAnimation() {
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-                animationId = null;
-            }
-            document.querySelectorAll('.audio-bar').forEach(bar => bar.style.height = '5px');
-        }
+            const formData = new FormData();
+            formData.append('epub', file);
 
-        // 停止播放
-        function stopPlayback() {
-            if (audioElement) {
-                audioElement.pause();
-                audioElement = null;
-            }
-            isPlaying = false;
-            stopWaveAnimation();
-            document.getElementById('btn-play').disabled = false;
-            document.getElementById('btn-stop').disabled = true;
-            document.getElementById('status').classList.add('hidden');
-            document.getElementById('audio-visualizer').classList.add('hidden');
-        }
+            const grid = document.getElementById('book-grid');
+            const importCard = grid.querySelector('.import-card');
+            if (importCard) importCard.querySelector('.text').textContent = '导入中...';
 
-        // 导航
-        function prevSentence() {
-            if (currentSentenceIndex > 0) {
-                currentSentenceIndex--;
-                updateDisplay();
+            try {
+                const res = await fetch('/api/book/import', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if (data.success) {
+                    loadBookList();
+                    alert(`导入成功！${data.book_title}`);
+                } else {
+                    alert('导入失败: ' + data.error);
+                    loadBookList();
+                }
+            } catch (err) {
+                alert('导入失败');
+                loadBookList();
             }
         }
 
-        function nextSentence() {
-            if (currentSentenceIndex < sentences.length - 1) {
-                currentSentenceIndex++;
-                updateDisplay();
+        // 删除书籍
+        async function deleteBook(bookId, bookTitle) {
+            if (!confirm(`确定删除《${bookTitle}》？`)) return;
+
+            try {
+                await fetch(`/api/book/${bookId}`, { method: 'DELETE' });
+                loadBookList();
+            } catch (err) {
+                alert('删除失败');
             }
         }
 
         // 键盘快捷键
         document.addEventListener('keydown', (e) => {
-            if (document.getElementById('ebook-view').classList.contains('hidden')) return;
-            if (document.getElementById('word-popup').classList.contains('show')) return;
-
-            if (e.key === 'ArrowLeft') prevSentence();
-            else if (e.key === 'ArrowRight') nextSentence();
-            else if (e.key === ' ' || e.key === 'Enter') {
-                e.preventDefault();
-                playCurrentSentence();
-            } else if (e.key === 'Escape') {
-                stopPlayback();
-                closeWordPopup();
-                closeVocabPanel();
-                closeARPanel();
+            if (document.getElementById('reader-page').classList.contains('active')) {
+                if (e.key === 'ArrowLeft') prevSentence();
+                else if (e.key === 'ArrowRight') nextSentence();
+                else if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    playCurrentSentence();
+                }
+                else if (e.key === 'Escape') {
+                    closeWordModal();
+                    closeARPanel();
+                }
             }
         });
 
-        // 滚动更新进度
-        window.addEventListener('scroll', () => {
-            const scrollTop = window.scrollY;
-            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-            const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
-            document.getElementById('top-progress').style.width = progress + '%';
+        // 点击弹窗外部关闭
+        document.getElementById('word-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'word-modal') closeWordModal();
         });
     </script>
 </body>
