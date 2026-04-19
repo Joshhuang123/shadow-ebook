@@ -1879,6 +1879,8 @@
 
         // ========== 跟读评分功能 ==========
 
+        let recordingTimeout = null;
+
         // 切换阅读/跟读模式
         function setMode(mode) {
             currentMode = mode;
@@ -1889,7 +1891,6 @@
                 : '点击麦克风，录音跟读';
             document.getElementById('score-display').style.display = 'none';
 
-            // 停止任何正在进行的识别
             if (recognition && isRecording) {
                 recognition.stop();
                 isRecording = false;
@@ -1908,51 +1909,64 @@
         // 开始录音识别
         function startRecording() {
             if (!sentences || sentences.length === 0) return;
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
                 document.getElementById('record-hint').textContent = '❌ 浏览器不支持语音识别';
                 return;
             }
 
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
-            recognition.lang = 'en-US';
-            recognition.continuous = true;
-            recognition.interimResults = true;
+            // 先播放参考音频
+            playReferenceAudio();
 
             isRecording = true;
             document.getElementById('btn-record').classList.add('recording');
             document.getElementById('btn-record').textContent = '⏹';
-            document.getElementById('record-hint').textContent = '🎤 正在听... 说完自动停止';
+            document.getElementById('record-hint').textContent = '🎤 正在听...';
 
-            // 先播放参考音频
-            playReferenceAudio();
+            recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            let finalTranscript = '';
 
             recognition.onresult = (event) => {
-                const results = event.results;
-                const transcript = results[results.length - 1][0].transcript.trim();
-
-                // 如果是最终结果
-                if (results[results.length - 1].isFinal) {
-                    stopRecording();
-                    const original = sentences[currentSentenceIndex];
-                    showPronunciationScore(original, transcript);
-                }
+                finalTranscript = event.results[0][0].transcript;
+                console.log('识别结果:', finalTranscript);
             };
 
             recognition.onerror = (event) => {
                 console.error('Speech recognition error:', event.error);
-                if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                if (event.error === 'no-speech') {
+                    document.getElementById('record-hint').textContent = '⚠️ 没检测到声音，请重试';
+                } else if (event.error === 'not-allowed') {
+                    document.getElementById('record-hint').textContent = '❌ 请允许麦克风权限';
+                } else {
                     document.getElementById('record-hint').textContent = '❌ 识别出错: ' + event.error;
                 }
                 stopRecording();
             };
 
             recognition.onend = () => {
-                if (isRecording) {
-                    // 意外结束，重新开始
-                    try { recognition.start(); } catch(e) {}
+                console.log('识别结束, finalTranscript:', finalTranscript);
+                stopRecording();
+                if (finalTranscript) {
+                    const original = sentences[currentSentenceIndex];
+                    showPronunciationScore(original, finalTranscript);
+                } else {
+                    document.getElementById('record-hint').textContent = '⚠️ 没听清，请重试';
                 }
             };
+
+            // 超时保护（8秒）
+            recordingTimeout = setTimeout(() => {
+                if (isRecording) {
+                    console.log('超时，强制停止');
+                    recognition.stop();
+                }
+            }, 8000);
 
             try {
                 recognition.start();
@@ -1966,10 +1980,14 @@
         // 停止录音
         function stopRecording() {
             isRecording = false;
+            if (recordingTimeout) {
+                clearTimeout(recordingTimeout);
+                recordingTimeout = null;
+            }
             document.getElementById('btn-record').classList.remove('recording');
             document.getElementById('btn-record').textContent = '🎙️';
             if (recognition) {
-                recognition.stop();
+                try { recognition.stop(); } catch(e) {}
             }
         }
 
@@ -1984,10 +2002,8 @@
                 });
                 const data = await ttsRes.json();
                 if (data.success) {
-                    setTimeout(() => {
-                        const audio = new Audio(data.audio_url);
-                        audio.play();
-                    }, 100);
+                    const audio = new Audio(data.audio_url);
+                    audio.play();
                 }
             } catch (err) {
                 console.error('TTS error:', err);
@@ -1996,6 +2012,7 @@
 
         // 显示发音评分
         function showPronunciationScore(original, transcribed) {
+            console.log('评分:', original, 'vs', transcribed);
             const score = calculateSimilarity(original, transcribed);
             const level = getScoreLevel(score);
 
