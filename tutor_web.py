@@ -479,6 +479,77 @@ def import_book():
         import traceback
         return jsonify({"success": False, "error": str(e)})
 
+@app.route('/api/transcribe', methods=['POST'])
+def transcribe_audio():
+    """语音识别 - 使用 macOS 内置语音识别"""
+    try:
+        import speech_recognition as sr
+        import tempfile
+        import os
+
+        # 保存上传的音频
+        audio_file = request.files.get('audio')
+        if not audio_file:
+            return jsonify({"success": False, "error": "没有音频文件"})
+
+        # 保存为临时文件
+        with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as tmp:
+            audio_file.save(tmp.name)
+            tmp_path = tmp.name
+
+        try:
+            # 使用 speech_recognition 识别
+            recognizer = sr.Recognizer()
+            with sr.AudioFile(tmp_path) as source:
+                audio_data = recognizer.record(source)
+                # 使用 macOS 内置语音识别
+                text = recognizer.recognize_speech(audio_data, language='en-US')
+                return jsonify({"success": True, "text": text})
+        finally:
+            # 删除临时文件
+            os.unlink(tmp_path)
+
+    except ImportError:
+        # speech_recognition 未安装，尝试使用 whisper
+        try:
+            import subprocess
+            import tempfile
+            import os
+
+            audio_file = request.files.get('audio')
+            if not audio_file:
+                return jsonify({"success": False, "error": "没有音频文件"})
+
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp:
+                # 转换格式
+                audio_file.save(tmp.name)
+                tmp_path = tmp.name
+
+            try:
+                # 使用 whisper CLI
+                result = subprocess.run(
+                    ['whisper', tmp_path, '--language', 'en', '--output_format', 'json'],
+                    capture_output=True, text=True, timeout=30
+                )
+                # 解析 whisper 输出
+                import json as json_lib
+                try:
+                    data = json_lib.loads(result.stdout)
+                    text = data.get('text', '').strip()
+                    if text:
+                        return jsonify({"success": True, "text": text})
+                except:
+                    pass
+                return jsonify({"success": False, "error": "Whisper 识别失败"})
+            finally:
+                os.unlink(tmp_path)
+        except Exception as e:
+            return jsonify({"success": False, "error": f"Whisper 也不可用: {str(e)}"})
+    except sr.UnknownValueError:
+        return jsonify({"success": False, "error": "无法识别语音内容"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
 @app.route('/audio/<path:filename>')
 def serve_audio(filename):
     """提供音频文件"""

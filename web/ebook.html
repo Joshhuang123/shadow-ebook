@@ -1879,7 +1879,9 @@
 
         // ========== 跟读评分功能 ==========
 
-        let recordingTimeout = null;
+        let audioContext = null;
+        let analyser = null;
+        let audioStream = null;
 
         // 切换阅读/跟读模式
         function setMode(mode) {
@@ -1890,105 +1892,141 @@
                 ? '阅读模式下跳过评分'
                 : '点击麦克风，录音跟读';
             document.getElementById('score-display').style.display = 'none';
-
-            if (recognition && isRecording) {
-                recognition.stop();
-                isRecording = false;
-            }
         }
 
         // 切换录音
-        function toggleRecord() {
+        async function toggleRecord() {
             if (isRecording) {
                 stopRecording();
             } else {
-                startRecording();
+                await startRecording();
             }
         }
 
-        // 开始录音识别
-        function startRecording() {
+        // 开始录音
+        async function startRecording() {
             if (!sentences || sentences.length === 0) return;
 
+            // 检查浏览器支持
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) {
                 document.getElementById('record-hint').textContent = '❌ 浏览器不支持语音识别';
                 return;
             }
 
-            // 先播放参考音频
-            playReferenceAudio();
+            try {
+                // 获取麦克风
+                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+
+                // 设置音频分析（用于可视化）
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                const source = audioContext.createMediaStreamSource(audioStream);
+                source.connect(analyser);
+                analyser.fftSize = 256;
+
+                // 播放参考音频
+                await playReferenceAudio();
+
+            } catch (err) {
+                console.error('麦克风错误:', err);
+                document.getElementById('record-hint').textContent = '❌ 无法访问麦克风';
+                return;
+            }
 
             isRecording = true;
             document.getElementById('btn-record').classList.add('recording');
             document.getElementById('btn-record').textContent = '⏹';
-            document.getElementById('record-hint').textContent = '🎤 正在听...';
+            document.getElementById('record-hint').textContent = '🎤 正在听，请说话...';
 
+            // 开始语音识别
             recognition = new SpeechRecognition();
             recognition.lang = 'en-US';
-            recognition.continuous = false;
-            recognition.interimResults = false;
-            recognition.maxAlternatives = 1;
+            recognition.continuous = true;
+            recognition.interimResults = true;
 
             let finalTranscript = '';
+            let silenceCount = 0;
+            let lastResultIndex = -1;
 
             recognition.onresult = (event) => {
-                finalTranscript = event.results[0][0].transcript;
-                console.log('识别结果:', finalTranscript);
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                // 更新提示
+                if (interimTranscript) {
+                    document.getElementById('record-hint').textContent = '🎤 听到: ' + interimTranscript;
+                }
+                console.log(' interim:', interimTranscript, '| final:', finalTranscript);
             };
 
             recognition.onerror = (event) => {
-                console.error('Speech recognition error:', event.error);
+                console.error('识别错误:', event.error);
                 if (event.error === 'no-speech') {
-                    document.getElementById('record-hint').textContent = '⚠️ 没检测到声音，请重试';
+                    silenceCount++;
+                    if (silenceCount > 3) {
+                        document.getElementById('record-hint').textContent = '⚠️ 没听到声音，请靠近麦克风';
+                    }
                 } else if (event.error === 'not-allowed') {
                     document.getElementById('record-hint').textContent = '❌ 请允许麦克风权限';
-                } else {
-                    document.getElementById('record-hint').textContent = '❌ 识别出错: ' + event.error;
+                    stopRecording();
+                } else if (event.error !== 'aborted') {
+                    document.getElementById('record-hint').textContent = '❌ 错误: ' + event.error;
+                    stopRecording();
                 }
-                stopRecording();
             };
 
             recognition.onend = () => {
-                console.log('识别结束, finalTranscript:', finalTranscript);
+                console.log('识别结束, final:', finalTranscript);
                 stopRecording();
-                if (finalTranscript) {
+                if (finalTranscript.trim()) {
                     const original = sentences[currentSentenceIndex];
-                    showPronunciationScore(original, finalTranscript);
+                    showPronunciationScore(original, finalTranscript.trim());
                 } else {
                     document.getElementById('record-hint').textContent = '⚠️ 没听清，请重试';
                 }
             };
 
-            // 超时保护（8秒）
-            recordingTimeout = setTimeout(() => {
-                if (isRecording) {
-                    console.log('超时，强制停止');
-                    recognition.stop();
-                }
-            }, 8000);
-
             try {
                 recognition.start();
+                console.log('识别已启动');
             } catch (err) {
-                console.error('Failed to start recognition:', err);
+                console.error('启动识别失败:', err);
                 document.getElementById('record-hint').textContent = '❌ 无法启动识别';
                 stopRecording();
             }
+
+            // 可选：自动停止（15秒）
+            setTimeout(() => {
+                if (isRecording) {
+                    console.log('超时，停止');
+                    recognition.stop();
+                }
+            }, 15000);
         }
 
         // 停止录音
         function stopRecording() {
             isRecording = false;
-            if (recordingTimeout) {
-                clearTimeout(recordingTimeout);
-                recordingTimeout = null;
-            }
             document.getElementById('btn-record').classList.remove('recording');
             document.getElementById('btn-record').textContent = '🎙️';
+
             if (recognition) {
                 try { recognition.stop(); } catch(e) {}
             }
+            if (audioStream) {
+                audioStream.getTracks().forEach(track => track.stop());
+            }
+            if (audioContext) {
+                audioContext.close();
+            }
+            console.log('停止');
         }
 
         // 播放参考音频
@@ -2049,7 +2087,6 @@
                 if (origWords.includes(w)) matchCount++;
             });
 
-            // 综合考虑匹配率和完整度
             const matchRate = matchCount / transWords.length;
             const coverage = matchCount / origWords.length;
             const score = Math.round((matchRate * 0.6 + coverage * 0.4) * 100);
