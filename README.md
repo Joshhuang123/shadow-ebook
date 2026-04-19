@@ -1,223 +1,84 @@
-# 🦊 Shadow Learning - English Shadowing Practice
+# 📖 Shadow Ebook - 英语电子书阅读与跟读学习
 
-English shadowing practice application using multi-agent architecture. Practice pronunciation by shadowing movie/cartoon dialogues with instant feedback.
+免费开源的英语电子书阅读器，支持 EPUB 导入、点击查词、TTS 朗读、蓝思值计算，专为英语学习者设计。
 
-## Features
+![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
+![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-- **🎵 Audio Agent**: Load and segment video/audio files
-- **🎤 Recording Agent**: Capture your voice via microphone
-- **🎙️ ASR Agent**: Whisper-powered speech-to-text (local, no API key)
-- **📊 Scoring Agent**: Pronunciation accuracy and fluency scoring
-- **🔤 Vocabulary Agent**: Extract and track unknown words
-- **📚 Grammar Agent**: Explain sentence structures and grammar points
-- **📖 Review Agent**: Spaced repetition for vocabulary retention
+## ✨ 功能特点
 
-## Requirements
+### 📖 电子书阅读
+- **EPUB 导入** - 一键导入任意 EPUB 电子书
+- **点击查词** - 点击任意单词，即时显示中英文释义
+- **生词本** - 自动累计，浏览器本地保存
+- **AR/ATOS 值** - 实时计算阅读等级
+- **TTS 朗读** - 点击句子自动朗读（Microsoft edge-tts）
 
-- macOS (tested) / Linux / Windows
-- Python 3.11+
-- FFmpeg (for video/audio processing)
-- PyAudio (for microphone recording)
-- 4GB+ RAM (Whisper model loading)
+### 🗣️ 跟读学习
+- **句子朗读** - 点击句子自动播放，发音清晰自然
+- **跟读练习** - 录音对比，提升口语
+- **理解题测试** - 检验阅读理解
 
-### Recommended: Create Virtual Environment
+### 📚 内置内容
+- 新概念英语青少版 2A 课程
+- Magic Tree House #29: Christmas in Camelot
+- Harry Potter #1: Philosopher's Stone
 
-```bash
-# Run the setup script
-chmod +x setup.sh
-./setup.sh
+### 🎓 语法学习
+- 现在进行时 vs 一般现在时 对比
+- 一般过去时 be动词 / 规则动词
+- 频率表达、be going to、want to do
+- 名词性物主代词、祈使句
 
-# Or manually:
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
+## 🚀 快速开始
 
-## Installation
-
-```bash
-# Clone or navigate to project
-cd shadow-learning
-
-# Create virtual environment (recommended)
-python3 -m venv venv
-source venv/bin/activate  # Linux/macOS
-# or: venv\Scripts\activate  # Windows
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Optional: Install FFmpeg (if needed)
-# macOS: brew install ffmpeg
-# Ubuntu: apt install ffmpeg
-# Windows: download from ffmpeg.org
-```
-
-### Phoneme Analysis (Advanced Pronunciation Scoring)
-
-For more accurate pronunciation assessment, install the phoneme libraries:
+### 安装依赖
 
 ```bash
-pip install pronouncing phonemizer
+pip install flask edge-tts
 ```
 
-This enables:
-- **CMU Pronouncing Dictionary**: Get phonemes (ARPAbet) for any word
-- **Phoneme-level tips**: Specific guidance for each sound
-- **Syllable counting**: Know how many syllables in a word
-- **Stress patterns**: Understand which syllables are stressed
-
-## Usage
-
-### Quick Start
+### 运行
 
 ```bash
-python main.py
+python tutor_web.py
 ```
 
-### Command Reference
+然后打开浏览器访问：**http://localhost:5002**
 
-| Command | Description |
-|---------|-------------|
-| `load <file>` | Load video/audio file (mp4, mov, mp3, wav) |
-| `practice` | Practice segments one by one |
-| `list` | List loaded segments |
-| `review` | Vocabulary review session |
-| `stats` | Show learning statistics |
-| `export` | Export vocabulary (json/csv/txt) |
-| `help` | Show help |
-| `quit` | Exit |
+### 使用电子书
 
-### Running a Practice Session
+1. 打开 http://localhost:5002/ebook
+2. 点击 **➕ 导入新书** 选择 EPUB 文件
+3. 选择章节，点击任意句子开始朗读
+4. 点击单词查词，自动累计生词
 
-1. Run `python main.py`
-2. Type `load /path/to/your/movie.mp4` to load a video
-3. Type `practice` to start shadowing
-4. Press Enter when ready, then speak after hearing the reference
-5. View your score and feedback
-6. Repeat for each segment
-
-### Direct API Usage
-
-```python
-from main import ShadowLearningApp
-
-app = ShadowLearningApp()
-
-# Load a video
-media = app.load_media("my_movie.mp4")
-
-# Practice one segment
-results = app.practice_segment(media["segments"][0])
-
-# Check results
-print(results["score"]["overall_score"])
-print(results["new_words"])
-
-# Run review
-app.review_session()
-
-# Cleanup
-app.cleanup()
-```
-
-## Architecture
+## 📁 项目结构
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                  ShadowLearningApp                       │
-│                    (Orchestrator)                        │
-└─────────────────────┬───────────────────────────────────┘
-                      │
-        ┌─────────────┼─────────────┐
-        ▼             ▼             ▼
-┌──────────────┐ ┌──────────────┐ ┌──────────────┐
-│  Audio Agent │ │Recording Agent│ │  ASR Agent   │
-│  (Playback)  │ │ (Microphone) │ │  (Whisper)   │
-└──────┬───────┘ └──────┬───────┘ └──────┬───────┘
-       │                │                │
-       └────────────────┼────────────────┘
-                        ▼
-              ┌──────────────────┐
-              │ Scoring Agent    │
-              │ (Accuracy/Fluency)│
-              └────────┬─────────┘
-                       │
-         ┌─────────────┼─────────────┐
-         ▼             ▼             ▼
-  ┌───────────┐ ┌───────────┐ ┌───────────┐
-  │ Vocab     │ │ Grammar   │ │ Review    │
-  │ Agent     │ │ Agent     │ │ Agent     │
-  └───────────┘ └───────────┘ └───────────┘
+shadow-learning/
+├── tutor_web.py          # Flask 服务器 (入口)
+├── web/
+│   ├── ebook.html        # 电子书阅读器
+│   ├── tutor.html        # 跟读辅导界面
+│   └── grammar_present_tenses.html  # 语法学习
+├── data/
+│   ├── books/            # 电子书 JSON 文件
+│   └── grammar/          # 语法资料
+└── audio/
+    └── tts/              # TTS 缓存音频
 ```
 
-## Configuration
+## 🛠️ 技术栈
 
-Edit `config/settings.py` to customize:
+| 功能 | 技术方案 |
+|------|----------|
+| Web 服务器 | Flask (Python) |
+| 前端 | 原生 HTML/CSS/JS |
+| 语音合成 | Microsoft edge-tts (免费) |
+| 词典 API | dictionaryapi.dev + MyMemory |
+| 发音评分 | Web Speech API |
 
-- `WHISPER_MODEL`: "tiny", "base", "small", "medium", "large"
-- `SAMPLE_RATE`: Recording sample rate (16000 default)
-- `KNOWN_WORDS_FILE`: Path to known words list
-- `MIN_SCORE_FOR_KNOWN`: Score threshold for marking words as known
+## 📝 License
 
-## Scoring Details
-
-- **Overall Score (0-100)**: Weighted combination of similarity, word accuracy, and fluency
-- **Similarity**: Text match between reference and your transcription
-- **Word Accuracy**: Per-word correctness
-- **Fluency**: WPM and pause count
-- **Phoneme Accuracy** (with `pronouncing` library): Compare actual phonemes from CMU Pronouncing Dictionary
-
-### Score Levels
-
-| Score | Level |
-|-------|-------|
-| 90+ | 🌟 Excellent |
-| 75-89 | 👍 Great |
-| 60-74 | 📚 Good |
-| 40-59 | 💪 Needs Practice |
-| <40 | 📖 Keep Trying |
-
-### Phoneme Analysis
-
-When `pronouncing` library is installed, you'll see:
-
-```
-Word: creativity
-Phonemes: K R IY1 EY1 T IH1 V IH1 T IY0
-Stresses: 010100100
-Syllables: 5
-
-Tips:
-- K: 清辅音 'k'
-- R: 卷舌 'r' 音
-- IY1: 重读长 'ee' 音
-- EY1: 重读长 'ay' 音
-- AH: 中央 'a' 音
-...
-```
-
-## Troubleshooting
-
-### PyAudio installation fails on macOS
-
-```bash
-brew install portaudio
-pip install --global-option='build_ext' --global-option='-I/usr/local/include' --global-option='-L/usr/local/lib' pyaudio
-```
-
-### Whisper model not loading
-
-Ensure you have sufficient RAM. Use smaller models (`tiny` or `base`) for limited memory.
-
-### No microphone input
-
-Check system permissions for terminal/app to access microphone.
-
-## License
-
-MIT License - Feel free to modify and distribute.
-
----
-
-Built with ❤️ for English learners
+MIT License - 免费商用、学习、修改
