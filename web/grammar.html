@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📚 语法学习 - Shadow Ebook</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-light: #818CF8;
+            --secondary: #10B981;
+            --bg-dark: #0F172A;
+            --bg-card: #1E293B;
+            --text-primary: #F8FAFC;
+            --text-secondary: #94A3B8;
+            --border: #334155;
+            --accent: #F59E0B;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .top-nav {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .nav-brand .logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 8px;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+            background: var(--bg-card);
+        }
+
+        .nav-link.active {
+            color: var(--text-primary);
+            background: var(--primary);
+        }
+
+        .main-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .hero-title {
+            font-size: 2.2em;
+            font-weight: 700;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--primary-light), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+
+        /* 语法卡片 */
+        .grammar-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+        }
+
+        .grammar-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .grammar-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .grammar-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(79, 70, 229, 0.2);
+        }
+
+        .grammar-card:hover::before {
+            opacity: 1;
+        }
+
+        .grammar-card-icon {
+            font-size: 2em;
+            margin-bottom: 12px;
+        }
+
+        .grammar-card-title {
+            font-weight: 600;
+            font-size: 1.1em;
+            margin-bottom: 8px;
+        }
+
+        .grammar-card-desc {
+            color: var(--text-secondary);
+            font-size: 0.85em;
+        }
+
+        .grammar-card.units {
+            background: transparent;
+            border: 2px dashed var(--border);
+        }
+
+        .grammar-card.units:hover {
+            border-color: var(--primary);
+            background: rgba(79, 70, 229, 0.1);
+        }
+
+        /* 语法详情弹窗 */
+        .grammar-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            display: none;
+            overflow-y: auto;
+        }
+
+        .grammar-modal.show {
+            display: block;
+        }
+
+        .grammar-modal-content {
+            max-width: 800px;
+            margin: 40px auto;
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 32px;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--bg-dark);
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .modal-title {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--primary-light);
+        }
+
+        .modal-subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            font-size: 0.95em;
+        }
+
+        .grammar-section {
+            margin-bottom: 28px;
+        }
+
+        .grammar-section h3 {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--accent);
+        }
+
+        .formula-box {
+            background: var(--bg-dark);
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-family: 'Noto Serif SC', serif;
+            font-size: 1.1em;
+            color: var(--primary-light);
+            margin: 12px 0;
+            border-left: 4px solid var(--primary);
+        }
+
+        .example-list {
+            list-style: none;
+        }
+
+        .example-list li {
+            padding: 10px 16px;
+            background: var(--bg-dark);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        .example-list li .en {
+            color: var(--text-primary);
+            font-family: 'Noto Serif SC', serif;
+        }
+
+        .example-list li .zh {
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            margin-top: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            color: var(--primary-light);
+            font-weight: 600;
+        }
+
+        td {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+
+        .highlight {
+            color: var(--primary-light);
+            font-weight: 600;
+        }
+
+        .tip-box {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--secondary);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+
+        .tip-box .tip-title {
+            color: var(--secondary);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .tip-box .tip-content {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+
+        .rule-list {
+            list-style: none;
+        }
+
+        .rule-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .rule-list li:last-child {
+            border-bottom: none;
+        }
+
+        .tense-compare {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 16px 0;
+        }
+
+        .tense-box {
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        .tense-box.blue {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .tense-box.green {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .tense-box h4 {
+            margin-bottom: 12px;
+            font-size: 1em;
+        }
+
+        .tense-box.blue h4 { color: #3B82F6; }
+        .tense-box.green h4 { color: #10B981; }
+
+        .tense-box .formula {
+            background: var(--bg-dark);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            margin-bottom: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .tense-compare {
+                grid-template-columns: 1fr;
+            }
+            .grammar-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="nav-brand">
+            <div class="logo">📖</div>
+            <span>Shadow Ebook</span>
+        </div>
+        <div class="nav-links">
+            <a href="/" class="nav-link">电子书</a>
+            <a href="/tutor" class="nav-link">跟读学习</a>
+            <a href="/grammar" class="nav-link active">语法学习</a>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="hero">
+            <h1 class="hero-title">📚 语法学习</h1>
+            <p class="hero-subtitle">新概念英语青少版 2A · 核心语法详解</p>
+        </div>
+
+        <div class="grammar-grid">
+            <div class="grammar-card" onclick="showGrammar('present-progressive')">
+                <div class="grammar-card-icon">🔄</div>
+                <div class="grammar-card-title">现在进行时</div>
+                <div class="grammar-card-desc">Unit 1-2 · be + doing</div>
+            </div>
+
+            <div class="grammar-card" onclick="showGrammar('simple-present')">
+                <div class="grammar-card-icon">📅</div>
+                <div class="grammar-card-title">一般现在时</div>
+                <div class="grammar-card-desc">Unit 5-6, 10 · 习惯性动作</div>
+            </div>
+
+            <div class="grammar-card" onclick="showGrammar('simple-past')">
+                <div class="grammar-card-icon">⏪</div>
+                <div class="grammar-card-title">一般过去时</div>
+                <div class="grammar-card-desc">Unit 11-13 · 过去发生的事</div>
+            </div>
+
+            <div class="grammar-card" onclick="showGrammar('frequency')">
+                <div class="grammar-card-icon">🔢</div>
+                <div class="grammar-card-title">频率表达</div>
+                <div class="grammar-card-desc">Unit 7 · How often...</div>
+            </div>
+
+            <div class="grammar-card" onclick="showGrammar('be-going-to')">
+                <div class="grammar-card-icon">🎯</div>
+                <div class="grammar-card-title">be going to</div>
+                <div class="grammar-card-desc">Unit 8 · 表计划</div>
+            </div>
+
+            <div class="grammar-card" onclick="showGrammar('want-to-do')">
+                <div class="grammar-card-icon">💭</div>
+                <div class="grammar-card-title">want to do</div>
+                <div class="grammar-card-desc">Unit 9 · 想要做某事</div>
+            </div>
+
+            <div class="grammar-card" onclick="showGrammar('possessive-pronouns')">
+                <div class="grammar-card-icon">📌</div>
+                <div class="grammar-card-title">名词性物主代词</div>
+                <div class="grammar-card-desc">Unit 3 · mine, yours, hers...</div>
+            </div>
+
+            <div class="grammar-card" onclick="showGrammar('imperative')">
+                <div class="grammar-card-icon">📢</div>
+                <div class="grammar-card-title">祈使句</div>
+                <div class="grammar-card-desc">Unit 4 · Open the door</div>
+            </div>
+
+            <div class="grammar-card" onclick="showGrammar('tense-compare')">
+                <div class="grammar-card-icon">⚖️</div>
+                <div class="grammar-card-title">三时态对比</div>
+                <div class="grammar-card-desc">现在进行时 vs 一般现在时 vs 一般过去时</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 语法详情弹窗 -->
+    <div class="grammar-modal" id="grammar-modal">
+        <div class="grammar-modal-content">
+            <button class="modal-close" onclick="closeGrammar()">×</button>
+            <div id="grammar-content"></div>
+        </div>
+    </div>
+
+    <script>
+        const grammarData = {
+            'present-progressive': {
+                title: '现在进行时',
+                subtitle: 'Present Progressive · Unit 1-2',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">主语 + am/is/are + 动词-ing + (其他)</div>`
+                    },
+                    {
+                        title: '📖 用法',
+                        content: `<ul class="rule-list">
+                            <li>表示<span class="highlight">此刻</span>正在进行的动作</li>
+                            <li>口诀：<span class="highlight">"正在做某事，be 动词加 ing"</span></li>
+                        </ul>`
+                    },
+                    {
+                        title: '📝 句型变化',
+                        content: `<table>
+                            <tr><th>句型</th><th>结构</th><th>例句</th></tr>
+                            <tr><td>肯定句</td><td>I am working.</td><td>I'm reading a book.</td></tr>
+                            <tr><td>否定句</td><td>I am not working.</td><td>I'm not watching TV.</td></tr>
+                            <tr><td>一般疑问句</td><td>Am I working?</td><td><span class="highlight">Are</span> you <span class="highlight">doing</span> something?</td></tr>
+                            <tr><td>特殊疑问句</td><td>What am I doing?</td><td><span class="highlight">What are</span> they <span class="highlight">doing</span>?</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '✏️ 动词-ing 变化规则',
+                        content: `<ul class="rule-list">
+                            <li><span class="highlight">直接加 -ing</span>: read → reading, play → playing</li>
+                            <li><span class="highlight">去 e 加 -ing</span>: make → making, write → writing</li>
+                            <li><span class="highlight">重读闭音节双写尾字母加 -ing</span>: sit → sitting, run → running</li>
+                        </ul>`
+                    },
+                    {
+                        title: '💡 时间标志词',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">now, right now, at the moment, look, listen</div>
+                            <div class="tip-content">Look! The children are playing in the garden.</div>
+                        </div>`
+                    }
+                ]
+            },
+            'simple-present': {
+                title: '一般现在时',
+                subtitle: 'Simple Present · Unit 5-6, 10',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">主语 + 动词(+s/es) + 其他    (描述习惯性动作)</div>`
+                    },
+                    {
+                        title: '📖 用法',
+                        content: `<ul class="rule-list">
+                            <li>表示<span class="highlight">经常性</span>或<span class="highlight">习惯性</span>的动作</li>
+                            <li>表示<span class="highlight">客观事实</span>或<span class="highlight">普遍真理</span></li>
+                        </ul>`
+                    },
+                    {
+                        title: '👤 第三人称单数变化 (he/she/it)',
+                        content: `<table>
+                            <tr><th>规则</th><th>动词例子</th></tr>
+                            <tr><td>一般加 -s</td><td>reads, plays, works</td></tr>
+                            <tr><td>字母s/x/ch/sh/o结尾加 -es</td><td>watches, goes, studies</td></tr>
+                            <tr><td>辅音字母+y → y+ies</td><td>study→studies, fly→flies</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '⏰ 时间标志词',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">always, usually, often, sometimes, never, every day/week/month/year</div>
+                            <div class="tip-content">I usually get up at seven o'clock. She often goes to school by bike.</div>
+                        </div>`
+                    }
+                ]
+            },
+            'simple-past': {
+                title: '一般过去时',
+                subtitle: 'Simple Past · Unit 11-13',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">主语 + 动词过去式 + 其他    (描述过去的动作)</div>`
+                    },
+                    {
+                        title: '🔄 Be 动词过去式',
+                        content: `<table>
+                            <tr><th>现在</th><th>过去</th></tr>
+                            <tr><td>I am</td><td>I <span class="highlight">was</span></td></tr>
+                            <tr><td>he/she/it is</td><td>he/she/it <span class="highlight">was</span></td></tr>
+                            <tr><td>we/you/they are</td><td>we/you/they <span class="highlight">were</span></td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '✏️ 规则动词过去式',
+                        content: `<table>
+                            <tr><th>规则</th><th>例子</th></tr>
+                            <tr><td>一般加 -ed</td><td>work → worked, play → played</td></tr>
+                            <tr><td>e 结尾加 -d</td><td>live → lived, hope → hoped</td></tr>
+                            <tr><td>辅音+y → y+ied</td><td>study → studied, cry → cried</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '⚠️ 常见不规则动词 (必须背！)',
+                        content: `<table>
+                            <tr><td>go → went</td><td>see → saw</td><td>eat → ate</td></tr>
+                            <tr><td>have → had</td><td>take → took</td><td>come → came</td></tr>
+                            <tr><td>get → got</td><td>buy → bought</td><td>read → read*</td></tr>
+                        </table>
+                        <div class="tip-box">
+                            <div class="tip-content">* read 的过去式和原形相同，但发音不同：[ri:d] → [red]</div>
+                        </div>`
+                    },
+                    {
+                        title: '⏰ 时间标志词',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">yesterday, last night/week/month/year, this morning, in 2023</div>
+                            <div class="tip-content">I visited my grandmother yesterday. She played tennis last weekend.</div>
+                        </div>`
+                    }
+                ]
+            },
+            'frequency': {
+                title: '频率表达',
+                subtitle: 'How often...? · Unit 7',
+                sections: [
+                    {
+                        title: '📊 频率排序',
+                        content: `<table>
+                            <tr><th>频率</th><th>英语</th><th>例句</th></tr>
+                            <tr><td>100%</td><td><span class="highlight">always</span></td><td>I always get up early.</td></tr>
+                            <tr><td>80%</td><td><span class="highlight">usually</span></td><td>I usually have breakfast at 7.</td></tr>
+                            <tr><td>50%</td><td><span class="highlight">often/sometimes</span></td><td>I often go to the cinema.</td></tr>
+                            <tr><td>20%</td><td>seldom</td><td>I seldom eat meat.</td></tr>
+                            <tr><td>0%</td><td>never</td><td>I never smoke.</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '❓ How often 提问',
+                        content: `<div class="formula-box">How often do you exercise? → I exercise twice a week.</div>
+                        <ul class="example-list">
+                            <li><div class="en">How often do you go to the cinema?</div><div class="zh">你多久去看一次电影？</div></li>
+                            <li><div class="en">I go to the cinema once a week.</div><div class="zh">我每周去看一次电影。</div></li>
+                            <li><div class="en">She exercises twice a day.</div><div class="zh">她每天锻炼两次。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '🔢 次数表达',
+                        content: `<ul class="rule-list">
+                            <li><span class="highlight">once</span> = 一次</li>
+                            <li><span class="highlight">twice</span> = 两次</li>
+                            <li><span class="highlight">three times</span> = 三次</li>
+                            <li>a week/month/year = 每周/月/年</li>
+                        </ul>`
+                    }
+                ]
+            },
+            'be-going-to': {
+                title: 'be going to 表计划',
+                subtitle: 'Future Plans · Unit 8',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">主语 + am/is/are + going to + 动词原形</div>`
+                    },
+                    {
+                        title: '📖 用法',
+                        content: `<ul class="rule-list">
+                            <li>表示<span class="highlight">已经决定好</span>的计划</li>
+                            <li>表示根据现有证据<span class="highlight">很可能发生</span>的事</li>
+                        </ul>`
+                    },
+                    {
+                        title: '📝 例句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">What are you going to do this weekend?</div><div class="zh">你这个周末打算做什么？</div></li>
+                            <li><div class="en">I'm going to visit my grandmother.</div><div class="zh">我打算去看望奶奶。</div></li>
+                            <li><div class="en">She's going to buy a new dress.</div><div class="zh">她打算买一条新裙子。</div></li>
+                            <li><div class="en">What are you going to be when you grow up?</div><div class="zh">你长大后想成为什么？</div></li>
+                        </ul>`
+                    }
+                ]
+            },
+            'want-to-do': {
+                title: 'want to do / want sb to do',
+                subtitle: 'Want · Unit 9',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">
+                            want to do = 想要做某事<br>
+                            want sb to do = 想要某人做某事
+                        </div>`
+                    },
+                    {
+                        title: '📝 例句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">What do you want to do?</div><div class="zh">你想做什么？</div></li>
+                            <li><div class="en">I want to play football.</div><div class="zh">我想踢足球。</div></li>
+                            <li><div class="en">I want you to help me with my English.</div><div class="zh">我想要你帮我学英语。</div></li>
+                            <li><div class="en">Do you want to learn English?</div><div class="zh">你想学英语吗？</div></li>
+                        </ul>`
+                    }
+                ]
+            },
+            'possessive-pronouns': {
+                title: '名词性物主代词',
+                subtitle: 'Possessive Pronouns · Unit 3',
+                sections: [
+                    {
+                        title: '📊 表格对比',
+                        content: `<table>
+                            <tr><th>形容词性物主代词</th><th>名词性物主代词</th></tr>
+                            <tr><td>my</td><td><span class="highlight">mine</span></td></tr>
+                            <tr><td>your</td><td><span class="highlight">yours</span></td></tr>
+                            <tr><td>his</td><td><span class="highlight">his</span></td></tr>
+                            <tr><td>her</td><td><span class="highlight">hers</span></td></tr>
+                            <tr><td>our</td><td><span class="highlight">ours</span></td></tr>
+                            <tr><td>their</td><td><span class="highlight">theirs</span></td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '💡 区别',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">口诀：名词性物主代词 = 后面不能加名词，独立使用等于"my + 名词"</div>
+                            <div class="tip-content">This book is <span class="highlight">mine</span>. (= my book)<br>
+                            Is this your bag? No, it's <span class="highlight">hers</span>. (= her bag)</div>
+                        </div>`
+                    }
+                ]
+            },
+            'imperative': {
+                title: '祈使句',
+                subtitle: 'Imperative · Unit 4',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">
+                            肯定句: 动词原形 + 其他<br>
+                            否定句: Don't + 动词原形 + 其他
+                        </div>`
+                    },
+                    {
+                        title: '📝 例句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">Open the door, please.</div><div class="zh">请开门。</div></li>
+                            <li><div class="en">Don't be late!</div><div class="zh">别迟到！</div></li>
+                            <li><div class="en">Don't take your gloves off.</div><div class="zh">别脱下手套。</div></li>
+                            <li><div class="en">Sit down, please.</div><div class="zh">请坐下。</div></li>
+                            <li><div class="en">Listen to me carefully.</div><div class="zh">认真听我说。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '💡 特点',
+                        content: `<ul class="rule-list">
+                            <li>表示<span class="highlight">命令、请求、建议</span></li>
+                            <li>省略主语 (you)，动词用原形</li>
+                            <li>否定式用 <span class="highlight">Don't</span> 开头</li>
+                        </ul>`
+                    }
+                ]
+            },
+            'tense-compare': {
+                title: '三时态对比',
+                subtitle: 'Three Tenses Comparison',
+                sections: [
+                    {
+                        title: '⚖️ 现在进行时 vs 一般现在时 vs 一般过去时',
+                        content: `<div class="tense-compare">
+                            <div class="tense-box blue">
+                                <h4>🔄 现在进行时</h4>
+                                <div class="formula">am/is/are + 动词-ing</div>
+                                <ul class="rule-list">
+                                    <li><span class="highlight">此刻</span>正在发生</li>
+                                    <li>时间：now, right now</li>
+                                    <li>例：I am reading now.</li>
+                                </ul>
+                            </div>
+                            <div class="tense-box green">
+                                <h4>📅 一般现在时</h4>
+                                <div class="formula">动词(+s/es)</div>
+                                <ul class="rule-list">
+                                    <li><span class="highlight">习惯性</span>经常发生</li>
+                                    <li>时间：always, usually, every day</li>
+                                    <li>例：I read books every day.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="tense-box blue" style="margin-top:16px;">
+                            <h4>⏪ 一般过去时</h4>
+                            <div class="formula">动词过去式</div>
+                            <ul class="rule-list">
+                                <li><span class="highlight">过去</span>发生的事</li>
+                                <li>时间：yesterday, last week</li>
+                                <li>例：I read a book yesterday.</li>
+                            </ul>
+                        </div>`
+                    },
+                    {
+                        title: '💡 一句话区分',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">现在进行时：此刻正在做</div>
+                            <div class="tip-content">What are you doing? — I'm watching TV.</div>
+                        </div>
+                        <div class="tip-box">
+                            <div class="tip-title">一般现在时：天天都这样做</div>
+                            <div class="tip-content">Do you watch TV every day? — Yes, I usually watch TV.</div>
+                        </div>
+                        <div class="tip-box">
+                            <div class="tip-title">一般过去时：昨天发生的</div>
+                            <div class="tip-content">Did you watch TV yesterday? — Yes, I watched TV last night.</div>
+                        </div>`
+                    }
+                ]
+            }
+        };
+
+        function showGrammar(key) {
+            const data = grammarData[key];
+            if (!data) return;
+
+            let html = `
+                <h2 class="modal-title">${data.title}</h2>
+                <p class="modal-subtitle">${data.subtitle}</p>
+            `;
+
+            data.sections.forEach(section => {
+                html += `
+                    <div class="grammar-section">
+                        <h3>${section.title}</h3>
+                        ${section.content}
+                    </div>
+                `;
+            });
+
+            document.getElementById('grammar-content').innerHTML = html;
+            document.getElementById('grammar-modal').classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeGrammar() {
+            document.getElementById('grammar-modal').classList.remove('show');
+            document.body.style.overflow = '';
+        }
+
+        // 点击弹窗外部关闭
+        document.getElementById('grammar-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'grammar-modal') {
+                closeGrammar();
+            }
+        });
+
+        // ESC 关闭
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeGrammar();
+        });
+    </script>
+</body>
+</html>

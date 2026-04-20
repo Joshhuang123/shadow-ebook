@@ -161,7 +161,7 @@ def grammar_page(page):
 @app.route('/grammar')
 def grammar_index():
     """语法学习首页"""
-    return send_from_directory(app.root_path + '/web', 'grammar_present_tenses.html')
+    return send_from_directory(app.root_path + '/web', 'grammar.html')
 
 @app.route('/ebook')
 def ebook_page():
