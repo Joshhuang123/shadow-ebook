@@ -144,6 +144,27 @@
             transition: height 0.1s ease;
         }
 
+        /* 波形对比 */
+        .waveform-comparison {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+        .waveform-comparison.hidden { display: none; }
+        .waveform-label {
+            font-size: 0.85em;
+            color: #666;
+            margin: 8px 0 4px;
+        }
+        .waveform-canvas {
+            width: 100%;
+            height: 60px;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
         /* 反馈 */
         .feedback {
             background: #f8f9fa;
@@ -234,6 +255,7 @@
             <a href="/" class="nav-link">电子书</a>
             <a href="/tutor" class="nav-link active">跟读学习</a>
             <a href="/grammar" class="nav-link">语法学习</a>
+            <a href="/stats" class="nav-link">📊 统计</a>
         </div>
     </nav>
     <div class="container">
@@ -346,6 +368,14 @@
                 <div class="audio-bar" style="height:10px;"></div>
                 <div class="audio-bar" style="height:10px;"></div>
                 <div class="audio-bar" style="height:10px;"></div>
+            </div>
+
+            <!-- 波形对比 -->
+            <div class="waveform-comparison hidden" id="waveform-comparison">
+                <div class="waveform-label">🔊 原音</div>
+                <canvas id="waveform-original" class="waveform-canvas"></canvas>
+                <div class="waveform-label">🎤 你的录音</div>
+                <canvas id="waveform-recorded" class="waveform-canvas"></canvas>
             </div>
 
             <div class="controls">
@@ -704,6 +734,7 @@
             document.getElementById('record-status').className = 'record-status record-ready';
             document.getElementById('btn-record').classList.remove('hidden');
             document.getElementById('btn-stop').classList.add('hidden');
+            document.getElementById('waveform-comparison').classList.add('hidden');
 
             // 重置音频
             currentAudio = null;
@@ -711,6 +742,7 @@
 
         let currentAudio = null;
         let currentAudioElement = null;
+        let originalAudioUrl = null;  // 原音URL
 
         // 播放标准发音 (使用edge-tts通过后端API)
         async function playSentence() {
@@ -734,6 +766,9 @@
                         currentAudioElement.pause();
                         currentAudioElement = null;
                     }
+
+                    // 保存原音URL用于波形对比
+                    originalAudioUrl = data.audio_url;
 
                     // 播放新音频
                     currentAudioElement = new Audio(data.audio_url);
@@ -861,6 +896,9 @@
             const url = URL.createObjectURL(blob);
             currentAudio = url;
 
+            // 显示波形对比
+            showWaveformComparison(url);
+
             // 播放录音
             const audio = new Audio(url);
             audio.play();
@@ -872,6 +910,69 @@
             // 录音完成后隐藏上一个/下一个，让用户决定是否继续
             document.getElementById('btn-prev').style.visibility = 'hidden';
             document.getElementById('btn-next').style.visibility = currentSentence < units[currentUnit].sentences.length - 1 ? 'visible' : 'hidden';
+
+            // 更新统计
+            updateStats({ sentencesPracticed: 1 });
+        }
+
+        // 显示波形对比
+        async function showWaveformComparison(recordedUrl) {
+            const comparison = document.getElementById('waveform-comparison');
+            comparison.classList.remove('hidden');
+
+            const originalCanvas = document.getElementById('waveform-original');
+            const recordedCanvas = document.getElementById('waveform-recorded');
+
+            // 如果有原音URL，绘制原音波形
+            if (originalAudioUrl) {
+                try {
+                    const response = await fetch(originalAudioUrl);
+                    const arrayBuffer = await response.arrayBuffer();
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                    drawWaveform(originalCanvas, audioBuffer, '#4F46E5');
+                } catch (e) {
+                    console.log('Could not load original audio for waveform');
+                }
+            }
+
+            // 绘制录音波形
+            try {
+                const response = await fetch(recordedUrl);
+                const arrayBuffer = await response.arrayBuffer();
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                drawWaveform(recordedCanvas, audioBuffer, '#10B981');
+            } catch (e) {
+                console.log('Could not load recorded audio for waveform');
+            }
+        }
+
+        // 绘制波形
+        function drawWaveform(canvas, audioBuffer, color) {
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width = canvas.offsetWidth * 2;
+            const height = canvas.height = canvas.offsetHeight * 2;
+            const data = audioBuffer.getChannelData(0);
+            const step = Math.ceil(data.length / width);
+            const amp = height / 2;
+
+            ctx.clearRect(0, 0, width, height);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+
+            for (let i = 0; i < width; i++) {
+                let min = 1.0, max = -1.0;
+                for (let j = 0; j < step; j++) {
+                    const datum = data[(i * step) + j];
+                    if (datum < min) min = datum;
+                    if (datum > max) max = datum;
+                }
+                ctx.moveTo(i, (1 + min) * amp);
+                ctx.lineTo(i, (1 + max) * amp);
+            }
+            ctx.stroke();
         }
 
         // 显示反馈
@@ -1034,6 +1135,41 @@
             document.getElementById('practice-view').classList.add('hidden');
             document.getElementById('quiz-view').classList.add('hidden');
             document.getElementById('completion-view').classList.add('hidden');
+        }
+
+        // ========== 学习统计 ==========
+        function updateStats(data) {
+            const stats = JSON.parse(localStorage.getItem('shadowStats') || '{}');
+            const today = new Date().toISOString().split('T')[0];
+
+            if (data.sentencesPracticed) stats.sentencesPracticed = (stats.sentencesPracticed || 0) + data.sentencesPracticed;
+            if (data.quizAccuracy !== undefined) stats.quizAccuracy = data.quizAccuracy;
+
+            // 更新每日学习时间
+            if (data.studyTime) {
+                stats.totalStudyTime = (stats.totalStudyTime || 0) + data.studyTime;
+                stats.dailyStudyTime = stats.dailyStudyTime || {};
+                stats.dailyStudyTime[today] = (stats.dailyStudyTime[today] || 0) + data.studyTime;
+            }
+
+            // 更新连续天数
+            const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+            if (stats.lastStudyDate === today) {
+            } else if (stats.lastStudyDate === yesterday) {
+                stats.streakDays = (stats.streakDays || 0) + 1;
+            } else {
+                stats.streakDays = 1;
+            }
+            stats.lastStudyDate = today;
+
+            localStorage.setItem('shadowStats', JSON.stringify(stats));
+        }
+
+        // PWA 注册
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(() => console.log('SW registered'))
+                .catch(err => console.log('SW registration failed:', err));
         }
     </script>
 </body>

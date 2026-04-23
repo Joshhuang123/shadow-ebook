@@ -661,6 +661,7 @@
             <a href="/" class="nav-link">电子书</a>
             <a href="/tutor" class="nav-link">跟读学习</a>
             <a href="/grammar" class="nav-link active">语法学习</a>
+            <a href="/stats" class="nav-link">📊 统计</a>
         </div>
     </nav>
 
@@ -2562,6 +2563,44 @@
 
         // 页面加载时更新进度徽章
         document.addEventListener('DOMContentLoaded', updateAllProgressBadges);
+
+        // ========== 学习统计 ==========
+        function updateStats(data) {
+            const stats = JSON.parse(localStorage.getItem('shadowStats') || '{}');
+            const today = new Date().toISOString().split('T')[0];
+
+            if (data.grammarProgress) {
+                stats.grammarProgress = stats.grammarProgress || {};
+                const key = data.grammarProgress.key;
+                stats.grammarProgress[key] = data.grammarProgress;
+            }
+
+            // 更新每日学习时间
+            if (data.studyTime) {
+                stats.totalStudyTime = (stats.totalStudyTime || 0) + data.studyTime;
+                stats.dailyStudyTime = stats.dailyStudyTime || {};
+                stats.dailyStudyTime[today] = (stats.dailyStudyTime[today] || 0) + data.studyTime;
+            }
+
+            // 更新连续天数
+            const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+            if (stats.lastStudyDate === today) {
+            } else if (stats.lastStudyDate === yesterday) {
+                stats.streakDays = (stats.streakDays || 0) + 1;
+            } else {
+                stats.streakDays = 1;
+            }
+            stats.lastStudyDate = today;
+
+            localStorage.setItem('shadowStats', JSON.stringify(stats));
+        }
+
+        // PWA 注册
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(() => console.log('SW registered'))
+                .catch(err => console.log('SW registration failed:', err));
+        }
     </script>
 </body>
 </html>

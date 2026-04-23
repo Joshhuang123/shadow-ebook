@@ -788,6 +788,175 @@
             margin-top: 4px;
         }
 
+        .review-badge {
+            background: var(--accent);
+            color: var(--bg-dark);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75em;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+
+        .review-badge:hover {
+            opacity: 0.9;
+        }
+
+        .review-badge.hidden {
+            display: none;
+        }
+
+        .review-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 30px;
+            margin: 20px 0;
+        }
+
+        .review-word {
+            font-size: 2em;
+            font-weight: 600;
+            color: var(--primary-light);
+            margin-bottom: 20px;
+        }
+
+        .review-meaning {
+            font-size: 1.2em;
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+        }
+
+        .review-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .review-btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .review-btn.wrong {
+            background: rgba(239, 68, 68, 0.2);
+            color: #EF4444;
+            border: 1px solid #EF4444;
+        }
+
+        .review-btn.wrong:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        .review-btn.correct {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10B981;
+            border: 1px solid #10B981;
+        }
+
+        .review-btn.correct:hover {
+            background: rgba(16, 185, 129, 0.3);
+        }
+
+        .review-progress {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+
+        .review-done {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .review-done-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        .review-stats {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .review-stat {
+            text-align: center;
+        }
+
+        .review-stat-value {
+            font-size: 2em;
+            font-weight: 600;
+        }
+
+        .review-stat-value.correct { color: #10B981; }
+        .review-stat-value.wrong { color: #EF4444; }
+
+        /* 阅读理解 */
+        .comp-progress {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+        }
+        .comp-question {
+            font-size: 1.15em;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        .comp-options {
+            display: grid;
+            gap: 10px;
+        }
+        .comp-option {
+            padding: 12px 16px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .comp-option:hover {
+            border-color: var(--primary);
+            background: rgba(79, 70, 229, 0.1);
+        }
+        .comp-option.correct {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: #10B981;
+            color: #10B981;
+        }
+        .comp-option.wrong {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: #EF4444;
+            color: #EF4444;
+        }
+        .comp-done {
+            padding: 20px;
+            text-align: center;
+        }
+        .comp-done-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        .comp-stats {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        .comp-stat {
+            text-align: center;
+        }
+        .comp-stat-value {
+            font-size: 1.8em;
+            font-weight: 600;
+        }
+        .comp-stat-value.correct { color: #10B981; }
+        .comp-stat-value.wrong { color: #EF4444; }
+
         /* AR 面板 */
         .ar-stats {
             display: grid;
@@ -1054,6 +1223,7 @@
         <div class="nav-links">
             <a href="/tutor" class="nav-link">跟读学习</a>
             <a href="/grammar" class="nav-link">语法学习</a>
+            <a href="/stats" class="nav-link">📊 统计</a>
         </div>
     </nav>
 
@@ -1125,6 +1295,10 @@
                         <button class="play-btn" id="btn-play" onclick="playCurrentSentence()">▶</button>
                         <button class="nav-btn" id="btn-next" onclick="nextSentence()">→</button>
                     </div>
+
+                    <button class="btn btn-secondary" id="btn-comp" onclick="showComprehensionModal()" style="margin-top:12px;width:100%;">
+                        📖 章节测验
+                    </button>
                 </div>
 
                 <div class="sidebar">
@@ -1169,7 +1343,12 @@
                     </div>
 
                     <div class="sidebar-card">
-                        <div class="sidebar-title">📚 生词本 <span id="vocab-count" style="color:var(--text-secondary);font-weight:400;font-size:0.85em;">(0)</span></div>
+                        <div class="sidebar-title">
+                            📚 生词本
+                            <span id="vocab-count" style="color:var(--text-secondary);font-weight:400;font-size:0.85em;">(0)</span>
+                            <span id="review-badge" class="review-badge hidden" onclick="startReview()">🔔 待复习 <span id="review-count">0</span></span>
+                        </div>
+                        <button id="btn-start-review" class="btn-vocab" onclick="startReview()" style="width:100%;margin-bottom:10px;display:none;">📝 开始复习</button>
                         <div class="vocab-list" id="vocab-list">
                             <div class="vocab-empty">点击单词加入生词本</div>
                         </div>
@@ -1252,6 +1431,32 @@
         </div>
     </div>
 
+    <!-- 阅读理解Modal -->
+    <div class="word-modal-overlay" id="comp-modal">
+        <div class="word-modal" style="max-width:450px;">
+            <div class="word-modal-header">
+                <div class="word-modal-word">📖 章节理解测验</div>
+                <button class="word-modal-close" onclick="closeCompModal()">×</button>
+            </div>
+            <div id="comp-content" style="padding:20px;text-align:center;">
+                <!-- 题目内容 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 复习Modal -->
+    <div class="word-modal-overlay" id="review-modal">
+        <div class="word-modal" style="max-width:400px;">
+            <div class="word-modal-header">
+                <div class="word-modal-word" id="review-title">📝 词汇复习</div>
+                <button class="word-modal-close" onclick="closeReviewModal()">×</button>
+            </div>
+            <div id="review-content" style="padding:20px;text-align:center;">
+                <!-- 复习内容 -->
+            </div>
+        </div>
+    </div>
+
     <script>
         // 状态
         let bookData = null;
@@ -1265,6 +1470,15 @@
         let vocabulary = JSON.parse(localStorage.getItem('vocabulary') || '[]');
         let lookedWords = JSON.parse(localStorage.getItem('lookedWords') || '{}');
 
+        // 艾宾浩斯复习间隔（天）
+        const REVIEW_INTERVALS = [1, 3, 7, 14, 30];
+
+        // 复习数据
+        let reviewQueue = [];
+        let currentReviewIndex = 0;
+        let reviewCorrect = 0;
+        let reviewWrong = 0;
+
         // 录音状态
         let isRecording = false;
         let mediaRecorder = null;
@@ -1274,6 +1488,7 @@
 
         // 初始化
         updateVocabCount();
+        updateReviewReminder();
         loadBookList();
 
         // 显示书籍列表
@@ -1529,17 +1744,25 @@
                 if (defs[i]) meaning += `${p.textContent}: ${defs[i].textContent}; `;
             });
 
+            // 艾宾浩斯：明天复习
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
             vocabulary.push({
                 word: currentWord,
                 meaning: meaning || '未找到释义',
                 book: bookData?.book || 'Unknown',
                 chapter: bookData?.chapters[currentChapterIndex]?.name || 'Unknown',
-                date: new Date().toLocaleDateString()
+                date: new Date().toLocaleDateString(),
+                nextReview: tomorrow.toISOString().split('T')[0],
+                level: 0
             });
 
             localStorage.setItem('vocabulary', JSON.stringify(vocabulary));
             updateVocabCount();
             renderVocabList();
+            updateReviewReminder();
+            updateStats({ wordsLearned: 1 });
 
             const vocabBtn = document.getElementById('btn-add-vocab');
             vocabBtn.textContent = '✓ 已收录';
@@ -1562,6 +1785,134 @@
                     <div class="vocab-meaning">${v.meaning.substring(0, 50)}${v.meaning.length > 50 ? '...' : ''}</div>
                 </div>
             `).join('');
+        }
+
+        // ========== 艾宾浩斯复习系统 ==========
+
+        // 获取需要复习的单词
+        function getWordsForReview() {
+            const today = new Date().toISOString().split('T')[0];
+            return vocabulary.filter(v => {
+                if (!v.nextReview || v.nextReview <= today) return true;
+                return false;
+            });
+        }
+
+        // 更新复习提醒
+        function updateReviewReminder() {
+            const toReview = getWordsForReview();
+            const badge = document.getElementById('review-badge');
+            const count = document.getElementById('review-count');
+            const btn = document.getElementById('btn-start-review');
+
+            if (toReview.length > 0) {
+                badge.classList.remove('hidden');
+                count.textContent = toReview.length;
+                btn.style.display = 'block';
+            } else {
+                badge.classList.add('hidden');
+                btn.style.display = 'none';
+            }
+        }
+
+        // 开始复习
+        function startReview() {
+            reviewQueue = getWordsForReview();
+            if (reviewQueue.length === 0) {
+                alert('暂无需要复习的单词！');
+                return;
+            }
+            currentReviewIndex = 0;
+            reviewCorrect = 0;
+            reviewWrong = 0;
+            showReviewCard();
+            document.getElementById('review-modal').classList.add('show');
+        }
+
+        // 显示复习卡片
+        function showReviewCard() {
+            if (currentReviewIndex >= reviewQueue.length) {
+                showReviewDone();
+                return;
+            }
+
+            const word = reviewQueue[currentReviewIndex];
+            const content = document.getElementById('review-content');
+            content.innerHTML = `
+                <div class="review-progress">${currentReviewIndex + 1} / ${reviewQueue.length}</div>
+                <div class="review-word">${word.word}</div>
+                <div class="review-meaning">${word.meaning}</div>
+                <div class="review-buttons">
+                    <button class="review-btn wrong" onclick="reviewAnswer(false)">不认识</button>
+                    <button class="review-btn correct" onclick="reviewAnswer(true)">认识 ✓</button>
+                </div>
+            `;
+        }
+
+        // 复习答题
+        function reviewAnswer(correct) {
+            const word = reviewQueue[currentReviewIndex];
+
+            if (correct) {
+                reviewCorrect++;
+                // 答对了，提升复习间隔
+                word.level = (word.level || 0) + 1;
+                const intervalIndex = Math.min(word.level, REVIEW_INTERVALS.length - 1);
+                const days = REVIEW_INTERVALS[intervalIndex];
+                const next = new Date();
+                next.setDate(next.getDate() + days);
+                word.nextReview = next.toISOString().split('T')[0];
+            } else {
+                reviewWrong++;
+                // 答错了，重置间隔
+                word.level = 0;
+                const next = new Date();
+                next.setDate(next.getDate() + 1);
+                word.nextReview = next.toISOString().split('T')[0];
+            }
+
+            // 保存到 localStorage
+            localStorage.setItem('vocabulary', JSON.stringify(vocabulary));
+
+            currentReviewIndex++;
+            setTimeout(showReviewCard, 300);
+        }
+
+        // 复习完成
+        function showReviewDone() {
+            const content = document.getElementById('review-content');
+            const accuracy = reviewQueue.length > 0 ? Math.round((reviewCorrect / reviewQueue.length) * 100) : 0;
+
+            content.innerHTML = `
+                <div class="review-done">
+                    <div class="review-done-icon">${accuracy >= 80 ? '🎉' : accuracy >= 50 ? '👍' : '💪'}</div>
+                    <h3>${accuracy >= 80 ? '太棒了！' : accuracy >= 50 ? '不错！' : '继续加油！'}</h3>
+                    <p style="color:var(--text-secondary);margin:10px 0;">本次复习完成</p>
+                    <div class="review-stats">
+                        <div class="review-stat">
+                            <div class="review-stat-value correct">${reviewCorrect}</div>
+                            <div>认识</div>
+                        </div>
+                        <div class="review-stat">
+                            <div class="review-stat-value wrong">${reviewWrong}</div>
+                            <div>不认识</div>
+                        </div>
+                    </div>
+                    <p style="color:var(--text-secondary);">正确率: ${accuracy}%</p>
+                    <button class="btn btn-primary" onclick="closeReviewModal()" style="margin-top:20px;">完成</button>
+                </div>
+            `;
+
+            // 更新统计
+            updateStats({ wordsMastered: reviewCorrect });
+            updateReviewReminder();
+        }
+
+        // 关闭复习弹窗
+        function closeReviewModal() {
+            document.getElementById('review-modal').classList.remove('show');
+            updateReviewReminder();
+            renderVocabList();
         }
 
         // AR 计算
@@ -2101,6 +2452,133 @@
             if (score >= 60) return { text: '📚 不错！', class: 'good', color: '#3B82F6' };
             if (score >= 40) return { text: '💪 继续加油', class: 'practice', color: '#F59E0B' };
             return { text: '📖 多读几遍', class: 'try', color: '#EF4444' };
+        }
+
+        // ========== 学习统计 ==========
+        function updateStats(data) {
+            const stats = JSON.parse(localStorage.getItem('shadowStats') || '{}');
+            const today = new Date().toISOString().split('T')[0];
+
+            // 更新每日学习时间
+            if (data.studyTime) {
+                stats.totalStudyTime = (stats.totalStudyTime || 0) + data.studyTime;
+                stats.dailyStudyTime = stats.dailyStudyTime || {};
+                stats.dailyStudyTime[today] = (stats.dailyStudyTime[today] || 0) + data.studyTime;
+            }
+            if (data.wordsLearned) stats.wordsLearned = (stats.wordsLearned || 0) + data.wordsLearned;
+            if (data.wordsMastered) stats.wordsMastered = (stats.wordsMastered || 0) + data.wordsMastered;
+            if (data.sentencesPracticed) stats.sentencesPracticed = (stats.sentencesPracticed || 0) + data.sentencesPracticed;
+            if (data.chapterRead) stats.chapterRead = (stats.chapterRead || 0) + data.chapterRead;
+
+            // 更新连续天数
+            const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+            if (stats.lastStudyDate === today) {
+                // 今天已学习
+            } else if (stats.lastStudyDate === yesterday) {
+                stats.streakDays = (stats.streakDays || 0) + 1;
+            } else {
+                stats.streakDays = 1;
+            }
+            stats.lastStudyDate = today;
+
+            localStorage.setItem('shadowStats', JSON.stringify(stats));
+        }
+
+        // ========== 阅读理解题 ==========
+        // 示例阅读理解题目（实际应用中可以从后端加载）
+        const comprehensionQuestions = {
+            // 通用题目示例
+            'default': [
+                { q: "What is the main topic of this passage?", o: ["Adventure", "Cooking", "Sports", "Music"], a: 0 },
+                { q: "Who are the main characters mentioned?", o: ["The author and friends", "A family", "Students and teachers", "Not clearly mentioned"], a: 3 },
+                { q: "Where does the story take place?", o: ["In a city", "In a school", "Not clearly specified", "In a forest"], a: 2 },
+                { q: "What happened at the end of this chapter?", o: ["A surprise", "Characters reunited", "Not enough information", "A conflict"], a: 2 },
+                { q: "What can we learn from this passage?", o: ["Teamwork", "Courage", "Both are possible", "Neither"], a: 2 }
+            ]
+        };
+
+        let compQuestions = [];
+        let compIndex = 0;
+        let compCorrect = 0;
+
+        function showComprehensionModal() {
+            const bookId = currentBookId || 'default';
+            compQuestions = comprehensionQuestions[bookId] || comprehensionQuestions['default'];
+            compIndex = 0;
+            compCorrect = 0;
+            document.getElementById('comp-modal').classList.add('show');
+            showCompQuestion();
+        }
+
+        function showCompQuestion() {
+            const content = document.getElementById('comp-content');
+            if (compIndex >= compQuestions.length) {
+                showCompResult();
+                return;
+            }
+            const q = compQuestions[compIndex];
+            content.innerHTML = `
+                <div class="comp-progress">${compIndex + 1} / ${compQuestions.length}</div>
+                <div class="comp-question">${q.q}</div>
+                <div class="comp-options">
+                    ${q.o.map((opt, i) => `<div class="comp-option" onclick="selectCompAnswer(${i}, ${q.a})">${opt}</div>`).join('')}
+                </div>
+            `;
+        }
+
+        function selectCompAnswer(selected, correct) {
+            document.querySelectorAll('.comp-option').forEach(o => o.style.pointerEvents = 'none');
+            if (selected === correct) {
+                document.querySelectorAll('.comp-option')[selected].classList.add('correct');
+                compCorrect++;
+            } else {
+                document.querySelectorAll('.comp-option')[selected].classList.add('wrong');
+                document.querySelectorAll('.comp-option')[correct].classList.add('correct');
+            }
+            setTimeout(() => {
+                compIndex++;
+                showCompQuestion();
+            }, 1200);
+        }
+
+        function showCompResult() {
+            const content = document.getElementById('comp-content');
+            const total = compQuestions.length;
+            const accuracy = Math.round((compCorrect / total) * 100);
+
+            content.innerHTML = `
+                <div class="comp-done">
+                    <div class="comp-done-icon">${accuracy >= 80 ? '🎉' : accuracy >= 60 ? '👍' : '📚'}</div>
+                    <h3>${accuracy >= 80 ? '太棒了！' : accuracy >= 60 ? '还不错！' : '继续加油！'}</h3>
+                    <p style="color:var(--text-secondary);">本章理解测验完成</p>
+                    <div class="comp-stats">
+                        <div class="comp-stat">
+                            <div class="comp-stat-value correct">${compCorrect}</div>
+                            <div>正确</div>
+                        </div>
+                        <div class="comp-stat">
+                            <div class="comp-stat-value wrong">${total - compCorrect}</div>
+                            <div>错误</div>
+                        </div>
+                    </div>
+                    <p style="color:var(--text-secondary);">正确率: ${accuracy}%</p>
+                    <button class="btn btn-primary" onclick="closeCompModal()" style="margin-top:20px;">完成</button>
+                </div>
+            `;
+
+            // 更新统计
+            updateStats({ chapterRead: 1 });
+        }
+
+        function closeCompModal() {
+            document.getElementById('comp-modal').classList.remove('show');
+        }
+
+        // PWA 注册
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(() => console.log('SW registered'))
+                .catch(err => console.log('SW registration failed:', err));
         }
     </script>
 </body>

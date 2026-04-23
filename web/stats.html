@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学习统计 - Shadow Ebook</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-light: #818CF8;
+            --secondary: #10B981;
+            --bg-dark: #0F172A;
+            --bg-card: #1E293B;
+            --text-primary: #F8FAFC;
+            --text-secondary: #94A3B8;
+            --border: #334155;
+            --accent: #F59E0B;
+            --danger: #EF4444;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .top-nav {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .nav-brand .logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 8px;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+            background: var(--bg-card);
+        }
+
+        .nav-link.active {
+            color: var(--text-primary);
+            background: var(--primary);
+        }
+
+        .main-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 30px 20px;
+        }
+
+        .hero-title {
+            font-size: 2em;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .hero-subtitle {
+            color: var(--text-secondary);
+        }
+
+        /* 统计卡片 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .stat-icon {
+            font-size: 2.5em;
+            margin-bottom: 12px;
+        }
+
+        .stat-value {
+            font-size: 2.2em;
+            font-weight: 700;
+            color: var(--primary-light);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+
+        /* 连续打卡 */
+        .streak-card {
+            background: linear-gradient(135deg, var(--bg-card), rgba(245, 158, 11, 0.1));
+            border: 1px solid var(--accent);
+        }
+
+        .streak-card .stat-value {
+            color: var(--accent);
+        }
+
+        /* 图表区域 */
+        .chart-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* 学习时长柱状图 */
+        .bar-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 200px;
+            padding: 20px 0;
+            gap: 12px;
+        }
+
+        .bar-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            max-width: 60px;
+        }
+
+        .bar {
+            width: 100%;
+            background: linear-gradient(180deg, var(--primary), var(--primary-light));
+            border-radius: 8px 8px 0 0;
+            transition: height 0.5s ease;
+            min-height: 4px;
+        }
+
+        .bar-label {
+            margin-top: 8px;
+            font-size: 0.75em;
+            color: var(--text-secondary);
+        }
+
+        .bar-value {
+            font-size: 0.7em;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        /* 进度区域 */
+        .progress-section {
+            margin-top: 20px;
+        }
+
+        .progress-item {
+            margin-bottom: 20px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+
+        .progress-bar {
+            height: 12px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.5s ease;
+        }
+
+        .progress-fill.words { background: linear-gradient(90deg, #10B981, #34D399); }
+        .progress-fill.grammar { background: linear-gradient(90deg, #4F46E5, #818CF8); }
+        .progress-fill.speaking { background: linear-gradient(90deg, #F59E0B, #FBBF24); }
+
+        /* 词汇测试 */
+        .vocab-test-progress {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+        .vocab-test-question {
+            font-size: 1.3em;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .vocab-test-options {
+            display: grid;
+            gap: 10px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .vocab-test-option {
+            padding: 15px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .vocab-test-option:hover {
+            border-color: var(--primary);
+            background: rgba(79, 70, 229, 0.1);
+        }
+        .vocab-test-option.correct {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: #10B981;
+        }
+        .vocab-test-option.wrong {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: #EF4444;
+        }
+
+        /* 书单推荐 */
+        .book-rec-level {
+            text-align: center;
+            color: var(--primary-light);
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+        .book-rec-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 10px;
+        }
+        .book-rec-icon {
+            font-size: 2em;
+        }
+        .book-rec-info {
+            flex: 1;
+        }
+        .book-rec-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .book-rec-meta {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+        }
+        .book-rec-level-tag {
+            padding: 4px 10px;
+            background: rgba(79, 70, 229, 0.2);
+            color: var(--primary-light);
+            border-radius: 20px;
+            font-size: 0.8em;
+        }
+
+        /* 提示 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 4em;
+            margin-bottom: 16px;
+        }
+
+        .reset-btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .reset-btn:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        /* 底部导航 */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+        }
+
+        .bottom-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.75em;
+            transition: color 0.2s;
+        }
+
+        .bottom-nav-item:hover,
+        .bottom-nav-item.active {
+            color: var(--primary-light);
+        }
+
+        .bottom-nav-item .icon {
+            font-size: 1.4em;
+        }
+
+        /* 时间格式化 */
+        .time-format {
+            font-size: 0.8em;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="nav-brand">
+            <div class="logo">📖</div>
+            <span>Shadow Ebook</span>
+        </div>
+        <div class="nav-links">
+            <a href="/" class="nav-link">电子书</a>
+            <a href="/tutor" class="nav-link">跟读学习</a>
+            <a href="/grammar" class="nav-link">语法学习</a>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="hero">
+            <h1 class="hero-title">📊 学习统计</h1>
+            <p class="hero-subtitle">记录你的每一步成长</p>
+        </div>
+
+        <!-- 主要统计卡片 -->
+        <div class="stats-grid" id="stats-grid">
+            <!-- 动态填充 -->
+        </div>
+
+        <!-- 词汇量测试 -->
+        <div class="chart-section" id="vocab-test-section">
+            <div class="section-title">📚 词汇量测试</div>
+            <div id="vocab-test-content">
+                <p style="color:var(--text-secondary);margin-bottom:15px;">测试你的词汇水平，获得个性化书单推荐</p>
+                <button class="btn btn-primary" onclick="startVocabTest()">开始测试</button>
+            </div>
+        </div>
+
+        <!-- 词汇量测试题目 -->
+        <div class="chart-section hidden" id="vocab-test-question">
+            <div class="section-title">📚 词汇量测试</div>
+            <div class="vocab-test-progress" id="vocab-test-progress">1 / 20</div>
+            <div class="vocab-test-question" id="vocab-test-q">Which word means "重要的"?</div>
+            <div class="vocab-test-options" id="vocab-test-options">
+                <!-- 选项 -->
+            </div>
+        </div>
+
+        <!-- 书单推荐 -->
+        <div class="chart-section hidden" id="book-rec-section">
+            <div class="section-title">📖 推荐书单</div>
+            <div class="book-rec-level" id="book-rec-level">你的词汇水平: 初级 (500-1000词)</div>
+            <div class="book-rec-list" id="book-rec-list">
+                <!-- 推荐书籍 -->
+            </div>
+            <button class="btn btn-secondary" onclick="retestVocab()" style="margin-top:15px;">重新测试</button>
+        </div>
+
+        <!-- 学习时长图表 -->
+        <div class="chart-section">
+            <div class="section-title">📈 近7天学习时长</div>
+            <div class="bar-chart" id="time-chart">
+                <!-- 动态填充 -->
+            </div>
+        </div>
+
+        <!-- 掌握进度 -->
+        <div class="chart-section">
+            <div class="section-title">🎯 掌握进度</div>
+            <div class="progress-section" id="progress-section">
+                <!-- 动态填充 -->
+            </div>
+        </div>
+
+        <!-- 重置按钮 -->
+        <div style="text-align: center; margin-top: 30px;">
+            <button class="reset-btn" onclick="resetStats()">🗑️ 重置所有数据</button>
+        </div>
+    </div>
+
+    <script>
+        // 默认数据结构
+        const DEFAULT_STATS = {
+            totalStudyTime: 0,        // 总学习时间（秒）
+            streakDays: 0,            // 连续天数
+            lastStudyDate: null,      // 最后学习日期
+            wordsLearned: 0,          // 学习词汇数
+            wordsMastered: 0,         // 掌握词汇数
+            quizAccuracy: 0,          // 测验正确率
+            sentencesPracticed: 0,    // 跟读句子数
+            grammarProgress: {},      // 语法进度 { key: { correct, total } }
+            dailyStudyTime: {},       // 每日学习时间 { "2024-04-23": 3600 }
+            chapterRead: 0,           // 读完章节数
+            comprehensionAccuracy: 0, // 阅读理解正确率
+            vocabLevel: null          // 词汇水平测试结果
+        };
+
+        // 词汇测试题目（按难度分组）
+        const VOCAB_QUESTIONS = [
+            // 入门级 (CEFR A1, ~500词汇)
+            { q: "Which word means '重要的'?", o: ["important", "interest", "inside", "instead"], a: 0, level: 1 },
+            { q: "Which word means '困难的'?", o: ["different", "difficult", "dangerous", "delicious"], a: 1, level: 1 },
+            { q: "Which word means '快乐的'?", o: ["sad", "happy", "angry", "tired"], a: 1, level: 1 },
+            { q: "Which word means '大的'?", o: ["small", "big", "little", "short"], a: 1, level: 1 },
+            { q: "Which word means '说'?", o: ["speak", "spend", "special", "spirit"], a: 0, level: 1 },
+            // 初级 (CEFR A2, ~1000词汇)
+            { q: "Which word means '机会'?", o: ["opportunity", "option", "organization", "observation"], a: 0, level: 2 },
+            { q: "Which word means '决定'?", o: ["decision", "Division", "Discussion", "Description"], a: 0, level: 2 },
+            { q: "Which word means '经验'?", o: ["experience", "experiment", "expert", "expression"], a: 0, level: 2 },
+            { q: "Which word means '想象'?", o: ["imagine", "image", "immediate", "impact"], a: 0, level: 2 },
+            { q: "Which word means '提到'?", o: ["mention", "mission", "measure", "message"], a: 0, level: 2 },
+            // 中级 (CEFR B1, ~2000词汇)
+            { q: "Which word means '坚持'?", o: ["persist", "insist", "consist", "assist"], a: 0, level: 3 },
+            { q: "Which word means '分配'?", o: ["distribute", "contribute", "attribute", "distract"], a: 0, level: 3 },
+            { q: "Which word means '证实'?", o: ["confirm", "conform", "transform", "inform"], a: 0, level: 3 },
+            { q: "Which word means '观点'?", o: ["opinion", "option", "otion", "otion"], a: 0, level: 3 },
+            { q: "Which word means '能力'?", o: ["ability", "capacity", "cability", "mobility"], a: 0, level: 3 },
+            // 中高级 (CEFR B2, ~3000词汇)
+            { q: "Which word means '推测'?", o: ["infer", "offer", "prefer", "refer"], a: 0, level: 4 },
+            { q: "Which word means '逃避'?", o: ["avoid", "await", "award", "aware"], a: 0, level: 4 },
+            { q: "Which word means '阐明'?", o: ["clarify", "classify", "qualify", "simplify"], a: 0, level: 4 },
+            { q: "Which word means '调解'?", o: ["mediate", "mediate", "medlate", "modiate"], a: 0, level: 4 },
+            { q: "Which word means '综合'?", o: ["synthesize", "sympathize", "systemize", "symbolize"], a: 0, level: 4 }
+        ];
+
+        // 书单推荐数据
+        const BOOK_RECOMMENDATIONS = [
+            { title: "The Cat in the Hat", lexile: "BR", difficulty: "入门", suitable: "0-500词", desc: "经典儿童绘本，词汇简单" },
+            { title: "Frog and Toad Are Friends", lexile: "BR", difficulty: "入门", suitable: "0-500词", desc: "简单对话，基础词汇" },
+            { title: "Charlotte's Web", lexile: "680L", difficulty: "初级", suitable: "500-1000词", desc: "经典儿童文学，词汇量适中" },
+            { title: "Diary of a Wimpy Kid", lexile: "910L", difficulty: "初级", suitable: "800-1500词", desc: "轻松幽默，适合青少年" },
+            { title: "Harry Potter #1", lexile: "880L", difficulty: "中级", suitable: "1000-2000词", desc: "经典奇幻小说，词汇丰富" },
+            { title: "The Hobbit", lexile: "1000L", difficulty: "中级", suitable: "1500-2500词", desc: "托尔金经典，中等难度" },
+            { title: "The Great Gatsby", lexile: "1070L", difficulty: "中高级", suitable: "2000-3000词", desc: "美国文学经典，词汇较难" },
+            { title: "1984", lexile: "1090L", difficulty: "高级", suitable: "3000+词", desc: "反乌托邦小说，词汇量要求高" }
+        ];
+
+        let vocabTestIndex = 0;
+        let vocabTestCorrect = 0;
+        let vocabTestQuestions = [];
+
+        // 开始词汇测试
+        function startVocabTest() {
+            document.getElementById('vocab-test-question').classList.remove('hidden');
+            document.getElementById('book-rec-section').classList.add('hidden');
+            vocabTestIndex = 0;
+            vocabTestCorrect = 0;
+            vocabTestQuestions = [...VOCAB_QUESTIONS].sort(() => Math.random() - 0.5).slice(0, 10);
+            showVocabQuestion();
+        }
+
+        function showVocabQuestion() {
+            if (vocabTestIndex >= vocabTestQuestions.length) {
+                showVocabResult();
+                return;
+            }
+            const q = vocabTestQuestions[vocabTestIndex];
+            document.getElementById('vocab-test-progress').textContent = `${vocabTestIndex + 1} / ${vocabTestQuestions.length}`;
+            document.getElementById('vocab-test-q').textContent = q.q;
+            document.getElementById('vocab-test-options').innerHTML = q.o.map((opt, i) =>
+                `<div class="vocab-test-option" onclick="selectVocabAnswer(${i}, ${q.a})">${opt}</div>`
+            ).join('');
+        }
+
+        function selectVocabAnswer(selected, correct) {
+            const options = document.querySelectorAll('.vocab-test-option');
+            options.forEach(o => o.style.pointerEvents = 'none');
+            if (selected === correct) {
+                options[selected].classList.add('correct');
+                vocabTestCorrect++;
+            } else {
+                options[selected].classList.add('wrong');
+                options[correct].classList.add('correct');
+            }
+            setTimeout(() => {
+                vocabTestIndex++;
+                showVocabQuestion();
+            }, 1000);
+        }
+
+        function showVocabResult(savedLevel) {
+            document.getElementById('vocab-test-question').classList.add('hidden');
+            document.getElementById('vocab-test-content').classList.add('hidden');
+            document.getElementById('book-rec-section').classList.remove('hidden');
+
+            let level, levelName;
+            if (savedLevel !== undefined) {
+                level = savedLevel;
+            } else {
+                const accuracy = vocabTestCorrect / vocabTestQuestions.length;
+                if (accuracy >= 0.9) { level = 4; levelName = "高级 (3000+词)"; }
+                else if (accuracy >= 0.7) { level = 3; levelName = "中高级 (2000-3000词)"; }
+                else if (accuracy >= 0.5) { level = 2; levelName = "中级 (1000-2000词)"; }
+                else { level = 1; levelName = "初级 (500-1000词)"; }
+
+                // 保存结果
+                const stats = loadStats();
+                stats.vocabLevel = level;
+                saveStats(stats);
+            }
+
+            // 根据等级获取名称
+            const levelNames = { 1: "初级 (500-1000词)", 2: "中级 (1000-2000词)", 3: "中高级 (2000-3000词)", 4: "高级 (3000+词)" };
+            levelName = levelNames[level] || "初级 (500-1000词)";
+
+            // 显示推荐书单
+            document.getElementById('book-rec-level').textContent = `你的词汇水平: ${levelName}`;
+            const suitableBooks = BOOK_RECOMMENDATIONS.filter(b => {
+                if (level <= 1 && b.difficulty === "入门") return true;
+                if (level === 2 && (b.difficulty === "初级" || b.difficulty === "入门")) return true;
+                if (level === 3 && (b.difficulty === "中级" || b.difficulty === "初级" || b.difficulty === "入门")) return true;
+                if (level >= 4) return true;
+                return false;
+            });
+
+            document.getElementById('book-rec-list').innerHTML = suitableBooks.slice(0, 3).map(book => `
+                <div class="book-rec-item">
+                    <div class="book-rec-icon">📚</div>
+                    <div class="book-rec-info">
+                        <div class="book-rec-title">${book.title}</div>
+                        <div class="book-rec-meta">${book.desc}</div>
+                    </div>
+                    <span class="book-rec-level-tag">${book.difficulty}</span>
+                </div>
+            `).join('');
+        }
+
+        function retestVocab() {
+            document.getElementById('vocab-test-question').classList.add('hidden');
+            document.getElementById('book-rec-section').classList.add('hidden');
+            document.getElementById('vocab-test-content').classList.remove('hidden');
+        }
+
+        // 加载统计数据
+        function loadStats() {
+            const saved = localStorage.getItem('shadowStats');
+            if (saved) {
+                return { ...DEFAULT_STATS, ...JSON.parse(saved) };
+            }
+            return DEFAULT_STATS;
+        }
+
+        // 保存统计数据
+        function saveStats(stats) {
+            localStorage.setItem('shadowStats', JSON.stringify(stats));
+        }
+
+        // 更新连续天数
+        function updateStreak(stats) {
+            const today = new Date().toISOString().split('T')[0];
+            const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+            if (stats.lastStudyDate === today) {
+                // 今天已学习，不更新连续天数
+            } else if (stats.lastStudyDate === yesterday) {
+                // 昨天学习过，连续天数+1
+                stats.streakDays++;
+                stats.lastStudyDate = today;
+            } else if (stats.lastStudyDate !== today) {
+                // 中间断了一天，重置为1
+                stats.streakDays = 1;
+                stats.lastStudyDate = today;
+            }
+
+            return stats;
+        }
+
+        // 格式化时间
+        function formatTime(seconds) {
+            if (seconds < 60) return seconds + '秒';
+            if (seconds < 3600) return Math.round(seconds / 60) + '分钟';
+            const hours = Math.floor(seconds / 3600);
+            const mins = Math.round((seconds % 3600) / 60);
+            return hours + '小时' + (mins > 0 ? mins + '分钟' : '');
+        }
+
+        // 渲染统计卡片
+        function renderStats(stats) {
+            const grid = document.getElementById('stats-grid');
+
+            const streakClass = stats.streakDays >= 3 ? 'streak-card' : '';
+
+            grid.innerHTML = `
+                <div class="stat-card ${streakClass}">
+                    <div class="stat-icon">🔥</div>
+                    <div class="stat-value">${stats.streakDays}</div>
+                    <div class="stat-label">连续打卡天数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⏱️</div>
+                    <div class="stat-value">${formatTime(stats.totalStudyTime)}</div>
+                    <div class="stat-label">总学习时长</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📚</div>
+                    <div class="stat-value">${stats.wordsLearned}</div>
+                    <div class="stat-label">学习词汇</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🗣️</div>
+                    <div class="stat-value">${stats.sentencesPracticed}</div>
+                    <div class="stat-label">跟读句子</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-value">${stats.wordsMastered}</div>
+                    <div class="stat-label">掌握词汇</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📖</div>
+                    <div class="stat-value">${stats.chapterRead}</div>
+                    <div class="stat-label">读完章节</div>
+                </div>
+            `;
+        }
+
+        // 渲染柱状图
+        function renderBarChart(stats) {
+            const chart = document.getElementById('time-chart');
+            const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+            const today = new Date();
+            const data = [];
+
+            // 获取近7天数据
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(today.getTime() - i * 86400000);
+                const dateStr = date.toISOString().split('T')[0];
+                const dayName = days[date.getDay()];
+                const time = stats.dailyStudyTime[dateStr] || 0;
+                data.push({ date: dateStr, day: dayName, time });
+            }
+
+            const maxTime = Math.max(...data.map(d => d.time), 3600); // 最小1小时作为最大值
+
+            chart.innerHTML = data.map(d => {
+                const height = d.time > 0 ? Math.max((d.time / maxTime) * 150, 20) : 4;
+                const isToday = d.date === today.toISOString().split('T')[0];
+                return `
+                    <div class="bar-item">
+                        <div class="bar-value">${d.time > 0 ? formatTime(d.time) : '-'}</div>
+                        <div class="bar" style="height: ${height}px; ${isToday ? 'opacity: 1;' : 'opacity: 0.7;'}"></div>
+                        <div class="bar-label">${d.day}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 渲染掌握进度
+        function renderProgress(stats) {
+            const section = document.getElementById('progress-section');
+
+            // 计算各模块进度
+            const grammarKeys = Object.keys(stats.grammarProgress || {});
+            const grammarTotal = grammarKeys.reduce((sum, key) => {
+                const g = stats.grammarProgress[key];
+                return sum + (g.correct || 0);
+            }, 0);
+            const grammarMax = grammarKeys.length * 5;
+
+            const wordProgress = stats.wordsMastered > 0
+                ? Math.min((stats.wordsMastered / stats.wordsLearned) * 100, 100)
+                : 0;
+
+            const grammarProgress = grammarMax > 0
+                ? Math.min((grammarTotal / grammarMax) * 100, 100)
+                : 0;
+
+            const speakingProgress = stats.sentencesPracticed > 0
+                ? Math.min(stats.sentencesPracticed / 100 * 100, 100)
+                : 0;
+
+            section.innerHTML = `
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <span>📚 词汇掌握</span>
+                        <span>${stats.wordsMastered} / ${stats.wordsLearned} 词</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill words" style="width: ${wordProgress}%"></div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <span>📖 语法练习</span>
+                        <span>${grammarTotal} / ${grammarMax} 题</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill grammar" style="width: ${grammarProgress}%"></div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <span>🗣️ 跟读练习</span>
+                        <span>${stats.sentencesPracticed} 句</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill speaking" style="width: ${speakingProgress}%"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 重置数据
+        function resetStats() {
+            if (confirm('确定要重置所有学习数据吗？此操作不可恢复。')) {
+                localStorage.removeItem('shadowStats');
+                const stats = loadStats();
+                renderStats(stats);
+                renderBarChart(stats);
+                renderProgress(stats);
+            }
+        }
+
+        // 初始化
+        function init() {
+            const stats = loadStats();
+            renderStats(stats);
+            renderBarChart(stats);
+            renderProgress(stats);
+
+            // 如果已有词汇测试结果，显示推荐
+            if (stats.vocabLevel !== null && stats.vocabLevel !== undefined) {
+                showVocabResult(stats.vocabLevel);
+            }
+        }
+
+        // 注册 Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(() => console.log('SW registered'))
+                .catch(err => console.log('SW registration failed:', err));
+        }
+
+        init();
+    </script>
+</body>
+</html>

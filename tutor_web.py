@@ -168,6 +168,21 @@ def ebook_page():
     """电子书阅读页面"""
     return send_from_directory(app.root_path + '/web', 'ebook.html')
 
+@app.route('/manifest.json')
+def manifest():
+    """PWA manifest"""
+    return send_from_directory(app.root_path + '/web', 'manifest.json')
+
+@app.route('/service-worker.js')
+def service_worker():
+    """Service Worker"""
+    return send_from_directory(app.root_path + '/web', 'service-worker.js')
+
+@app.route('/stats')
+def stats_page():
+    """学习统计页面"""
+    return send_from_directory(app.root_path + '/web', 'stats.html')
+
 @app.route('/api/course')
 def get_course():
     """获取课程内容"""
