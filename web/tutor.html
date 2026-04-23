@@ -73,7 +73,7 @@
             margin-top: 10px;
         }
 
-        .controls { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 20px 0; }
+        .controls { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 20px 0; position: relative; z-index: 10; }
         .btn {
             padding: 14px 28px;
             border: none;
@@ -84,6 +84,8 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
+            position: relative;
+            z-index: 11;
         }
         .btn-primary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -93,7 +95,9 @@
         .btn-secondary { background: #e8f0fe; color: #667eea; }
         .btn-secondary:hover { background: #d0e0ff; }
         .btn-danger { background: #ff6b6b; color: white; }
+        .btn-danger:hover { background: #ff5252; transform: scale(1.05); }
         .btn-success { background: #51cf66; color: white; }
+        .btn-success:hover { background: #69d179; transform: scale(1.05); }
 
         /* 进度 */
         .progress-bar {
