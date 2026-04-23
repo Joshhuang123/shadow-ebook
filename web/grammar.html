@@ -469,6 +469,178 @@
             margin-bottom: 12px;
         }
 
+        /* 练习按钮样式 */
+        .grammar-card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .practice-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--secondary);
+            color: white;
+        }
+
+        .practice-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        /* 进度徽章 */
+        .progress-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .progress-badge.not-started {
+            background: var(--border);
+            color: var(--text-secondary);
+        }
+
+        .progress-badge.in-progress {
+            background: rgba(245, 158, 11, 0.2);
+            color: #F59E0B;
+        }
+
+        .progress-badge.mastered {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10B981;
+        }
+
+        /* 练习弹窗 */
+        .practice-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            display: none;
+            overflow-y: auto;
+        }
+
+        .practice-modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .practice-modal-content {
+            max-width: 600px;
+            width: 90%;
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 32px;
+            position: relative;
+        }
+
+        .practice-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .practice-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: var(--primary-light);
+        }
+
+        .practice-progress {
+            background: var(--bg-dark);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            color: var(--text-secondary);
+        }
+
+        .practice-question {
+            font-size: 1.2em;
+            color: var(--text-primary);
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .practice-options {
+            display: grid;
+            gap: 12px;
+        }
+
+        .practice-option {
+            padding: 16px 20px;
+            background: var(--bg-dark);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1em;
+            color: var(--text-primary);
+            text-align: left;
+        }
+
+        .practice-option:hover:not(.disabled) {
+            border-color: var(--primary);
+            background: rgba(79, 70, 229, 0.1);
+        }
+
+        .practice-option.correct {
+            border-color: var(--secondary);
+            background: rgba(16, 185, 129, 0.2);
+        }
+
+        .practice-option.incorrect {
+            border-color: #EF4444;
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .practice-option.disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .practice-result {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .practice-result-icon {
+            font-size: 4em;
+            margin-bottom: 16px;
+        }
+
+        .practice-result-text {
+            font-size: 1.3em;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .practice-result-score {
+            font-size: 1.1em;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .practice-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
         @media (max-width: 768px) {
             .tense-compare {
                 grid-template-columns: 1fr;
@@ -705,6 +877,27 @@
         <div class="grammar-modal-content">
             <button class="modal-close" onclick="closeGrammar()">×</button>
             <div id="grammar-content"></div>
+        </div>
+    </div>
+
+    <!-- 语法练习弹窗 -->
+    <div class="practice-modal" id="practice-modal">
+        <div class="practice-modal-content">
+            <div class="practice-header">
+                <span class="practice-title" id="practice-title">练习</span>
+                <span class="practice-progress" id="practice-progress">1/5</span>
+            </div>
+            <div class="practice-question" id="practice-question"></div>
+            <div class="practice-options" id="practice-options"></div>
+            <div class="practice-result hidden" id="practice-result">
+                <div class="practice-result-icon" id="practice-result-icon">🎉</div>
+                <div class="practice-result-text" id="practice-result-text">太棒了！</div>
+                <div class="practice-result-score" id="practice-result-score">正确率 80%</div>
+                <div class="practice-buttons">
+                    <button class="btn btn-secondary" onclick="closePractice()">关闭</button>
+                    <button class="btn btn-primary" onclick="restartPractice()">再练一次</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1977,6 +2170,181 @@
             }
         };
 
+        // ==================== 语法练习题库 ====================
+        const grammarQuestions = {
+            // KET 题目
+            'ket-present-simple': [
+                { q: "She ___ English every day.", o: ["learn", "learns", "learning"], a: 1 },
+                { q: "I don't ___ fish.", o: ["like", "likes", "liking"], a: 0 },
+                { q: "___ he play football? - Yes, he ___", o: ["Does, does", "Do, do", "Does, do"], a: 2 },
+                { q: "The sun ___ in the east.", o: ["rise", "rises", "rising"], a: 1 },
+                { q: "My mother ___ coffee every morning.", o: ["drink", "drinks", "drinking"], a: 1 },
+            ],
+            'ket-present-continuous': [
+                { q: "Look! The children ___ in the garden.", o: ["play", "are playing", "played"], a: 1 },
+                { q: "I ___ my homework now.", o: ["do", "am doing", "does"], a: 1 },
+                { q: "She ___ a book at the moment.", o: ["read", "is reading", "reads"], a: 1 },
+                { q: "What ___ you ___? - I'm waiting.", o: ["are, doing", "do, doing", "is, doing"], a: 0 },
+                { q: "The baby ___ now.", o: ["sleeps", "is sleeping", "slept"], a: 1 },
+            ],
+            'ket-simple-past': [
+                { q: "I ___ to Beijing last year.", o: ["go", "went", "gone"], a: 1 },
+                { q: "She ___ her homework yesterday.", o: ["finish", "finished", "finishes"], a: 1 },
+                { q: "___ you ___ the film? - Yes, I ___", o: ["Did, see, did", "Do, see, do", "Does, saw, did"], a: 0 },
+                { q: "He ___ a big house last month.", o: ["buy", "bought", "buys"], a: 1 },
+                { q: "They ___ at home yesterday.", o: ["wasn't", "weren't", "aren't"], a: 1 },
+            ],
+            'ket-there-be': [
+                { q: "There ___ a book on the table.", o: ["is", "are", "be"], a: 0 },
+                { q: "There ___ two cats in the room.", o: ["is", "are", "has"], a: 1 },
+                { q: "___ there any milk? - No, there ___", o: ["Is, isn't", "Are, aren't", "Is, isn't"], a: 0 },
+                { q: "There ___ a meeting yesterday.", o: ["was", "were", "is"], a: 0 },
+                { q: "There ___ many people at the party.", o: ["was", "were", "is"], a: 1 },
+            ],
+            'ket-future-going-to': [
+                { q: "I ___ study English tomorrow.", o: ["am going to", "going to", "go to"], a: 0 },
+                { q: "What ___ you ___ to do this weekend?", o: ["are, going", "do, want", "is, going"], a: 0 },
+                { q: "She ___ buy a new dress.", o: ["is going to", "are going to", "going to"], a: 0 },
+                { q: "Look at the clouds! It ___ rain.", o: ["is going to", "will", "can"], a: 0 },
+                { q: "___ you ___ to come? - Yes, I ___", o: ["Are, going, am", "Do, go, do", "Are, go, am"], a: 0 },
+            ],
+            'ket-modals': [
+                { q: "___ I open the window?", o: ["Can", "Do", "Does"], a: 0 },
+                { q: "You ___ finish your homework first.", o: ["must", "can", "may"], a: 0 },
+                { q: "I ___ swim when I was 5.", o: ["could", "can", "must"], a: 0 },
+                { q: "You ___ see a doctor. You look ill.", o: ["should", "can", "mustn't"], a: 0 },
+                { q: "___ I help you with your bags?", o: ["Can", "Must", "Should"], a: 0 },
+            ],
+            'ket-comparatives': [
+                { q: "Tom is ___ than Jack.", o: ["taller", "tallest", "more tall"], a: 0 },
+                { q: "This book is ___ than that one.", o: ["more interesting", "interestinger", "most interesting"], a: 0 },
+                { q: "She is the ___ girl in the class.", o: ["tallest", "taller", "most tall"], a: 0 },
+                { q: "My house is ___ yours.", o: ["bigger than", "biggest than", "bigger then"], a: 0 },
+                { q: "He is ___ student in our school.", o: ["the best", "better", "good"], a: 0 },
+            ],
+            'ket-frequency': [
+                { q: "I go swimming ___ a week.", o: ["twice", "two times", "second"], a: 0 },
+                { q: "___ do you exercise? - Every day.", o: ["How often", "How many", "What time"], a: 0 },
+                { q: "She ___ goes to the cinema. She prefers staying home.", o: ["never", "always", "often"], a: 0 },
+                { q: "I have breakfast ___ a week.", o: ["three times", "third time", "three time"], a: 0 },
+                { q: "He is ___ late. He's very punctual.", o: ["never", "always", "sometimes"], a: 0 },
+            ],
+            'ket-possessive': [
+                { q: "That's ___ bag.", o: ["Tom's", "Tom", "Toms"], a: 0 },
+                { q: "The capital ___ France is Paris.", o: ["of", "'s", "to"], a: 0 },
+                { q: "___ room is bigger, yours or mine?", o: ["Whose", "Who's", "Who"], a: 0 },
+                { q: "This is a picture ___ my family.", o: ["of", "'s", "to"], a: 0 },
+                { q: "The ___ toys are expensive.", o: ["children's", "childrens", "childrens'"], a: 0 },
+            ],
+            'ket-pronouns': [
+                { q: "___ is my teacher. ___ name is Mrs. Smith.", o: ["She, Her", "He, His", "It, Its"], a: 0 },
+                { q: "Give the book to ___, please.", o: ["me", "I", "my"], a: 0 },
+                { q: "I bought ___ a new computer.", o: ["myself", "me", "I"], a: 0 },
+                { q: "This is ___ bag. It's not yours.", o: ["hers", "her", "she"], a: 0 },
+                { q: "Help ___ to some fruit.", o: ["yourself", "you", "yours"], a: 0 },
+            ],
+            'ket-prepositions': [
+                { q: "I was born ___ 2005.", o: ["in", "on", "at"], a: 0 },
+                { q: "We have class ___ Monday.", o: ["on", "in", "at"], a: 0 },
+                { q: "She sits ___ the window.", o: ["next to", "in", "on"], a: 0 },
+                { q: "The cat is ___ the table.", o: ["under", "in", "at"], a: 0 },
+                { q: "I get up ___ 7 o'clock ___ the morning.", o: ["at, in", "in, at", "on, in"], a: 0 },
+            ],
+            'ket-imperative': [
+                { q: "___ the door, please.", o: ["Open", "Opens", "Opening"], a: 0 },
+                { q: "___ be late! It's impolite.", o: ["Don't", "Not", "Doesn't"], a: 0 },
+                { q: "___ carefully in class.", o: ["Listen", "Listens", "Listening"], a: 0 },
+                { q: "___ worry! Everything will be fine.", o: ["Don't", "Not", "Doesn't"], a: 0 },
+                { q: "Please ___ down.", o: ["sit", "sits", "sitting"], a: 0 },
+            ],
+
+            // PET 题目
+            'pet-present-perfect': [
+                { q: "I ___ finished my homework.", o: ["have", "has", "had"], a: 0 },
+                { q: "She ___ already ___ to Beijing.", o: ["has, been", "have, gone", "had, been"], a: 0 },
+                { q: "___ you ever ___ to Shanghai?", o: ["Have, been", "Has, been", "Did, go"], a: 0 },
+                { q: "I haven't seen her ___.", o: ["yet", "already", "just"], a: 0 },
+                { q: "He ___ lived here since 2010.", o: ["has", "have", "had"], a: 0 },
+            ],
+            'pet-past-perfect': [
+                { q: "By the time I arrived, she ___.", o: ["had left", "left", "has left"], a: 0 },
+                { q: "He realized he ___ a mistake.", o: ["had made", "made", "has made"], a: 0 },
+                { q: "When I got home, they ___.", o: ["had already eaten", "already ate", "have eaten"], a: 0 },
+                { q: "She said she ___ the movie before.", o: ["had seen", "saw", "has seen"], a: 0 },
+                { q: "___, I had finished my work.", o: ["Before you came", "When you came", "After you came"], a: 0 },
+            ],
+            'pet-passive': [
+                { q: "English ___ in many countries.", o: ["is spoken", "speaks", "spoken"], a: 0 },
+                { q: "The book ___ by J.K. Rowling.", o: ["was written", "wrote", "is wrote"], a: 0 },
+                { q: "The homework ___ now.", o: ["is being finished", "is finishing", "has been finished"], a: 0 },
+                { q: "Many trees ___ in the garden last spring.", o: ["were planted", "planted", "are planted"], a: 0 },
+                { q: "This cake ___ by my mother.", o: ["was made", "made", "is making"], a: 0 },
+            ],
+            'pet-conditional': [
+                { q: "If it ___ tomorrow, I will stay home.", o: ["rains", "rained", "will rain"], a: 0 },
+                { q: "If I ___ a million dollars, I would buy a house.", o: ["had", "have", "would have"], a: 0 },
+                { q: "If you heat water, it ___.", o: ["boils", "boiled", "will boil"], a: 0 },
+                { q: "If I ___ you, I would accept the offer.", o: ["were", "was", "am"], a: 0 },
+                { q: "___ you ___ angry, I would apologize.", o: ["Were,", "Are,", "If you are,"], a: 0 },
+            ],
+            'pet-reported-speech': [
+                { q: "\"I am tired,\" she said. She said she ___ tired.", o: ["was", "is", "been"], a: 0 },
+                { q: "\"I will come,\" he said. He said he ___.", o: ["would come", "will come", "can come"], a: 0 },
+                { q: "\"I can swim,\" she said. She said she ___.", o: ["could swim", "can swim", "could not swim"], a: 0 },
+                { q: "\"I went to Paris,\" he said. He said he ___ to Paris.", o: ["had gone", "went", "has gone"], a: 0 },
+                { q: "She said she ___ the movie. (yesterday)", o: ["had seen", "saw", "has seen"], a: 0 },
+            ],
+            'pet-relatives': [
+                { q: "The girl ___ is singing is my sister.", o: ["who", "which", "that"], a: 0 },
+                { q: "The book ___ I bought is interesting.", o: ["which", "who", "whom"], a: 0 },
+                { q: "I have a friend ___ father is a doctor.", o: ["whose", "who's", "whom"], a: 0 },
+                { q: "The shop ___ I bought this is closed.", o: ["where", "which", "that"], a: 0 },
+                { q: "The best movie ___ I've ever seen.", o: ["that", "which", "who"], a: 0 },
+            ],
+            'pet-modals-perfect': [
+                { q: "He ___ have been to Beijing. He knows so much about it.", o: ["must", "can't", "shouldn't"], a: 0 },
+                { q: "She ___ have stolen the money. She was with me all day.", o: ["can't", "must", "could"], a: 0 },
+                { q: "You ___ have studied harder. You failed the exam.", o: ["should", "must", "can"], a: 0 },
+                { q: "He ___ have missed the train. He was late.", o: ["might", "must", "should"], a: 0 },
+                { q: "You ___ have told her the secret.", o: ["shouldn't", "must", "can"], a: 0 },
+            ],
+            'pet-used-to': [
+                { q: "I ___ play tennis, but now I play basketball.", o: ["used to", "use to", "did use to"], a: 0 },
+                { q: "She ___ live in Paris.", o: ["used to", "used to to", "use to"], a: 0 },
+                { q: "___ you ___ to smoke?", o: ["Did, use", "Used,", "Do, used"], a: 0 },
+                { q: "He ___ be shy, but now he's very friendly.", o: ["used to", "use to", "used to to"], a: 0 },
+                { q: "There ___ be a cinema here.", o: ["used to", "use to", "used to"], a: 0 },
+            ],
+            'pet-gerund-infinitive': [
+                { q: "I enjoy ___ books.", o: ["reading", "read", "to read"], a: 0 },
+                { q: "She decided ___ to Beijing.", o: ["to move", "moving", "move"], a: 0 },
+                { q: "Would you mind ___ the window?", o: ["opening", "open", "to open"], a: 0 },
+                { q: "I want ___ English.", o: ["to learn", "learning", "learn"], a: 0 },
+                { q: "He suggested ___ the problem.", o: ["solving", "to solve", "solve"], a: 0 },
+            ],
+            'pet-quantifiers': [
+                { q: "There is ___ water in the glass.", o: ["a little", "a few", "few"], a: 0 },
+                { q: "I have ___ friends in this city.", o: ["a few", "a little", "few"], a: 0 },
+                { q: "___ people came to the party.", o: ["A lot of", "Much", "Little"], a: 0 },
+                { q: "There is ___ time left.", o: ["little", "a few", "few"], a: 0 },
+                { q: "I have ___ homework today.", o: ["much", "many", "a few"], a: 0 },
+            ],
+            'pet-adverb-clauses': [
+                { q: "___ I was sleeping, someone called.", o: ["While", "When", "After"], a: 0 },
+                { q: "I didn't go ___ I was sick.", o: ["because", "although", "when"], a: 0 },
+                { q: "___ it rained, we enjoyed the trip.", o: ["Although", "Because", "When"], a: 0 },
+                { q: "She studied hard ___ she could pass the exam.", o: ["so that", "although", "because"], a: 0 },
+                { q: "___ you arrive, call me.", o: ["When", "While", "During"], a: 0 },
+            ],
+            'pet-conjunctions': [
+                { q: "I like tea ___ coffee.", o: ["and", "but", "or"], a: 0 },
+                { q: "She's old ___ she's very active.", o: ["but", "and", "so"], a: 0 },
+                { q: "Study hard ___ you'll fail.", o: ["or", "but", "so"], a: 0 },
+                { q: "It was raining, ___ we stayed home.", o: ["so", "but", "and"], a: 0 },
+                { q: "___ Tom ___ Jerry are my friends.", o: ["Both, and", "Either, or", "Neither, nor"], a: 0 },
+            ],
+        };
+
         function showGrammar(key) {
             const data = grammarData[key];
             if (!data) return;
@@ -1994,6 +2362,18 @@
                     </div>
                 `;
             });
+
+            // 检查是否有练习题
+            const hasQuestions = grammarQuestions[key] && grammarQuestions[key].length > 0;
+            if (hasQuestions) {
+                html += `
+                    <div class="grammar-section" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
+                        <button class="practice-btn" onclick="closeGrammar(); startPractice('${key}');" style="width: 100%; padding: 14px; font-size: 1em;">
+                            🎯 开始练习 (${grammarQuestions[key].length}题)
+                        </button>
+                    </div>
+                `;
+            }
 
             document.getElementById('grammar-content').innerHTML = html;
             document.getElementById('grammar-modal').classList.add('show');
@@ -2027,6 +2407,161 @@
                 section.classList.toggle('active', section.id === exam + '-section');
             });
         }
+
+        // ==================== 语法练习功能 ====================
+        let currentPractice = {
+            key: null,
+            questions: [],
+            currentIndex: 0,
+            correct: 0,
+            answered: false
+        };
+
+        function startPractice(key) {
+            const questions = grammarQuestions[key];
+            if (!questions || questions.length === 0) {
+                alert('暂无练习题');
+                return;
+            }
+
+            currentPractice = {
+                key: key,
+                questions: questions,
+                currentIndex: 0,
+                correct: 0,
+                answered: false
+            };
+
+            const grammar = grammarData[key];
+            document.getElementById('practice-title').textContent = grammar ? grammar.title : '语法练习';
+            showPracticeQuestion();
+            document.getElementById('practice-modal').classList.add('show');
+        }
+
+        function showPracticeQuestion() {
+            const q = currentPractice.questions[currentPractice.currentIndex];
+            document.getElementById('practice-progress').textContent =
+                `${currentPractice.currentIndex + 1}/${currentPractice.questions.length}`;
+            document.getElementById('practice-question').textContent = q.q;
+
+            const optionsHtml = q.o.map((opt, i) =>
+                `<button class="practice-option" onclick="checkAnswer(${i})">${opt}</button>`
+            ).join('');
+            document.getElementById('practice-options').innerHTML = optionsHtml;
+            document.getElementById('practice-options').classList.remove('hidden');
+            document.getElementById('practice-result').classList.add('hidden');
+            currentPractice.answered = false;
+        }
+
+        function checkAnswer(selectedIndex) {
+            if (currentPractice.answered) return;
+            currentPractice.answered = true;
+
+            const q = currentPractice.questions[currentPractice.currentIndex];
+            const options = document.querySelectorAll('.practice-option');
+
+            options.forEach((opt, i) => {
+                opt.classList.add('disabled');
+                if (i === q.a) {
+                    opt.classList.add('correct');
+                } else if (i === selectedIndex && selectedIndex !== q.a) {
+                    opt.classList.add('incorrect');
+                }
+            });
+
+            if (selectedIndex === q.a) {
+                currentPractice.correct++;
+            }
+
+            // 延迟后自动下一题
+            setTimeout(() => {
+                currentPractice.currentIndex++;
+                if (currentPractice.currentIndex >= currentPractice.questions.length) {
+                    showPracticeResults();
+                } else {
+                    showPracticeQuestion();
+                }
+            }, 1200);
+        }
+
+        function showPracticeResults() {
+            const total = currentPractice.questions.length;
+            const correct = currentPractice.correct;
+            const percentage = Math.round((correct / total) * 100);
+
+            document.getElementById('practice-options').classList.add('hidden');
+            document.getElementById('practice-result').classList.remove('hidden');
+
+            let icon = '🎉';
+            let text = '太棒了！';
+            if (percentage < 60) {
+                icon = '💪';
+                text = '继续加油！';
+            } else if (percentage < 80) {
+                icon = '👍';
+                text = '做得不错！';
+            }
+
+            document.getElementById('practice-result-icon').textContent = icon;
+            document.getElementById('practice-result-text').textContent = text;
+            document.getElementById('practice-result-score').textContent =
+                `正确率 ${percentage}% (${correct}/${total})`;
+
+            // 保存进度
+            savePracticeProgress(currentPractice.key, correct, total);
+        }
+
+        function closePractice() {
+            document.getElementById('practice-modal').classList.remove('show');
+            updateAllProgressBadges();
+        }
+
+        function restartPractice() {
+            startPractice(currentPractice.key);
+        }
+
+        function savePracticeProgress(key, correct, total) {
+            const percentage = Math.round((correct / total) * 100);
+            let progress = JSON.parse(localStorage.getItem('grammarProgress') || '{}');
+            progress[key] = { practiced: true, correct, total, percentage };
+            localStorage.setItem('grammarProgress', JSON.stringify(progress));
+        }
+
+        function loadPracticeProgress() {
+            return JSON.parse(localStorage.getItem('grammarProgress') || '{}');
+        }
+
+        function getProgressBadge(key) {
+            const progress = loadPracticeProgress();
+            const p = progress[key];
+            if (!p) return { class: 'not-started', icon: '' };
+            if (p.percentage >= 80) return { class: 'mastered', icon: '✓' };
+            return { class: 'in-progress', icon: '●' };
+        }
+
+        function updateAllProgressBadges() {
+            document.querySelectorAll('.grammar-card[data-level]').forEach(card => {
+                const key = card.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+                if (!key) return;
+
+                // 移除旧徽章
+                const oldBadge = card.querySelector('.progress-badge');
+                if (oldBadge) oldBadge.remove();
+
+                // 添加新徽章
+                const badge = getProgressBadge(key);
+                if (badge.icon) {
+                    const badgeEl = document.createElement('span');
+                    badgeEl.className = `progress-badge ${badge.class}`;
+                    badgeEl.textContent = badge.icon;
+                    card.style.position = 'relative';
+                    card.appendChild(badgeEl);
+                }
+            });
+        }
+
+        // 页面加载时更新进度徽章
+        document.addEventListener('DOMContentLoaded', updateAllProgressBadges);
     </script>
 </body>
 </html>
