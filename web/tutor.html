@@ -217,36 +217,37 @@
 
         /* 隐藏 */
         .hidden { display: none !important; }
+
+        /* 顶部导航 */
+        .top-nav {
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .nav-brand {
+            font-weight: 600;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .nav-links { display: flex; gap: 8px; }
+        .nav-link {
+            color: #94A3B8;
+            text-decoration: none;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            transition: all 0.2s;
+        }
+        .nav-link:hover { color: #F8FAFC; background: rgba(255,255,255,0.1); }
+        .nav-link.active { color: #F8FAFC; background: #4F46E5; }
     </style>
-    .top-nav {
-        background: rgba(15, 23, 42, 0.9);
-        backdrop-filter: blur(20px);
-        border-bottom: 1px solid rgba(255,255,255,0.1);
-        padding: 12px 20px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-    }
-    .nav-brand {
-        font-weight: 600;
-        font-size: 1.1em;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .nav-links { display: flex; gap: 8px; }
-    .nav-link {
-        color: #94A3B8;
-        text-decoration: none;
-        padding: 6px 14px;
-        border-radius: 8px;
-        font-size: 0.85em;
-        transition: all 0.2s;
-    }
-    .nav-link:hover { color: #F8FAFC; background: rgba(255,255,255,0.1); }
-    .nav-link.active { color: #F8FAFC; background: #4F46E5; }
-</style>
 </head>
 <body>
     <nav class="top-nav">
