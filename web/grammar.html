@@ -511,13 +511,133 @@
 
         <!-- KET 语法区 -->
         <div class="exam-section active" id="ket-section">
-            <div class="grammar-grid" id="ket-grid">
+            <div class="grammar-grid">
+                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-present-simple')">
+                    <div class="grammar-card-icon">📅</div>
+                    <div class="grammar-card-title">一般现在时 <span class="level-badge ket">KET</span></div>
+                    <div class="grammar-card-desc">习惯性动作 / 客观事实</div>
+                </div>
+                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-present-continuous')">
+                    <div class="grammar-card-icon">🔄</div>
+                    <div class="grammar-card-title">现在进行时 <span class="level-badge ket">KET</span></div>
+                    <div class="grammar-card-desc">此刻正在进行的动作</div>
+                </div>
+                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-simple-past')">
+                    <div class="grammar-card-icon">⏪</div>
+                    <div class="grammar-card-title">一般过去时 <span class="level-badge ket">KET</span></div>
+                    <div class="grammar-card-desc">过去发生的动作</div>
+                </div>
+                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-there-be')">
+                    <div class="grammar-card-icon">🏠</div>
+                    <div class="grammar-card-title">There be 句型 <span class="level-badge ket">KET</span></div>
+                    <div class="grammar-card-desc">表示"存在"的概念</div>
+                </div>
+                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-future-going-to')">
+                    <div class="grammar-card-icon">🎯</div>
+                    <div class="grammar-card-title">be going to <span class="level-badge ket">KET</span></div>
+                    <div class="grammar-card-desc">将来的计划和打算</div>
+                </div>
+                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-modals')">
+                    <div class="grammar-card-icon">💪</div>
+                    <div class="grammar-card-title">情态动词 <span class="level-badge ket">KET</span></div>
+                    <div class="grammar-card-desc">can/could/must/should</div>
+                </div>
+                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-comparatives')">
+                    <div class="grammar-card-icon">⚖️</div>
+                    <div class="grammar-card-title">形容词比较级 <span class="level-badge ket">KET</span></div>
+                    <div class="grammar-card-desc">比较级和最高级</div>
+                </div>
+                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-frequency')">
+                    <div class="grammar-card-icon">🔢</div>
+                    <div class="grammar-card-title">频率表达 <span class="level-badge ket">KET</span></div>
+                    <div class="grammar-card-desc">How often...? / 次数</div>
+                </div>
+                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-possessive')">
+                    <div class="grammar-card-icon">📌</div>
+                    <div class="grammar-card-title">名词所有格 <span class="level-badge ket">KET</span></div>
+                    <div class="grammar-card-desc">'s / of 所有格</div>
+                </div>
+                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-pronouns')">
+                    <div class="grammar-card-icon">👤</div>
+                    <div class="grammar-card-title">代词系统 <span class="level-badge ket">KET</span></div>
+                    <div class="grammar-card-desc">人称/物主/反身代词</div>
+                </div>
+                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-prepositions')">
+                    <div class="grammar-card-icon">📍</div>
+                    <div class="grammar-card-title">介词用法 <span class="level-badge ket">KET</span></div>
+                    <div class="grammar-card-desc">时间/地点介词</div>
+                </div>
+                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-imperative')">
+                    <div class="grammar-card-icon">📢</div>
+                    <div class="grammar-card-title">祈使句 <span class="level-badge ket">KET</span></div>
+                    <div class="grammar-card-desc">Open the door</div>
+                </div>
             </div>
         </div>
 
         <!-- PET 语法区 -->
         <div class="exam-section" id="pet-section">
-            <div class="grammar-grid" id="pet-grid">
+            <div class="grammar-grid">
+                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-present-perfect')">
+                    <div class="grammar-card-icon">✅</div>
+                    <div class="grammar-card-title">现在完成时 <span class="level-badge pet">PET</span></div>
+                    <div class="grammar-card-desc">过去发生，影响现在</div>
+                </div>
+                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-past-perfect')">
+                    <div class="grammar-card-icon">📌</div>
+                    <div class="grammar-card-title">过去完成时 <span class="level-badge pet">PET</span></div>
+                    <div class="grammar-card-desc">过去的过去</div>
+                </div>
+                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-passive')">
+                    <div class="grammar-card-icon">🔁</div>
+                    <div class="grammar-card-title">被动语态 <span class="level-badge pet">PET</span></div>
+                    <div class="grammar-card-desc">主语是动作的承受者</div>
+                </div>
+                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-conditional')">
+                    <div class="grammar-card-icon">🔀</div>
+                    <div class="grammar-card-title">条件句 <span class="level-badge pet">PET</span></div>
+                    <div class="grammar-card-desc">Zero/First/Second 条件</div>
+                </div>
+                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-reported-speech')">
+                    <div class="grammar-card-icon">💬</div>
+                    <div class="grammar-card-title">间接引语 <span class="level-badge pet">PET</span></div>
+                    <div class="grammar-card-desc">转述别人的话</div>
+                </div>
+                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-relatives')">
+                    <div class="grammar-card-icon">🔗</div>
+                    <div class="grammar-card-title">定语从句 <span class="level-badge pet">PET</span></div>
+                    <div class="grammar-card-desc">who/which/that</div>
+                </div>
+                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-modals-perfect')">
+                    <div class="grammar-card-icon">🎓</div>
+                    <div class="grammar-card-title">情态动词完成时 <span class="level-badge pet">PET</span></div>
+                    <div class="grammar-card-desc">must have done 等</div>
+                </div>
+                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-used-to')">
+                    <div class="grammar-card-icon">📼</div>
+                    <div class="grammar-card-title">used to <span class="level-badge pet">PET</span></div>
+                    <div class="grammar-card-desc">过去的习惯</div>
+                </div>
+                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-gerund-infinitive')">
+                    <div class="grammar-card-icon">🎯</div>
+                    <div class="grammar-card-title">动名词/不定式 <span class="level-badge pet">PET</span></div>
+                    <div class="grammar-card-desc">doing vs to do</div>
+                </div>
+                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-quantifiers')">
+                    <div class="grammar-card-icon">📊</div>
+                    <div class="grammar-card-title">数量词 <span class="level-badge pet">PET</span></div>
+                    <div class="grammar-card-desc">much/many/few/little</div>
+                </div>
+                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-adverb-clauses')">
+                    <div class="grammar-card-icon">🕐</div>
+                    <div class="grammar-card-title">状语从句 <span class="level-badge pet">PET</span></div>
+                    <div class="grammar-card-desc">when/although/because</div>
+                </div>
+                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-conjunctions')">
+                    <div class="grammar-card-icon">🔗</div>
+                    <div class="grammar-card-title">并列连词 <span class="level-badge pet">PET</span></div>
+                    <div class="grammar-card-desc">and/but/or/so/because</div>
+                </div>
             </div>
         </div>
 
@@ -1549,6 +1669,311 @@
                         </table>`
                     }
                 ]
+            },
+
+            // ==================== KET 扩展语法 ====================
+            'ket-possessive': {
+                title: '名词所有格',
+                subtitle: 'Possessive · KET (A2)',
+                sections: [
+                    {
+                        title: "📌 's 所有格",
+                        content: `<div class="formula-box">
+                            有生命名词 + 's<br>
+                            无生命名词用 of
+                        </div>`
+                    },
+                    {
+                        title: "📝 's 用法",
+                        content: `<ul class="example-list">
+                            <li><div class="en">Tom's book</div><div class="zh">Tom的书</div></li>
+                            <li><div class="en">my mother's bag</div><div class="zh">我妈妈的包</div></li>
+                            <li><div class="en">the children's toys</div><div class="zh">孩子们的玩具</div></li>
+                            <li><div class="en">Jim and Tom's room</div><div class="zh">Jim和Tom共有的房间</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '📍 of 所有格',
+                        content: `<ul class="example-list">
+                            <li><div class="en">the door of the room</div><div class="zh">房间的门</div></li>
+                            <li><div class="en">the capital of China</div><div class="zh">中国的首都</div></li>
+                            <li><div class="en">a picture of my family</div><div class="zh">我全家福</div></li>
+                        </ul>`
+                    }
+                ]
+            },
+            'ket-pronouns': {
+                title: '代词系统',
+                subtitle: 'Pronouns · KET (A2)',
+                sections: [
+                    {
+                        title: '👤 人称代词',
+                        content: `<table>
+                            <tr><th>主格</th><th>宾格</th></tr>
+                            <tr><td>I</td><td>me</td></tr>
+                            <tr><td>you</td><td>you</td></tr>
+                            <tr><td>he/she/it</td><td>him/her/it</td></tr>
+                            <tr><td>we/they</td><td>us/them</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '🏠 物主代词',
+                        content: `<table>
+                            <tr><th>形容词性</th><th>名词性</th></tr>
+                            <tr><td>my</td><td>mine</td></tr>
+                            <tr><td>your</td><td>yours</td></tr>
+                            <tr><td>his/her/its</td><td>his/hers/its</td></tr>
+                            <tr><td>our/their</td><td>ours/theirs</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '🪞 反身代词',
+                        content: `<table>
+                            <tr><th>人称</th><th>反身代词</th></tr>
+                            <tr><td>I</td><td>myself</td></tr>
+                            <tr><td>you</td><td>yourself</td></tr>
+                            <tr><td>he/she/it</td><td>himself/herself/itself</td></tr>
+                            <tr><td>we/they</td><td>ourselves/themselves</td></tr>
+                        </table>
+                        <ul class="example-list">
+                            <li><div class="en">I bought myself a new phone.</div><div class="zh">我给自己买了一部新手机。</div></li>
+                            <li><div class="en">She taught herself English.</div><div class="zh">她自学英语。</div></li>
+                            <li><div class="en">Help yourself to some food.</div><div class="zh">请随便吃。</div></li>
+                        </ul>`
+                    }
+                ]
+            },
+            'ket-prepositions': {
+                title: '介词用法',
+                subtitle: 'Prepositions · KET (A2)',
+                sections: [
+                    {
+                        title: '🕐 时间介词',
+                        content: `<table>
+                            <tr><th>介词</th><th>用法</th><th>例句</th></tr>
+                            <tr><td>at</td><td>时刻/节日</td><td>at 3 o'clock, at Christmas</td></tr>
+                            <tr><td>on</td><td>具体日期</td><td>on Monday, on July 4th</td></tr>
+                            <tr><td>in</td><td>月份/季节/年</td><td>in summer, in 2024</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '📍 地点介词',
+                        content: `<table>
+                            <tr><th>介词</th><th>用法</th><th>例句</th></tr>
+                            <tr><td>in</td><td>在...里面</td><td>in the room, in Beijing</td></tr>
+                            <tr><td>on</td><td>在...上面</td><td>on the table, on the wall</td></tr>
+                            <tr><td>at</td><td>在...地点</td><td>at school, at home</td></tr>
+                            <tr><td>next to</td><td>在...旁边</td><td>next to the window</td></tr>
+                            <tr><td>in front of</td><td>在...前面</td><td>in front of the school</td></tr>
+                            <tr><td>behind</td><td>在...后面</td><td>behind the door</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '💡 介词短语',
+                        content: `<ul class="example-list">
+                            <li><div class="en">I'm good at English.</div><div class="zh">我擅长英语。</div></li>
+                            <li><div class="en">She lives with her parents.</div><div class="zh">她和父母住在一起。</div></li>
+                            <li><div class="en">The book is about history.</div><div class="zh">这本书是关于历史的。</div></li>
+                        </ul>`
+                    }
+                ]
+            },
+            'ket-imperative': {
+                title: '祈使句',
+                subtitle: 'Imperative · KET (A2)',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">
+                            肯定句: 动词原形 + 其他<br>
+                            否定句: Don't + 动词原形 + 其他
+                        </div>`
+                    },
+                    {
+                        title: '📝 例句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">Open the door, please.</div><div class="zh">请开门。</div></li>
+                            <li><div class="en">Don't be late!</div><div class="zh">别迟到！</div></li>
+                            <li><div class="en">Don't take your gloves off.</div><div class="zh">别脱下手套。</div></li>
+                            <li><div class="en">Sit down, please.</div><div class="zh">请坐下。</div></li>
+                            <li><div class="en">Listen to me carefully.</div><div class="zh">认真听我说。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '💡 特点',
+                        content: `<ul class="rule-list">
+                            <li>表示<span class="highlight">命令、请求、建议</span></li>
+                            <li>省略主语 (you)，动词用原形</li>
+                            <li>否定式用 <span class="highlight">Don't</span> 开头</li>
+                        </ul>`
+                    }
+                ]
+            },
+
+            // ==================== PET 扩展语法 ====================
+            'pet-gerund-infinitive': {
+                title: '动名词/不定式',
+                subtitle: 'Gerund vs Infinitive · PET (B1)',
+                sections: [
+                    {
+                        title: '📌 动名词 (V-ing)',
+                        content: `<ul class="rule-list">
+                            <li>表示<span class="highlight">习惯、爱好、一般事实</span></li>
+                            <li>用在介词后面</li>
+                            <li>某些动词后必须用动名词：enjoy, mind, finish, suggest, keep, avoid, consider</li>
+                        </ul>`
+                    },
+                    {
+                        title: '📝 动名词例句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">I enjoy reading books.</div><div class="zh">我喜欢读书。</div></li>
+                            <li><div class="en">She is good at learning languages.</div><div class="zh">她擅长学习语言。</div></li>
+                            <li><div class="en">Would you mind opening the window?</div><div class="zh">你介意打开窗户吗？</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '📌 不定式 (to + V)',
+                        content: `<ul class="rule-list">
+                            <li>表示<span class="highlight">具体某一次</span>的动作</li>
+                            <li>表示<span class="highlight">将来</span>的动作</li>
+                            <li>某些动词后必须用不定式：want, hope, decide, plan, agree, promise, refuse</li>
+                        </ul>`
+                    },
+                    {
+                        title: '📝 不定式例句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">I want to learn English.</div><div class="zh">我想学英语。</div></li>
+                            <li><div class="en">She decided to move to Beijing.</div><div class="zh">她决定搬去北京。</div></li>
+                            <li><div class="en">I hope to see you again soon.</div><div class="zh">我希望很快再见到你。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '⚠️ 常见接动名词的动词',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">口诀：完成、建议、逃避、继续、享受、介意</div>
+                            <div class="tip-content">finish, suggest, avoid, keep, enjoy, mind<br>
+                            + doing (动名词)</div>
+                        </div>`
+                    },
+                    {
+                        title: '⚠️ 常见接不定式的动词',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">口诀：希望、决定、拒绝、计划、同意、愿意</div>
+                            <div class="tip-content">hope, decide, refuse, plan, agree, promise<br>
+                            + to + 动词原形</div>
+                        </div>`
+                    }
+                ]
+            },
+            'pet-quantifiers': {
+                title: '数量词',
+                subtitle: 'Quantifiers · PET (B1)',
+                sections: [
+                    {
+                        title: '📌 可数 vs 不可数',
+                        content: `<table>
+                            <tr><th>可数名词</th><th>不可数名词</th></tr>
+                            <tr><td>many, few, a few</td><td>much, little, a little</td></tr>
+                            <tr><td>a lot of, lots of</td><td>a lot of, lots of</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '📊 数量词用法',
+                        content: `<table>
+                            <tr><th>词</th><th>意义</th><th>用法</th><th>例句</th></tr>
+                            <tr><td>many</td><td>许多</td><td>可数名词复数</td><td>many books</td></tr>
+                            <tr><td>much</td><td>许多</td><td>不可数名词</td><td>much water</td></tr>
+                            <tr><td>a few</td><td>几个</td><td>肯定含义</td><td>I have a few friends.</td></tr>
+                            <tr><td>few</td><td>很少</td><td>否定含义</td><td>Few people know this.</td></tr>
+                            <tr><td>a little</td><td>一点</td><td>肯定含义</td><td>I have a little money.</td></tr>
+                            <tr><td>little</td><td>很少</td><td>否定含义</td><td>There is little time.</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '💡 a lot of / lots of',
+                        content: `<div class="tip-box">
+                            <div class="tip-content">a lot of 和 lots of 可以修饰<span class="highlight">可数名词</span>和<span class="highlight">不可数名词</span>，多用于口语和肯定句中。</div>
+                        </div>
+                        <ul class="example-list">
+                            <li><div class="en">A lot of students passed the exam.</div><div class="zh">很多学生通过了考试。</div></li>
+                            <li><div class="en">Lots of people came to the party.</div><div class="zh">很多人来参加了派对。</div></li>
+                        </ul>`
+                    }
+                ]
+            },
+            'pet-adverb-clauses': {
+                title: '状语从句',
+                subtitle: 'Adverb Clauses · PET (B1)',
+                sections: [
+                    {
+                        title: '📌 时间状语从句',
+                        content: `<div class="formula-box">when/while/after/before/by the time + 过去式, 过去完成时</div>
+                        <ul class="example-list">
+                            <li><div class="en">When I arrived, she had already left.</div><div class="zh">我到的时候，她已经离开了。</div></li>
+                            <li><div class="en">While I was sleeping, someone called.</div><div class="zh">我睡觉的时候有人打电话来了。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '📌 原因状语从句',
+                        content: `<div class="formula-box">because/since/as + 原因</div>
+                        <ul class="example-list">
+                            <li><div class="en">I didn't go because I was sick.</div><div class="zh">我没去因为我病了。</div></li>
+                            <li><div class="en">Since you're here, let's start.</div><div class="zh">既然你在这里，我们开始吧。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '📌 让步状语从句',
+                        content: `<div class="formula-box">although/though/even though + 从句</div>
+                        <ul class="example-list">
+                            <li><div class="en">Although it rained, we enjoyed the trip.</div><div class="zh">虽然下雨了，我们旅途还是很愉快。</div></li>
+                            <li><div class="en">He passed the exam even though he didn't study.</div><div class="zh">虽然他没学习，还是通过了考试。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '📌 目的/结果状语从句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">I studied hard so that I could pass the exam.</div><div class="zh">我努力学习是为了通过考试。（目的）</div></li>
+                            <li><div class="en">It was so hot that we couldn't sleep.</div><div class="zh">太热了以至于我们睡不着。（结果）</div></li>
+                        </ul>`
+                    }
+                ]
+            },
+            'pet-conjunctions': {
+                title: '并列连词',
+                subtitle: 'Conjunctions · PET (B1)',
+                sections: [
+                    {
+                        title: '📌 四大并列连词',
+                        content: `<table>
+                            <tr><th>连词</th><th>作用</th><th>例句</th></tr>
+                            <tr><td>and</td><td>并列/顺承</td><td>I like tea and coffee.</td></tr>
+                            <tr><td>but</td><td>转折</td><td>She's old but active.</td></tr>
+                            <tr><td>or</td><td>选择/否定的条件</td><td>Study hard or you'll fail.</td></tr>
+                            <tr><td>so</td><td>结果</td><td>I was tired, so I went to bed.</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '📝 both...and',
+                        content: `<ul class="example-list">
+                            <li><div class="en">Both Tom and Jerry are my friends.</div><div class="zh">Tom和Jerry都是我的朋友。</div></li>
+                            <li><div class="en">She can speak both English and French.</div><div class="zh">她会说英语和法语。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '📝 either...or / neither...nor',
+                        content: `<ul class="example-list">
+                            <li><div class="en">Either you come with me or you stay here.</div><div class="zh">你要么跟我来，要么留在这里。</div></li>
+                            <li><div class="en">Neither Tom nor Jerry was there.</div><div class="zh">Tom和Jerry都不在那里。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '📝 not only...but also',
+                        content: `<ul class="example-list">
+                            <li><div class="en">Not only did she win, but she also broke the record.</div><div class="zh">她不仅赢了，还破了纪录。</div></li>
+                            <li><div class="en">He is not only smart but also kind.</div><div class="zh">他不仅聪明，而且善良。</div></li>
+                        </ul>`
+                    }
+                ]
             }
         };
 
@@ -1592,29 +2017,6 @@
             if (e.key === 'Escape') closeGrammar();
         });
 
-        // ==================== KET/PET 语法卡片 ====================
-        const ketGrammarCards = [
-            { key: 'ket-present-simple', icon: '📅', title: '一般现在时', desc: '习惯性动作 / 客观事实' },
-            { key: 'ket-present-continuous', icon: '🔄', title: '现在进行时', desc: '此刻正在进行的动作' },
-            { key: 'ket-simple-past', icon: '⏪', title: '一般过去时', desc: '过去发生的动作' },
-            { key: 'ket-there-be', icon: '🏠', title: 'There be 句型', desc: '表示"存在"的概念' },
-            { key: 'ket-future-going-to', icon: '🎯', title: 'be going to', desc: '将来的计划和打算' },
-            { key: 'ket-modals', icon: '💪', title: '情态动词', desc: 'can/could/must/should' },
-            { key: 'ket-comparatives', icon: '⚖️', title: '形容词比较级', desc: '比较级和最高级' },
-            { key: 'ket-frequency', icon: '🔢', title: '频率表达', desc: 'How often...? / 次数' },
-        ];
-
-        const petGrammarCards = [
-            { key: 'pet-present-perfect', icon: '✅', title: '现在完成时', desc: '过去发生，影响现在' },
-            { key: 'pet-past-perfect', icon: '📌', title: '过去完成时', desc: '过去的过去' },
-            { key: 'pet-passive', icon: '🔁', title: '被动语态', desc: '主语是动作的承受者' },
-            { key: 'pet-conditional', icon: '🔀', title: '条件句', desc: 'Zero/First/Second 条件' },
-            { key: 'pet-reported-speech', icon: '💬', title: '间接引语', desc: '转述别人的话' },
-            { key: 'pet-relatives', icon: '🔗', title: '定语从句', desc: 'who/which/that' },
-            { key: 'pet-modals-perfect', icon: '🎓', title: '情态动词完成时', desc: 'must have done 等' },
-            { key: 'pet-used-to', icon: '📼', title: 'used to', desc: '过去的习惯' },
-        ];
-
         function switchExam(exam) {
             // 更新标签状态
             document.querySelectorAll('.exam-tab').forEach(tab => {
@@ -1625,33 +2027,6 @@
                 section.classList.toggle('active', section.id === exam + '-section');
             });
         }
-
-        function createGrammarCard(card, level) {
-            return `
-                <div class="grammar-card" data-level="${level}" onclick="showGrammar('${card.key}')">
-                    <div class="grammar-card-icon">${card.icon}</div>
-                    <div class="grammar-card-title">
-                        ${card.title}
-                        <span class="level-badge ${level}">${level.toUpperCase()}</span>
-                    </div>
-                    <div class="grammar-card-desc">${card.desc}</div>
-                </div>
-            `;
-        }
-
-        // 页面加载时生成卡片
-        document.addEventListener('DOMContentLoaded', () => {
-            // 生成KET卡片
-            const ketGrid = document.getElementById('ket-grid');
-            if (ketGrid) {
-                ketGrid.innerHTML = ketGrammarCards.map(card => createGrammarCard(card, 'ket')).join('');
-            }
-            // 生成PET卡片
-            const petGrid = document.getElementById('pet-grid');
-            if (petGrid) {
-                petGrid.innerHTML = petGrammarCards.map(card => createGrammarCard(card, 'pet')).join('');
-            }
-        });
     </script>
 </body>
 </html>
