@@ -25,10 +25,9 @@
 - Harry Potter #1: Philosopher's Stone
 
 ### 🎓 语法学习
-- 现在进行时 vs 一般现在时 对比
-- 一般过去时 be动词 / 规则动词
-- 频率表达、be going to、want to do
-- 名词性物主代词、祈使句
+- **KET (A2)** - 一般现在时、现在进行时、一般过去时、There be句型、be going to、情态动词、形容词比较级、频率表达、名词所有格、代词系统、介词用法、祈使句
+- **PET (B1)** - 现在完成时、过去完成时、被动语态、条件句、间接引语、定语从句、情态动词完成时、used to、动名词/不定式、数量词、状语从句、并列连词
+- 新概念英语青少版 2A 核心语法
 
 ## 🚀 快速开始
 
@@ -82,3 +81,9 @@ shadow-learning/
 ## 📝 License
 
 MIT License - 免费商用、学习、修改
+
+## 🙏 鸣谢
+
+本项目参考了以下优秀资源：
+
+- **[interaminense/learning-english](https://github.com/interaminense/learning-english)** - 英语学习综合资源库，整合了丰富的听说读写全阶段学习资源
