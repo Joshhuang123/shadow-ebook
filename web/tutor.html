@@ -251,6 +251,107 @@
         }
         .nav-link:hover { color: #F8FAFC; background: rgba(255,255,255,0.1); }
         .nav-link.active { color: #F8FAFC; background: #4F46E5; }
+
+        /* ==================== 平板适配 ==================== */
+        /* 平板竖屏 (600px - 768px) */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+                max-width: 100%;
+            }
+            .card {
+                padding: 20px 15px;
+                border-radius: 16px;
+            }
+            .btn {
+                padding: 16px 32px;
+                font-size: 1.2em;
+                min-height: 56px;
+                min-width: 120px;
+            }
+            .controls {
+                gap: 15px;
+            }
+            .sentence-text {
+                font-size: 1.8em;
+            }
+            .sentence-translation {
+                font-size: 1.1em;
+            }
+            .top-nav {
+                padding: 10px 15px;
+            }
+            .nav-brand {
+                font-size: 1em;
+            }
+            .nav-link {
+                padding: 8px 12px;
+                font-size: 0.9em;
+            }
+            header h1 {
+                font-size: 1.8em;
+            }
+            .unit-item {
+                padding: 18px 20px;
+            }
+        }
+
+        /* 平板横屏 / 大平板 (768px - 1024px) */
+        @media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+            .container {
+                max-width: 90%;
+                margin: 0 auto;
+            }
+            .card {
+                padding: 25px;
+            }
+            .btn {
+                padding: 18px 36px;
+                font-size: 1.3em;
+            }
+            .sentence-text {
+                font-size: 2em;
+            }
+        }
+
+        /* iPad Pro 适配 */
+        @media (min-width: 1024px) {
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+            }
+        }
+
+        /* 触摸优化 */
+        @media (hover: none) and (pointer: coarse) {
+            .btn:active {
+                transform: scale(0.97);
+            }
+            .unit-item:active {
+                background: #e8f0fe;
+                transform: translateX(3px);
+            }
+            .option:active {
+                background: #e8f0fe;
+            }
+        }
+
+        /* 防止文字选中 */
+        .btn, .unit-item, .sentence-text, .option {
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 书本选择页大卡片 */
+        @media (max-width: 768px) {
+            .book-selection .card {
+                padding: 30px 20px;
+            }
+            .book-item {
+                padding: 20px;
+            }
+        }
     </style>
 </head>
 <body>
