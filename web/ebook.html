@@ -1714,20 +1714,31 @@
             document.getElementById('word-modal').classList.remove('show');
         }
 
-        // 发音
-        async function playPronunciation() {
+        // 发音 (优先使用浏览器Web Speech API，离线可用)
+        function playPronunciation() {
             if (!currentWord) return;
-            try {
-                const res = await fetch('/api/tts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: currentWord })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    new Audio(data.audio_url).play();
-                }
-            } catch (err) {}
+
+            // 优先使用浏览器内置TTS（离线可用）
+            if ('speechSynthesis' in window) {
+                speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(currentWord);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.9;
+                const voices = speechSynthesis.getVoices();
+                const englishVoice = voices.find(v => v.lang.startsWith('en')) || null;
+                if (englishVoice) utterance.voice = englishVoice;
+                speechSynthesis.speak(utterance);
+                return;
+            }
+
+            // 降级：使用后端API
+            fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: currentWord })
+            }).then(res => res.json()).then(data => {
+                if (data.success) new Audio(data.audio_url).play();
+            }).catch(err => {});
         }
 
         // 生词本
@@ -1980,7 +1991,7 @@
             document.getElementById('ar-modal').classList.remove('show');
         }
 
-        // TTS 播放
+        // TTS 播放 (优先使用浏览器Web Speech API，离线可用)
         async function playCurrentSentence() {
             if (!sentences || sentences.length === 0) return;
 
@@ -1991,6 +2002,31 @@
             btn.disabled = true;
             status.classList.remove('hidden');
 
+            // 优先使用浏览器内置TTS（离线可用）
+            if ('speechSynthesis' in window) {
+                speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.9;
+                const voices = speechSynthesis.getVoices();
+                const englishVoice = voices.find(v => v.lang.startsWith('en')) || null;
+                if (englishVoice) utterance.voice = englishVoice;
+                utterance.onend = () => {
+                    isPlaying = false;
+                    btn.disabled = false;
+                    status.classList.add('hidden');
+                };
+                utterance.onerror = () => {
+                    isPlaying = false;
+                    btn.disabled = false;
+                    status.classList.add('hidden');
+                };
+                speechSynthesis.speak(utterance);
+                isPlaying = true;
+                return;
+            }
+
+            // 降级：使用后端API
             try {
                 const res = await fetch('/api/tts', {
                     method: 'POST',

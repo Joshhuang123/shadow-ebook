@@ -850,14 +850,45 @@
         let currentAudioElement = null;
         let originalAudioUrl = null;  // 原音URL
 
-        // 播放标准发音 (使用edge-tts通过后端API)
+        // 播放标准发音 (优先使用浏览器Web Speech API，离线可用)
         async function playSentence() {
             const sent = units[currentUnit].sentences[currentSentence];
             const text = typeof sent === 'string' ? sent : sent.text;
             const btn = document.getElementById('btn-listen');
-            btn.textContent = '🔊 生成中...';
+            btn.textContent = '🔊 播放中...';
             btn.disabled = true;
 
+            // 优先使用浏览器内置TTS（离线可用）
+            if ('speechSynthesis' in window) {
+                // 停止之前的语音
+                speechSynthesis.cancel();
+
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.9;
+                utterance.pitch = 1;
+
+                // 尝试获取高质量语音
+                const voices = speechSynthesis.getVoices();
+                const englishVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('English')) ||
+                                     voices.find(v => v.lang.startsWith('en-US')) ||
+                                     voices.find(v => v.lang.startsWith('en'));
+                if (englishVoice) utterance.voice = englishVoice;
+
+                utterance.onend = () => {
+                    btn.textContent = '🔊 听标准发音';
+                    btn.disabled = false;
+                };
+                utterance.onerror = () => {
+                    btn.textContent = '🔊 听标准发音';
+                    btn.disabled = false;
+                };
+
+                speechSynthesis.speak(utterance);
+                return;
+            }
+
+            // 降级：使用后端edge-tts API
             try {
                 const res = await fetch('/api/tts', {
                     method: 'POST',
@@ -867,30 +898,19 @@
                 const data = await res.json();
 
                 if (data.success && data.audio_url) {
-                    // 停止之前的音频
                     if (currentAudioElement) {
                         currentAudioElement.pause();
                         currentAudioElement = null;
                     }
-
-                    // 保存原音URL用于波形对比
                     originalAudioUrl = data.audio_url;
-
-                    // 播放新音频
                     currentAudioElement = new Audio(data.audio_url);
                     currentAudioElement.play();
                     btn.textContent = '🔊 播放中...';
-
                     currentAudioElement.onended = () => {
                         btn.textContent = '🔊 听标准发音';
                         btn.disabled = false;
                     };
-                    currentAudioElement.onerror = () => {
-                        btn.textContent = '🔊 听标准发音';
-                        btn.disabled = false;
-                    };
                 } else {
-                    alert('TTS生成失败: ' + (data.error || '未知错误'));
                     btn.textContent = '🔊 听标准发音';
                     btn.disabled = false;
                 }
