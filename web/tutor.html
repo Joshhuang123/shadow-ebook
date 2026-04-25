@@ -1126,19 +1126,58 @@
             const feedback = document.getElementById('feedback');
             const content = document.getElementById('feedback-content');
 
-            // 获取句子文本
+            // 获取句子信息
             const sent = units[currentUnit].sentences[currentSentence];
             const sentence = typeof sent === 'string' ? sent : sent.text;
-            const words = sentence.split(' ');
+            const grammar = typeof sent === 'object' ? sent.grammar : '';
+            const wordCount = sentence.split(' ').length;
 
-            let html = '';
-            html += `<div class="feedback-item">
-                <span class="feedback-icon feedback-good">✓</span>
-                <span>发音清晰，继续保持！</span>
+            // 多样化的反馈内容
+            const encouragements = [
+                "很棒！继续保持！🎉",
+                "发音不错，再接再厉！💪",
+                "朗读流畅，发音清晰！✨",
+                "完成得很好！🌟",
+                "继续加油！你做得很好！👍"
+            ];
+
+            const tips = [
+                grammar ? `语法重点：${grammar}` : null,
+                wordCount > 10 ? "句子较长，注意换气停顿" : null,
+                sentence.includes('?') ? "疑问句记得语调上扬 ↗️" : null,
+                sentence.includes('!') ? "感叹句要有感情哦！" : null,
+                "注意连读和弱读",
+                "尝试模仿原音的节奏",
+                "注意元音发音饱满",
+                "保持均匀的语速"
+            ].filter(Boolean);
+
+            const randomEncouragement = encouragements[Math.floor(Math.random() * encouragements.length)];
+            const randomTips = tips.sort(() => Math.random() - 0.5).slice(0, 2);
+
+            let html = `<div class="feedback-item">
+                <span class="feedback-icon feedback-good">🎤</span>
+                <span>${randomEncouragement}</span>
             </div>`;
+
+            randomTips.forEach(tip => {
+                html += `<div class="feedback-item">
+                    <span class="feedback-icon feedback-bad">💡</span>
+                    <span>${tip}</span>
+                </div>`;
+            });
+
+            // 添加鼓励语句
+            const encouragements2 = [
+                "跟读就是多练，熟能生巧！📚",
+                "坚持练习，口语会越来越好！🌈",
+                "每句都跟读一遍试试？🔄",
+                "试着先听再看，发音更准！👂",
+                "小声跟读也可以，主要模仿语调！🔉"
+            ];
             html += `<div class="feedback-item">
-                <span class="feedback-icon feedback-good">✓</span>
-                <span>注意句子语调：升调↗或降调↘</span>
+                <span class="feedback-icon feedback-good">✨</span>
+                <span>${encouragements2[Math.floor(Math.random() * encouragements2.length)]}</span>
             </div>`;
 
             content.innerHTML = html;
