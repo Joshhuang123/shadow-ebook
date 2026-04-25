@@ -142,6 +142,65 @@ COMPREHENSION_QUESTIONS = {
     ],
 }
 
+# ==================== 启动时预生成TTS音频 ====================
+def pregenerate_tts_on_startup():
+    """服务器启动时自动预生成所有TTS音频（仅首次运行或有新句子时）"""
+    import edge_tts
+    import asyncio
+    import hashlib
+
+    audio_dir = Path(__file__).parent / 'audio' / 'tts'
+    audio_dir.mkdir(parents=True, exist_ok=True)
+
+    async def generate():
+        texts_to_generate = []
+
+        # 收集所有需要生成的句子
+        for unit in COURSE_CONTENT.get("units", []):
+            for sent in unit.get("sentences", []):
+                text = sent["text"] if isinstance(sent, dict) else sent
+                text_hash = hashlib.md5(text.encode()).hexdigest()[:12]
+                audio_path = audio_dir / f'{text_hash}.mp3'
+                if not audio_path.exists():
+                    texts_to_generate.append((text, audio_path))
+
+        # MTH29 句子
+        mth_path = Path(__file__).parent / 'data' / 'books' / 'christmas_in_camelot.json'
+        if mth_path.exists():
+            mth_data = json.loads(mth_path.read_text())
+            for chapter in mth_data.get("chapters", []):
+                for sent in chapter.get("sentences", []):
+                    text = sent["text"] if isinstance(sent, dict) else sent
+                    text_hash = hashlib.md5(text.encode()).hexdigest()[:12]
+                    audio_path = audio_dir / f'{text_hash}.mp3'
+                    if not audio_path.exists():
+                        texts_to_generate.append((text, audio_path))
+
+        if texts_to_generate:
+            print(f"🎵 预生成 {len(texts_to_generate)} 个TTS音频...")
+            for text, audio_path in texts_to_generate:
+                try:
+                    await edge_tts.Communicate(text, voice='en-US-AriaNeural').save(str(audio_path))
+                except Exception as e:
+                    print(f"TTS生成失败: {text[:20]}... - {e}")
+            print(f"✅ TTS音频预生成完成，共 {len(texts_to_generate)} 个文件")
+        else:
+            print("✅ TTS音频已是最新")
+
+    try:
+        asyncio.run(generate())
+    except Exception as e:
+        print(f"TTS预生成出错: {e}")
+
+# 启动时预生成（延迟执行，不阻塞服务器启动）
+import threading
+def start_tts_pregeneration():
+    t = threading.Thread(target=pregenerate_tts_on_startup, daemon=True)
+    t.start()
+
+# 立即启动预生成（后台线程，不阻塞）
+start_tts_pregeneration()
+
 # ==================== 路由 ====================
 
 @app.route('/')
