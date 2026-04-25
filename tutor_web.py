@@ -232,18 +232,26 @@ def text_to_speech():
     if audio_path.exists():
         return jsonify({"success": True, "audio_url": f"/audio/tts/{text_hash}.mp3"})
 
-    # 使用 edge-tts 生成音频
-    import subprocess
-    result = subprocess.run([
-        'edge-tts',
-        '-v', 'en-US-AriaNeural',
-        '-t', text,
-        '--write-media', str(audio_path)
-    ], capture_output=True, text=True, timeout=30)
+    # 使用 edge-tts Python API 生成音频
+    import edge_tts
+    import asyncio
+
+    async def generate():
+        try:
+            await edge_tts.Communicate(text, voice='en-US-AriaNeural').save(str(audio_path))
+            return True
+        except Exception as e:
+            print(f"TTS error: {e}")
+            return False
+
+    try:
+        asyncio.run(generate())
+    except Exception as e:
+        return jsonify({"success": False, "error": f"TTS生成失败: {str(e)}"})
 
     if audio_path.exists():
         return jsonify({"success": True, "audio_url": f"/audio/tts/{text_hash}.mp3"})
-    return jsonify({"success": False, "error": f"TTS生成失败: {result.stderr}"})
+    return jsonify({"success": False, "error": "TTS生成失败"})
 
 # 预生成所有句子音频
 @app.route('/api/tts/pregenerate', methods=['POST'])
