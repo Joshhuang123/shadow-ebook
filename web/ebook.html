@@ -1720,15 +1720,27 @@
 
             // 优先使用浏览器内置TTS（离线可用）
             if ('speechSynthesis' in window) {
-                speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(currentWord);
-                utterance.lang = 'en-US';
-                utterance.rate = 0.9;
-                const voices = speechSynthesis.getVoices();
-                const englishVoice = voices.find(v => v.lang.startsWith('en')) || null;
-                if (englishVoice) utterance.voice = englishVoice;
-                speechSynthesis.speak(utterance);
-                return;
+                try {
+                    speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(currentWord);
+                    utterance.lang = 'en-US';
+                    utterance.rate = 0.9;
+                    let voices = speechSynthesis.getVoices();
+
+                    // Chrome 安卓可能需要等待语音加载
+                    if (voices.length === 0) {
+                        speechSynthesis.onvoiceschanged = () => {
+                            voices = speechSynthesis.getVoices();
+                        };
+                    }
+
+                    const englishVoice = voices.find(v => v.lang.startsWith('en')) || null;
+                    if (englishVoice) utterance.voice = englishVoice;
+                    speechSynthesis.speak(utterance);
+                    return;
+                } catch (e) {
+                    console.log('Speech synthesis failed, trying API');
+                }
             }
 
             // 降级：使用后端API

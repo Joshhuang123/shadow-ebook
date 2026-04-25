@@ -860,32 +860,52 @@
 
             // 优先使用浏览器内置TTS（离线可用）
             if ('speechSynthesis' in window) {
-                // 停止之前的语音
-                speechSynthesis.cancel();
+                try {
+                    // 停止之前的语音
+                    speechSynthesis.cancel();
 
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'en-US';
-                utterance.rate = 0.9;
-                utterance.pitch = 1;
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'en-US';
+                    utterance.rate = 0.9;
+                    utterance.pitch = 1;
 
-                // 尝试获取高质量语音
-                const voices = speechSynthesis.getVoices();
-                const englishVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('English')) ||
-                                     voices.find(v => v.lang.startsWith('en-US')) ||
-                                     voices.find(v => v.lang.startsWith('en'));
-                if (englishVoice) utterance.voice = englishVoice;
+                    // 获取可用语音（部分浏览器需要延迟加载）
+                    let voices = speechSynthesis.getVoices();
 
-                utterance.onend = () => {
-                    btn.textContent = '🔊 听标准发音';
-                    btn.disabled = false;
-                };
-                utterance.onerror = () => {
-                    btn.textContent = '🔊 听标准发音';
-                    btn.disabled = false;
-                };
+                    // Chrome 安卓可能需要等待语音加载
+                    if (voices.length === 0) {
+                        await new Promise(resolve => {
+                            speechSynthesis.onvoiceschanged = () => {
+                                voices = speechSynthesis.getVoices();
+                                resolve();
+                            };
+                            // 超时处理
+                            setTimeout(resolve, 2000);
+                        });
+                    }
 
-                speechSynthesis.speak(utterance);
-                return;
+                    // 尝试获取高质量语音
+                    const englishVoice = voices.find(v => v.lang.startsWith('en-US')) ||
+                                         voices.find(v => v.lang.startsWith('en') && v.name.includes('English')) ||
+                                         voices.find(v => v.lang.startsWith('en')) ||
+                                         null;
+                    if (englishVoice) utterance.voice = englishVoice;
+
+                    utterance.onend = () => {
+                        btn.textContent = '🔊 听标准发音';
+                        btn.disabled = false;
+                    };
+                    utterance.onerror = (e) => {
+                        console.log('Speech error:', e);
+                        btn.textContent = '🔊 听标准发音';
+                        btn.disabled = false;
+                    };
+
+                    speechSynthesis.speak(utterance);
+                    return;
+                } catch (e) {
+                    console.log('Speech synthesis failed, trying API:', e);
+                }
             }
 
             // 降级：使用后端edge-tts API
