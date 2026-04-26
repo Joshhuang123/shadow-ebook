@@ -439,6 +439,61 @@
             transform: scale(1.1);
         }
 
+        /* 缓存进度徽章 */
+        .cache-badge {
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            background: linear-gradient(135deg, #10B981, #34D399);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.7em;
+            font-weight: 700;
+            box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+            z-index: 11;
+        }
+
+        /* 缓存音频按钮 */
+        .cache-audio-btn {
+            position: absolute;
+            bottom: 20px;
+            right: -6px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #10B981, #34D399);
+            border: 2px solid white;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            opacity: 0;
+            transition: all 0.2s;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        .book-spine:hover .cache-audio-btn {
+            opacity: 1;
+        }
+
+        .cache-audio-btn:hover {
+            transform: scale(1.1);
+            background: linear-gradient(135deg, #059669, #10B981);
+        }
+
+        .cache-audio-btn.caching {
+            animation: pulse 1s ease infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
         /* 导入卡片 - 超小尺寸 */
         .import-card {
             width: 90px;
@@ -1925,6 +1980,114 @@
         // TTS音色设置
         let currentVoice = localStorage.getItem('ttsVoice') || 'en-US-AriaNeural';
 
+        // ==================== IndexedDB TTS 缓存管理 ====================
+        class AudioCacheManager {
+            constructor() {
+                this.dbName = 'ShadowEbookTTS';
+                this.dbVersion = 1;
+                this.storeName = 'audio_cache';
+                this.db = null;
+                this.cacheProgress = {};
+            }
+
+            async open() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(this.dbName, this.dbVersion);
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => { this.db = request.result; resolve(this.db); };
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains(this.storeName)) {
+                            const store = db.createObjectStore(this.storeName, { keyPath: 'id' });
+                            store.createIndex('bookId', 'bookId', { unique: false });
+                            store.createIndex('sentenceIndex', 'sentenceIndex', { unique: false });
+                        }
+                    };
+                });
+            }
+
+            async getSentenceId(bookId, sentenceIndex, text) {
+                const textHash = await this.hashText(text + currentVoice);
+                return `${bookId}_${sentenceIndex}_${textHash}`;
+            }
+
+            async hashText(text) {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(text);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
+            }
+
+            async getAudio(bookId, sentenceIndex, text) {
+                await this.ensureOpen();
+                const id = await this.getSentenceId(bookId, sentenceIndex, text);
+                return new Promise((resolve, reject) => {
+                    const tx = this.db.transaction(this.storeName, 'readonly');
+                    const request = tx.objectStore(this.storeName).get(id);
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => resolve(request.result?.audio || null);
+                });
+            }
+
+            async saveAudio(bookId, sentenceIndex, text, audioBlob) {
+                await this.ensureOpen();
+                const id = await this.getSentenceId(bookId, sentenceIndex, text);
+                return new Promise((resolve, reject) => {
+                    const tx = this.db.transaction(this.storeName, 'readwrite');
+                    const request = tx.objectStore(this.storeName).put({
+                        id, bookId, sentenceIndex, text, audio: audioBlob,
+                        voice: currentVoice, cachedAt: Date.now()
+                    });
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => {
+                        if (!this.cacheProgress[bookId]) this.cacheProgress[bookId] = { cached: 0, total: 0 };
+                        this.cacheProgress[bookId].cached++;
+                        resolve(id);
+                    };
+                });
+            }
+
+            async getBookProgress(bookId) {
+                await this.ensureOpen();
+                return new Promise((resolve, reject) => {
+                    const tx = this.db.transaction(this.storeName, 'readonly');
+                    const request = tx.objectStore(this.storeName).index('bookId').getAll(bookId);
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => {
+                        const cached = request.result || [];
+                        resolve({ cached: cached.length, total: this.cacheProgress[bookId]?.total || 0 });
+                    };
+                });
+            }
+
+            setBookTotal(bookId, total) {
+                if (!this.cacheProgress[bookId]) this.cacheProgress[bookId] = { cached: 0, total: 0 };
+                this.cacheProgress[bookId].total = total;
+            }
+
+            async clearBookCache(bookId) {
+                await this.ensureOpen();
+                return new Promise((resolve, reject) => {
+                    const tx = this.db.transaction(this.storeName, 'readwrite');
+                    const cursor = tx.objectStore(this.storeName).index('bookId').openCursor(bookId);
+                    cursor.onerror = () => reject(cursor.error);
+                    cursor.onsuccess = (event) => {
+                        const cur = event.target.result;
+                        if (cur) { cur.delete(); cur.continue(); }
+                        else { if (this.cacheProgress[bookId]) this.cacheProgress[bookId].cached = 0; resolve(); }
+                    };
+                });
+            }
+
+            async ensureOpen() {
+                if (!this.db) await this.open();
+            }
+        }
+
+        const audioCache = new AudioCacheManager();
+        audioCache.open().catch(console.error);
+
         // 初始化音色选择器
         document.getElementById('voice-select').value = currentVoice;
 
@@ -2021,7 +2184,9 @@
                             html += `
                                 <div class="book-spine" onclick="loadBook('${b.id}')" title="${b.title}">
                                     <span class="lexile-badge ${levelClass}">${b.lexile > 0 ? b.lexile + 'L' : '?'}</span>
+                                    <span class="cache-badge" id="cache-badge-${b.id}" style="display:none;"></span>
                                     <button class="book-delete-btn" onclick="event.stopPropagation(); deleteBook('${b.id}', '${b.title.replace(/'/g, "\\'")}')" title="删除">×</button>
+                                    <button class="cache-audio-btn" onclick="event.stopPropagation(); cacheBookAudio('${b.id}')" title="缓存音频">🔊</button>
                                     <div class="book-cover" style="background:linear-gradient(135deg,${fallbackColor});">
                                         <img src="${coverUrl}" alt="${b.title}"
                                              style="width:100%;height:100%;object-fit:cover;border-radius:6px;opacity:0;"
@@ -2056,6 +2221,94 @@
                 `;
             } catch (err) {
                 console.error('Failed to load book list:', err);
+            }
+
+            // 更新所有书的缓存进度
+            updateAllCacheBadges();
+        }
+
+        // 更新所有书的缓存进度徽章
+        async function updateAllCacheBadges() {
+            const badges = document.querySelectorAll('[id^="cache-badge-"]');
+            for (const badge of badges) {
+                const bookId = badge.id.replace('cache-badge-', '');
+                try {
+                    const progress = await audioCache.getBookProgress(bookId);
+                    if (progress.total > 0 && progress.cached > 0) {
+                        badge.textContent = `🔊 ${progress.cached}/${progress.total}`;
+                        badge.style.display = 'inline-block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                } catch (e) {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+
+        // 缓存整本书的音频（后台执行）
+        async function cacheBookAudio(bookId) {
+            const btn = document.querySelector(`.cache-audio-btn[onclick*="${bookId}"]`);
+            if (btn) {
+                btn.classList.add('caching');
+                btn.textContent = '⏳';
+            }
+
+            try {
+                // 获取书籍数据
+                const res = await fetch(`/api/book/${bookId}`);
+                const data = await res.json();
+                if (!data.success) return;
+
+                const book = data.book;
+                let totalSentences = 0;
+                book.chapters.forEach(ch => totalSentences += ch.sentences.length);
+
+                // 设置总数
+                audioCache.setBookTotal(bookId, totalSentences);
+
+                // 逐句缓存
+                let cached = 0;
+                for (const chapter of book.chapters) {
+                    for (let i = 0; i < chapter.sentences.length; i++) {
+                        const text = chapter.sentences[i];
+                        if (!text || text.length > 500) continue;
+
+                        // 检查是否已缓存
+                        const existing = await audioCache.getAudio(bookId, i, text);
+                        if (existing) continue;
+
+                        // 生成并缓存
+                        try {
+                            const ttsRes = await fetch('/api/tts', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ text, voice: currentVoice })
+                            });
+                            const ttsData = await ttsRes.json();
+                            if (ttsData.success && ttsData.audio_url) {
+                                const audioRes = await fetch(ttsData.audio_url);
+                                const audioBlob = await audioRes.blob();
+                                await audioCache.saveAudio(bookId, i, text, audioBlob);
+                                cached++;
+                            }
+                        } catch (e) {}
+
+                        // 更新进度
+                        const badge = document.getElementById(`cache-badge-${bookId}`);
+                        if (badge) {
+                            badge.textContent = `🔊 ${cached}/${totalSentences}`;
+                            badge.style.display = 'inline-block';
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Cache failed:', e);
+            }
+
+            if (btn) {
+                btn.classList.remove('caching');
+                btn.textContent = '🔊';
             }
         }
 
@@ -2567,6 +2820,81 @@
         }
 
         // TTS 播放 (优先使用微软edge-tts，备用浏览器TTS)
+        // 使用Web Speech API播放并缓存
+        async function playWithCache(text, onEnd) {
+            const btn = document.getElementById('btn-play');
+            const status = document.getElementById('status-playing');
+
+            // 1. 优先从缓存读取
+            const cachedAudio = await audioCache.getAudio(currentBookId, currentSentenceIndex, text);
+            if (cachedAudio) {
+                if (audioElement) audioElement.pause();
+                audioElement = new Audio(URL.createObjectURL(cachedAudio));
+                isPlaying = true;
+
+                audioElement.onended = () => {
+                    isPlaying = false;
+                    btn.disabled = false;
+                    status.classList.add('hidden');
+                    if (onEnd) onEnd();
+                    // 自动缓存下一句
+                    cacheNextSentence();
+                };
+                audioElement.onerror = () => {
+                    // 缓存失效，使用Web Speech API
+                    playWithWebSpeech(text, onEnd);
+                };
+                audioElement.play();
+                return;
+            }
+
+            // 2. 缓存没有，使用Web Speech API
+            playWithWebSpeech(text, onEnd);
+        }
+
+        // 使用Web Speech API播放
+        function playWithWebSpeech(text, onEnd) {
+            const btn = document.getElementById('btn-play');
+            const status = document.getElementById('status-playing');
+
+            if (!('speechSynthesis' in window)) {
+                btn.disabled = false;
+                status.classList.add('hidden');
+                return;
+            }
+
+            speechSynthesis.cancel();
+
+            // 等待音色加载
+            const voices = speechSynthesis.getVoices();
+            const voice = voices.find(v => v.lang.startsWith('en')) || voices[0];
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.9;
+            utterance.voice = voice;
+
+            utterance.onend = () => {
+                isPlaying = false;
+                btn.disabled = false;
+                status.classList.add('hidden');
+                if (onEnd) onEnd();
+                // 缓存这句
+                cacheCurrentSentence();
+                // 自动缓存下一句
+                cacheNextSentence();
+            };
+
+            utterance.onerror = () => {
+                isPlaying = false;
+                btn.disabled = false;
+                status.classList.add('hidden');
+            };
+
+            speechSynthesis.speak(utterance);
+            isPlaying = true;
+        }
+
         async function playCurrentSentence() {
             if (!sentences || sentences.length === 0) return;
 
@@ -2577,65 +2905,92 @@
             btn.disabled = true;
             status.classList.remove('hidden');
 
-            // 优先使用微软edge-tts（音质更好）
-            try {
-                const res = await fetch('/api/tts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text, voice: currentVoice })
-                });
-                const data = await res.json();
+            await playWithCache(text);
+        }
 
-                if (data.success && data.audio_url) {
-                    if (audioElement) audioElement.pause();
-                    audioElement = new Audio(data.audio_url);
-                    isPlaying = true;
+        // 缓存当前句子
+        async function cacheCurrentSentence() {
+            if (!sentences || !currentBookId) return;
+            const text = sentences[currentSentenceIndex];
+            if (!text || text.length > 500) return;
 
-                    audioElement.onended = () => {
-                        isPlaying = false;
-                        btn.disabled = false;
-                        status.classList.add('hidden');
-                    };
+            // 检查是否已缓存
+            const existing = await audioCache.getAudio(currentBookId, currentSentenceIndex, text);
+            if (existing) return;
 
-                    audioElement.onerror = () => {
-                        isPlaying = false;
-                        btn.disabled = false;
-                        status.classList.add('hidden');
-                    };
-
-                    audioElement.play();
-                    return;
-                }
-            } catch (err) {
-                console.log('Edge TTS failed, trying browser TTS');
-            }
-
-            // 降级：使用浏览器内置TTS
+            // 使用Web Speech API生成音频并缓存
             if ('speechSynthesis' in window) {
-                speechSynthesis.cancel();
+                const voices = speechSynthesis.getVoices();
+                const voice = voices.find(v => v.lang.startsWith('en')) || voices[0];
+
+                // 创建MediaStreamDestination来录制
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'en-US';
                 utterance.rate = 0.9;
-                const voices = speechSynthesis.getVoices();
-                const englishVoice = voices.find(v => v.lang.startsWith('en')) || null;
-                if (englishVoice) utterance.voice = englishVoice;
-                utterance.onend = () => {
-                    isPlaying = false;
-                    btn.disabled = false;
-                    status.classList.add('hidden');
-                };
-                utterance.onerror = () => {
-                    isPlaying = false;
-                    btn.disabled = false;
-                    status.classList.add('hidden');
-                };
-                speechSynthesis.speak(utterance);
-                isPlaying = true;
-                return;
-            }
+                utterance.voice = voice;
 
-            btn.disabled = false;
-            status.classList.add('hidden');
+                // 由于Web Speech API不提供音频数据，我们使用服务器TTS
+                try {
+                    const res = await fetch('/api/tts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text, voice: currentVoice })
+                    });
+                    const data = await res.json();
+                    if (data.success && data.audio_url) {
+                        // 下载音频并保存到IndexedDB
+                        const audioRes = await fetch(data.audio_url);
+                        const audioBlob = await audioRes.blob();
+                        await audioCache.saveAudio(currentBookId, currentSentenceIndex, text, audioBlob);
+                        updateCacheProgressUI();
+                    }
+                } catch (e) {
+                    console.log('Cache failed:', e);
+                }
+            }
+        }
+
+        // 缓存下一句（后台）
+        async function cacheNextSentence() {
+            if (!sentences || !currentBookId) return;
+            const nextIndex = currentSentenceIndex + 1;
+            if (nextIndex >= sentences.length) return;
+
+            const text = sentences[nextIndex];
+            if (!text || text.length > 500) return;
+
+            // 检查是否已缓存
+            const existing = await audioCache.getAudio(currentBookId, nextIndex, text);
+            if (existing) return;
+
+            // 后台缓存下一句
+            setTimeout(async () => {
+                try {
+                    const res = await fetch('/api/tts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text, voice: currentVoice })
+                    });
+                    const data = await res.json();
+                    if (data.success && data.audio_url) {
+                        const audioRes = await fetch(data.audio_url);
+                        const audioBlob = await audioRes.blob();
+                        await audioCache.saveAudio(currentBookId, nextIndex, text, audioBlob);
+                        updateCacheProgressUI();
+                    }
+                } catch (e) {}
+            }, 100);
+        }
+
+        // 更新缓存进度UI
+        async function updateCacheProgressUI() {
+            if (!currentBookId) return;
+            const progress = await audioCache.getBookProgress(currentBookId);
+            const badge = document.getElementById(`cache-badge-${currentBookId}`);
+            if (badge && progress.total > 0) {
+                badge.textContent = `🔊 ${progress.cached}/${progress.total}`;
+                badge.style.display = progress.cached > 0 ? 'inline-block' : 'none';
+            }
         }
 
         // 导入书籍
