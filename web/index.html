@@ -1,6 +1,28 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+<script>
+(function(){
+  var T={
+    day:  {--primary:'#6366F1',--primary-light:'#818CF8',--secondary:'#10B981',--bg:'#F8FAFC',--card:'#FFFFFF',--text:'#1E293B',--sub:'#64748B',--border:'#E2E8F0',--accent:'#F59E0B',--nav:'#FFFFFF',--shadow:'0 4px 20px rgba(0,0,0,0.1)',--body:'linear-gradient(135deg,#E0E7FF 0%,#F0FDF4 100%)',--input:'#F1F5F9',--btn-hover:'#4F46E5'},
+    night:{--primary:'#818CF8',--primary-light:'#A78BFA',--secondary:'#34D399',--bg:'#0F172A',--card:'#1E293B',--text:'#F1F5F9',--sub:'#94A3B8',--border:'#334155',--accent:'#FBBF24',--nav:'#1E293B',--shadow:'0 4px 20px rgba(0,0,0,0.5)',--body:'linear-gradient(135deg,#0F172A 0%,#1E1B4B 100%)',--input:'#334155',--btn-hover:'#6366F1'}
+  };
+  var apply=function(m){
+    if(m==='system'){document.documentElement.removeAttribute('data-theme');localStorage.removeItem('shTheme');}
+    else if(T[m]){Object.entries(T[m]).forEach(function(e){document.documentElement.style.setProperty(e[0],e[1]);});localStorage.setItem('shTheme',m);}
+    updateBtn(m||'system');
+  };
+  var updateBtn=function(m){var b=document.getElementById('themeBtn');if(b){var i={day:'\uD83C\uDF19',night:'\u2600\uFE0F',system:'\uD83D\uDD0C'};b.textContent=i[m]||'\uD83D\uDD0C';b.title={day:'\u665A\u95F4\u6A21\u5F0F',night:'\u65E5\u95F4\u6A21\u5F0F',system:'\u8DDF\u968F\u7CFB\u7EDF'}[m]||'\u8DDF\u968F\u7CFB\u7EDF';}};
+  window.setTheme=apply;
+  window.cycleTheme=function(){var s=localStorage.getItem('shTheme')||'system';var order=['day','night','system'];var idx=(order.indexOf(s)+1)%3;apply(order[idx]);};
+  window.addEventListener('DOMContentLoaded',function(){
+    var s=localStorage.getItem('shTheme')||'system';apply(s);
+    var mq=window.matchMedia('(prefers-color-scheme:dark)');
+    mq.addEventListener('change',function(){if(!localStorage.getItem('shTheme'))apply('system');});
+  });
+})();
+</script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shadow Learning - 英语影子跟读</title>
@@ -398,11 +420,28 @@
                 align-items: center;
             }
         }
-    </style>
+    
+        /* Theme fallback vars */
+        --primary: var(--primary, #6366F1);
+        --primary-light: var(--primary-light, #818CF8);
+        --secondary: var(--secondary, #10B981);
+        --bg: var(--bg, #F8FAFC);
+        --card: var(--card, #FFFFFF);
+        --text: var(--text, #1E293B);
+        --sub: var(--sub, #64748B);
+        --border: var(--border, #E2E8F0);
+        --nav: var(--nav, #FFFFFF);
+        --accent: var(--accent, #F59E0B);
+        --shadow: var(--shadow, 0 4px 20px rgba(0,0,0,0.1));
+        --body: var(--body, linear-gradient(135deg, #E0E7FF 0%, #F0FDF4 100%));
+        --input: var(--input, #F1F5F9);
+        --btn-hover: var(--btn-hover, #4F46E5);
+</style>
 </head>
 <body>
     <header>
-        <h1>Shadow Learning</h1>
+        <button id="themeBtn" onclick="cycleTheme()" style="background:var(--primary,#6366F1);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1.1em;cursor:pointer;margin-left:auto;flex-shrink:0;">&#xD83D;&#xDD0C;</button>
+<h1>Shadow Learning</h1>
         <p>英语影子跟读练习 - 说一口流利的英语！</p>
     </header>
 
