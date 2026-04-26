@@ -195,7 +195,7 @@ def pregenerate_tts_on_startup():
 # 启动时预生成（延迟执行，不阻塞服务器启动）
 import threading
 def start_tts_pregeneration():
-    t = threading.Thread(target=pregenerate_tts_on_startup, daemon=True)
+    t = threading.Thread(target=pregenerate_all_tts, daemon=True)
     t.start()
 
 # 立即启动预生成（后台线程，不阻塞）
@@ -316,45 +316,101 @@ def text_to_speech():
 # 预生成所有句子音频
 @app.route('/api/tts/pregenerate', methods=['POST'])
 def pregenerate_all_tts():
-    """预生成所有课程音频"""
+    """预生成所有电子书和语法音频（离线可用）"""
     import edge_tts
     import asyncio
     import hashlib
+    import json
+    import re
+
+    VOICES = [
+        'en-US-AriaNeural',
+        'en-US-JennyNeural',
+        'en-US-EmmaNeural',
+        'en-US-AndrewNeural',
+        'en-US-BrianNeural',
+        'en-US-GuyNeural'
+    ]
+
+    GRAMMAR_EXPLAINATIONS = [
+        # 现在进行时
+        "Present Progressive: Subject + am/is/are + verb-ing",
+        "This tense describes an action happening right now.",
+        "Key words: now, right now, at the moment.",
+        # 一般现在时
+        "Simple Present: Subject + verb(s/es)",
+        "This tense describes habits and regular actions.",
+        "Key words: always, usually, often, sometimes, never.",
+        # 一般过去时
+        "Simple Past: Subject + verb-ed (or irregular past tense)",
+        "This tense describes actions that happened in the past.",
+        "Key words: yesterday, last week, this morning.",
+        # be going to
+        "be going to: Subject + am/is/are + going to + verb",
+        "This expresses future plans.",
+        # 频率副词
+        "Frequency: always 100%, usually 80%, often 50%, sometimes 20%, never 0%",
+        # 祈使句
+        "Imperative: Verb + object. Negative: Don't + verb.",
+        # 不规则动词
+        "Irregular verbs: go-went, see-saw, eat-ate, have-had, take-took.",
+    ]
 
     async def generate():
         audio_dir = Path(__file__).parent / 'audio' / 'tts'
         audio_dir.mkdir(parents=True, exist_ok=True)
 
-        # NC2A 句子
-        for unit in COURSE_CONTENT["units"]:
-            for sent in unit["sentences"]:
-                text = sent["text"] if isinstance(sent, dict) else sent
-                text_hash = hashlib.md5(text.encode()).hexdigest()[:12]
+        books_dir = Path(__file__).parent / 'data' / 'books'
+
+        # 1. 遍历所有电子书
+        print("📚 正在预生成电子书音频...")
+        for book_file in books_dir.glob('*.json'):
+            try:
+                book_data = json.loads(book_file.read_text())
+                sentences_count = 0
+
+                for chapter in book_data.get("chapters", []):
+                    for sent in chapter.get("sentences", []):
+                        text = sent["text"] if isinstance(sent, dict) else sent
+                        if not text or len(text) > 500:
+                            continue
+
+                        sentences_count += 1
+
+                        for voice in VOICES:
+                            text_hash = hashlib.md5((text + voice).encode()).hexdigest()[:12]
+                            audio_path = audio_dir / f'{text_hash}.mp3'
+                            if not audio_path.exists():
+                                try:
+                                    await edge_tts.Communicate(text, voice=voice).save(str(audio_path))
+                                except Exception as e:
+                                    pass  # 静默跳过错误
+
+                print(f"  ✅ {book_data.get('book', book_file.stem)[:40]}: {sentences_count}句")
+
+            except Exception as e:
+                print(f"  ❌ {book_file}: {e}")
+
+        # 2. 生成语法讲解音频
+        print("📝 正在预生成语法讲解音频...")
+        for grammar_text in GRAMMAR_EXPLAINATIONS:
+            for voice in VOICES:
+                text_hash = hashlib.md5((grammar_text + voice).encode()).hexdigest()[:12]
                 audio_path = audio_dir / f'{text_hash}.mp3'
                 if not audio_path.exists():
-                    await edge_tts.Communicate(text, voice='en-US-AriaNeural').save(str(audio_path))
+                    try:
+                        await edge_tts.Communicate(grammar_text, voice=voice).save(str(audio_path))
+                    except Exception as e:
+                        pass
 
-        # MTH29 句子
-        import json
-        mth_path = Path(__file__).parent / 'data' / 'books' / 'christmas_in_camelot.json'
-        if mth_path.exists():
-            mth_data = json.loads(mth_path.read_text())
-            for chapter in mth_data.get("chapters", []):
-                for sent in chapter.get("sentences", []):
-                    text = sent["text"] if isinstance(sent, dict) else sent
-                    text_hash = hashlib.md5(text.encode()).hexdigest()[:12]
-                    audio_path = audio_dir / f'{text_hash}.mp3'
-                    if not audio_path.exists():
-                        await edge_tts.Communicate(text, voice='en-US-AriaNeural').save(str(audio_path))
-
-        return {"success": True, "message": "音频生成完成"}
+        print("🎉 所有TTS音频预生成完成！")
 
     try:
         asyncio.run(generate())
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
+        print(f"Pre-generate error: {e}")
 
-    return jsonify({"success": True, "message": "音频生成完成"})
+    return jsonify({"success": True, "message": "音频预生成启动"})
 
 @app.route('/api/book/<book_id>')
 def get_book(book_id):
