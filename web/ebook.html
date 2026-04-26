@@ -2477,6 +2477,8 @@
                 element.classList.remove('looked');
                 delete lookedWords[cleanWord];
                 localStorage.setItem('lookedWords', JSON.stringify(lookedWords));
+                // 刷新显示，让所有同名单词都取消标记
+                updateDisplay();
                 return;
             }
 
