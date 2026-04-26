@@ -635,24 +635,169 @@
             min-height: 500px;
         }
 
-        .chapter-select-wrap {
-            margin-bottom: 24px;
+        /* 章节标签 */
+        .chapter-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: var(--bg-dark);
+            border-radius: 16px;
+        }
+        .chapter-tab {
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: white;
+            border: 2px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .chapter-tab:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .chapter-tab.active {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border-color: var(--primary);
+            color: white;
         }
 
-        .chapter-select-wrap select {
-            width: 100%;
-            padding: 12px 16px;
-            background: var(--bg-dark);
-            border: 1px solid var(--border);
-            border-radius: 10px;
+        /* 阅读进度 */
+        .reading-progress {
+            margin-bottom: 20px;
+        }
+        .progress-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+            color: var(--text-secondary);
+        }
+        .progress-icon {
+            font-size: 1.2em;
+        }
+
+        /* 分页导航 */
+        .pagination-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin: 24px 0 16px;
+        }
+        .page-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 18px;
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 25px;
             color: var(--text-primary);
             font-size: 0.95em;
+            font-weight: 600;
             cursor: pointer;
+            transition: all 0.2s;
+        }
+        .page-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        .page-btn-icon {
+            font-size: 0.8em;
+        }
+        .page-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 16px;
+            background: var(--bg-dark);
+            border-radius: 20px;
+            font-weight: 600;
+        }
+        .current-page {
+            font-size: 1.3em;
+            color: var(--primary);
+        }
+        .page-separator {
+            color: var(--text-secondary);
+        }
+        .total-pages {
+            color: var(--text-secondary);
+        }
+        .play-btn-large {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 24px rgba(79, 70, 229, 0.4);
+        }
+        .play-btn-large:hover {
+            transform: scale(1.08);
+            box-shadow: 0 12px 32px rgba(79, 70, 229, 0.5);
+        }
+        .play-btn-large.playing {
+            animation: pulse-ring 1s ease infinite;
+        }
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(79, 70, 229, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
         }
 
-        .chapter-select-wrap select:focus {
-            outline: none;
+        /* 章节导航 */
+        .chapter-nav {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .chapter-nav-btn {
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .chapter-nav-btn:hover {
+            background: var(--primary);
             border-color: var(--primary);
+            color: white;
+        }
+
+        /* 测验按钮 */
+        .quiz-btn {
+            width: 100%;
+            padding: 14px;
+            font-size: 1em;
+            border-radius: 16px;
+            background: linear-gradient(135deg, var(--secondary), #34D399);
+            border: none;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .quiz-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
         }
 
         .sentence-display {
@@ -1502,17 +1647,17 @@
 
             <div class="reader-main">
                 <div class="text-panel">
-                    <div class="chapter-select-wrap">
-                        <select id="chapter-select" onchange="selectChapter(this.value)"></select>
-                    </div>
+                    <!-- 章节标签 -->
+                    <div class="chapter-tabs" id="chapter-tabs"></div>
 
-                    <div class="progress-wrap">
+                    <!-- 进度条 -->
+                    <div class="reading-progress">
+                        <div class="progress-info">
+                            <span class="progress-icon">📖</span>
+                            <span id="progress-text">第 1 页 / 共 10 页</span>
+                        </div>
                         <div class="progress-bar">
                             <div class="progress-fill" id="progress-fill"></div>
-                        </div>
-                        <div class="progress-text">
-                            <span id="progress-text">0 / 0</span>
-                            <span id="progress-percent">0%</span>
                         </div>
                     </div>
 
@@ -1526,18 +1671,45 @@
                         <span>正在朗读...</span>
                     </div>
 
-                    <!-- 单页/双页显示 -->
+                    <!-- 句子显示 -->
                     <div id="single-page-view">
                         <div class="sentence-display" id="sentence-display"></div>
                     </div>
 
-                    <div class="playback-controls">
-                        <button class="nav-btn" id="btn-prev" onclick="prevSentence()">←</button>
-                        <button class="play-btn" id="btn-play" onclick="playCurrentSentence()">▶</button>
-                        <button class="nav-btn" id="btn-next" onclick="nextSentence()">→</button>
+                    <!-- 分页导航 -->
+                    <div class="pagination-controls">
+                        <button class="page-btn" id="btn-prev" onclick="prevSentence()">
+                            <span class="page-btn-icon">◀</span>
+                            <span>上一句</span>
+                        </button>
+
+                        <div class="page-indicator" id="page-indicator">
+                            <span class="current-page" id="current-page">1</span>
+                            <span class="page-separator">/</span>
+                            <span class="total-pages" id="total-pages">10</span>
+                        </div>
+
+                        <button class="play-btn-large" id="btn-play" onclick="playCurrentSentence()">
+                            <span id="play-icon">▶</span>
+                        </button>
+
+                        <button class="page-btn" id="btn-next" onclick="nextSentence()">
+                            <span>下一句</span>
+                            <span class="page-btn-icon">▶</span>
+                        </button>
                     </div>
 
-                    <button class="btn btn-secondary" id="btn-comp" onclick="showComprehensionModal()" style="margin-top:12px;width:100%;">
+                    <!-- 章节导航 -->
+                    <div class="chapter-nav">
+                        <button class="chapter-nav-btn" id="btn-chapter-prev" onclick="prevChapter()">
+                            <span>◀ 上一章</span>
+                        </button>
+                        <button class="chapter-nav-btn" id="btn-chapter-next" onclick="nextChapter()">
+                            <span>下一章 ▶</span>
+                        </button>
+                    </div>
+
+                    <button class="btn btn-secondary quiz-btn" id="btn-comp" onclick="showComprehensionModal()">
                         📖 章节测验
                     </button>
                 </div>
@@ -1859,10 +2031,15 @@
                     currentBookId = bookId;
                     document.getElementById('reader-title').textContent = bookData.book;
 
-                    const select = document.getElementById('chapter-select');
-                    select.innerHTML = '';
+                    // 渲染章节标签
+                    const tabsContainer = document.getElementById('chapter-tabs');
+                    tabsContainer.innerHTML = '';
                     bookData.chapters.forEach((ch, i) => {
-                        select.innerHTML += `<option value="${i}">${ch.name} (${ch.sentences.length}句)</option>`;
+                        const tab = document.createElement('button');
+                        tab.className = 'chapter-tab' + (i === 0 ? ' active' : '');
+                        tab.textContent = ch.name || `第${i + 1}章`;
+                        tab.onclick = () => selectChapter(i);
+                        tabsContainer.appendChild(tab);
                     });
 
                     selectChapter(0);
@@ -1879,8 +2056,32 @@
             currentChapterIndex = parseInt(index);
             sentences = bookData.chapters[currentChapterIndex].sentences;
             currentSentenceIndex = 0;
+
+            // 更新章节标签高亮
+            document.querySelectorAll('.chapter-tab').forEach((tab, i) => {
+                tab.classList.toggle('active', i === currentChapterIndex);
+            });
+
+            // 更新章节导航按钮
+            document.getElementById('btn-chapter-prev').disabled = currentChapterIndex === 0;
+            document.getElementById('btn-chapter-next').disabled = currentChapterIndex >= bookData.chapters.length - 1;
+
             updateDisplay();
             clearTranslation();
+        }
+
+        // 上一章
+        function prevChapter() {
+            if (currentChapterIndex > 0) {
+                selectChapter(currentChapterIndex - 1);
+            }
+        }
+
+        // 下一章
+        function nextChapter() {
+            if (currentChapterIndex < bookData.chapters.length - 1) {
+                selectChapter(currentChapterIndex + 1);
+            }
         }
 
         // 更新显示
@@ -1912,8 +2113,9 @@
             const current = currentSentenceIndex + 1;
             const percent = total > 0 ? Math.round((currentSentenceIndex / total) * 100) : 0;
             document.getElementById('progress-fill').style.width = percent + '%';
-            document.getElementById('progress-text').textContent = `${current} / ${total}`;
-            document.getElementById('progress-percent').textContent = percent + '%';
+            document.getElementById('progress-text').textContent = `第 ${current} 页 / 共 ${total} 页`;
+            document.getElementById('current-page').textContent = current;
+            document.getElementById('total-pages').textContent = total;
 
             // 更新按钮状态
             document.getElementById('btn-prev').disabled = currentSentenceIndex === 0;
@@ -2483,8 +2685,9 @@
             const current = currentSentenceIndex + 1;
             const percent = total > 0 ? Math.round((currentSentenceIndex / total) * 100) : 0;
             document.getElementById('progress-fill').style.width = percent + '%';
-            document.getElementById('progress-text').textContent = `${current} / ${total}`;
-            document.getElementById('progress-percent').textContent = percent + '%';
+            document.getElementById('progress-text').textContent = `第 ${current} 页 / 共 ${total} 页`;
+            document.getElementById('current-page').textContent = current;
+            document.getElementById('total-pages').textContent = total;
 
             // 更新按钮状态
             document.getElementById('btn-prev').disabled = currentSentenceIndex === 0;
