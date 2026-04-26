@@ -276,13 +276,14 @@ def text_to_speech():
     """TTS语音合成 - 使用 edge-tts，缓存到本地"""
     data = request.get_json()
     text = data.get('text', '')
+    voice = data.get('voice', 'en-US-AriaNeural')  # 默认Aria
 
     if not text:
         return jsonify({"success": False, "error": "文本为空"})
 
-    # 生成唯一文件名（文本的hash）
+    # 生成唯一文件名（包含音色的hash）
     import hashlib
-    text_hash = hashlib.md5(text.encode()).hexdigest()[:12]
+    text_hash = hashlib.md5((text + voice).encode()).hexdigest()[:12]
     audio_dir = Path(__file__).parent / 'audio' / 'tts'
     audio_dir.mkdir(parents=True, exist_ok=True)
     audio_path = audio_dir / f'{text_hash}.mp3'
@@ -297,7 +298,7 @@ def text_to_speech():
 
     async def generate():
         try:
-            await edge_tts.Communicate(text, voice='en-US-AriaNeural').save(str(audio_path))
+            await edge_tts.Communicate(text, voice=voice).save(str(audio_path))
             return True
         except Exception as e:
             print(f"TTS error: {e}")
@@ -369,16 +370,88 @@ def list_books():
     books_dir = Path(__file__).parent / 'data' / 'books'
     books_dir.mkdir(parents=True, exist_ok=True)
 
+    def calc_lexile(book_data):
+        """根据书名估算蓝思值（因为句子数据不完整）"""
+        import re
+        title = book_data.get('book', '').lower()
+
+        # 已知蓝思值的书籍（更精确的值）
+        known_books = {
+            # Harry Potter 系列
+            'philosopher': 880,
+            'chamber of secrets': 870,
+            'prisoner of azkaban': 870,
+            'goblet of fire': 880,
+            'order of the phoenix': 900,
+            'half-blood prince': 680,
+            'deathly hallows': 900,
+            # Percy Jackson 系列
+            'lightning thief': 590,
+            'sea of monsters': 600,
+            'titans curse': 620,
+            'battle of the labyrinth': 630,
+            'last olympian': 620,
+            'house of hades': 650,
+            'blood of olympus': 650,
+            # Diary of a Wimpy Kid
+            'diary of a wimpy kid': 800,
+            'wimpy kid': 800,
+            # Magic Tree House
+            'magic tree house': 450,
+            'christmas in camelot': 500,
+            # 其他
+            'treasury of greek': 750,
+            'gods goddesses': 750,
+            'percy jackson': 600,
+        }
+
+        # 查找匹配（统一将下划线转为空格进行匹配）
+        title_normalized = title.replace('_', ' ')
+        for key, lexile in known_books.items():
+            if key in title_normalized:
+                return lexile
+
+        # 通用估算：计算句子平均长度
+        total_words = 0
+        total_sentences = 0
+        for ch in book_data.get('chapters', []):
+            for sent in ch.get('sentences', []):
+                words = [w for w in sent.split() if re.sub(r'[^a-zA-Z]', '', w)]
+                if words:
+                    total_words += len(words)
+                    total_sentences += 1
+
+        if total_sentences == 0:
+            return 500  # 默认
+
+        avg_sentence_length = total_words / total_sentences
+
+        # 根据句子长度估算（经验公式）
+        # 10词左右 ~500L, 15词 ~700L, 20词 ~850L, 25词~1000L
+        if avg_sentence_length < 8:
+            return 400
+        elif avg_sentence_length < 12:
+            return 550
+        elif avg_sentence_length < 16:
+            return 700
+        elif avg_sentence_length < 20:
+            return 850
+        else:
+            return 1000
+
     books = []
     for f in books_dir.glob('*.json'):
         try:
             data = json.loads(f.read_text())
             total_sentences = sum(len(ch.get('sentences', [])) for ch in data.get('chapters', []))
+            lexile = calc_lexile(data)
             books.append({
                 "id": f.stem,
                 "title": data.get('book', data.get('title', f.stem)),
                 "chapters": len(data.get('chapters', [])),
-                "sentences": total_sentences
+                "sentences": total_sentences,
+                "lexile": lexile,
+                "cover": data.get('cover')
             })
         except:
             pass
@@ -420,14 +493,40 @@ def import_book():
 
         book_title = filename.replace('.epub', '')
         chapters = []
+        cover_path = None
 
         with zipfile.ZipFile(epub_data, 'r') as zf:
             # 找所有 HTML/XHTML 文件
             html_files = [n for n in zf.namelist() if n.endswith(('.html', '.xhtml', '.htm')) and 'image' not in n.lower()]
 
+            # 提取封面图片 - 直接查找常见的封面文件名
+            try:
+                cover_patterns = ['cover.jpeg', 'cover.jpg', 'cover.png', 'cover1.jpeg', 'cover1.jpg',
+                                  'images/cover.jpg', 'images/cover.jpeg', 'OEBPS/images/cover.jpg']
+                for pattern in cover_patterns:
+                    try:
+                        img_data = zf.read(pattern)
+                        if len(img_data) > 1000:  # 确保是真实的图片
+                            books_covers_dir = Path(__file__).parent / 'data' / 'covers'
+                            books_covers_dir.mkdir(parents=True, exist_ok=True)
+                            book_id_for_cover = re.sub(r'[^a-zA-Z0-9_-]', '_', filename.replace('.epub', '').lower())
+                            ext = pattern.split('.')[-1].lower()
+                            cover_filename = f'{book_id_for_cover}.{ext}'
+                            cover_path = books_covers_dir / cover_filename
+                            with open(cover_path, 'wb') as f:
+                                f.write(img_data)
+                            cover_path = f'/data/covers/{cover_filename}'
+                            print(f'封面已提取: {cover_filename}')
+                            break
+                    except:
+                        continue
+            except Exception as e:
+                print(f'提取封面出错: {e}')
+
             # 尝试从 content.opf 读取 spine 顺序
             spine_items = []
             try:
+                # 重新读取 content.opf（因为上面的代码可能修改了变量）
                 content_opf = zf.read('OEBPS/content.opf').decode('utf-8')
                 # 提取 spine 中的 idref
                 spine_ids = re.findall(r'<itemref[^>]+idref=["\']([^"\']+)["\']', content_opf)
@@ -544,7 +643,8 @@ def import_book():
         book_data = {
             "book": book_title,
             "id": book_id,
-            "chapters": merged_chapters
+            "chapters": merged_chapters,
+            "cover": cover_path  # 如果提取到封面会有值
         }
         book_path.parent.mkdir(parents=True, exist_ok=True)
         book_path.write_text(json.dumps(book_data, ensure_ascii=False, indent=2))
@@ -554,12 +654,19 @@ def import_book():
             "book_id": book_id,
             "book_title": book_title,
             "total_chapters": len(merged_chapters),
-            "total_sentences": total_sentences
+            "total_sentences": total_sentences,
+            "has_cover": cover_path is not None
         })
 
     except Exception as e:
         import traceback
         return jsonify({"success": False, "error": str(e)})
+
+@app.route('/data/covers/<path:filename>')
+def serve_covers(filename):
+    """提供封面图片"""
+    covers_dir = Path(__file__).parent / 'data' / 'covers'
+    return send_from_directory(covers_dir, filename)
 
 @app.route('/api/transcribe', methods=['POST'])
 def transcribe_audio():

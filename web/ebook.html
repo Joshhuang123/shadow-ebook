@@ -4,25 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shadow Ebook - 英语电子书阅读</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #4F46E5;
+            --primary: #6366F1;
             --primary-light: #818CF8;
             --secondary: #10B981;
-            --bg-dark: #0F172A;
-            --bg-card: #1E293B;
-            --text-primary: #F8FAFC;
-            --text-secondary: #94A3B8;
-            --border: #334155;
+            --bg-dark: #F8FAFC;
+            --bg-card: #FFFFFF;
+            --text-primary: #1E293B;
+            --text-secondary: #64748B;
+            --border: #E2E8F0;
             --accent: #F59E0B;
+            --shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg-dark);
+            font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #E0E7FF 0%, #F0FDF4 100%);
             min-height: 100vh;
             color: var(--text-primary);
             line-height: 1.6;
@@ -30,10 +31,9 @@
 
         /* 顶部导航 */
         .top-nav {
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--border);
-            padding: 16px 24px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 12px 24px;
             position: fixed;
             top: 0;
             left: 0;
@@ -47,19 +47,21 @@
         .nav-brand {
             display: flex;
             align-items: center;
-            gap: 12px;
-            font-weight: 600;
-            font-size: 1.1em;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 1.3em;
+            color: var(--primary);
         }
 
         .nav-brand .logo {
-            width: 32px;
-            height: 32px;
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
-            border-radius: 8px;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), #A78BFA);
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 1.2em;
         }
 
         .nav-links {
@@ -70,32 +72,81 @@
         .nav-link {
             color: var(--text-secondary);
             text-decoration: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 0.9em;
+            padding: 10px 18px;
+            border-radius: 20px;
+            font-size: 1em;
+            font-weight: 600;
             transition: all 0.2s;
         }
 
         .nav-link:hover {
-            color: var(--text-primary);
-            background: var(--bg-card);
+            color: var(--primary);
+            background: #EEF2FF;
         }
 
         .nav-link.active {
-            color: var(--text-primary);
+            color: white;
             background: var(--primary);
+        }
+
+        /* 音色选择 */
+        .voice-select {
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 20px;
+            padding: 8px 14px;
+            color: var(--text-primary);
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .voice-select:hover {
+            border-color: var(--primary);
         }
 
         /* 主容器 */
         .main-container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 100px 24px 40px;
+            padding: 90px 20px 40px;
         }
 
         /* 书籍选择页 */
         .book-list-page {
             animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .hero-section {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .hero-title {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--primary), #A78BFA);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            color: var(--text-secondary);
+            font-size: 1.2em;
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--text-primary);
         }
 
         @keyframes fadeIn {
@@ -215,42 +266,210 @@
             margin-bottom: 12px;
         }
 
-        /* 导入卡片 */
-        .import-card {
-            background: transparent;
-            border: 2px dashed var(--border);
+        /* 书架样式 - 儿童友好 */
+        .bookshelf-section {
+            margin-bottom: 24px;
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+        .shelf-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            padding: 10px 16px;
             border-radius: 16px;
-            padding: 40px 20px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white;
+        }
+        .shelf-label.beginner { background: linear-gradient(135deg, #10B981, #34D399); }
+        .shelf-label.intermediate { background: linear-gradient(135deg, #F59E0B, #FBBF24); }
+        .shelf-label.advanced { background: linear-gradient(135deg, #EF4444, #F87171); }
+        .shelf-label-icon {
+            font-size: 1.5em;
+        }
+        .shelf-label-text {
+            font-size: 1.1em;
+            font-weight: 700;
+        }
+        .shelf-label-level {
+            opacity: 0.9;
+            font-weight: 400;
+            font-size: 0.9em;
+            margin-left: auto;
+        }
+        .bookshelf {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            padding: 10px 0;
+        }
+        .book-spine {
+            width: 120px;
             cursor: pointer;
             transition: all 0.3s;
-            text-align: center;
-            min-height: 160px;
+            position: relative;
+        }
+        .book-spine:hover {
+            transform: translateY(-8px);
+        }
+        .book-cover {
+            width: 120px;
+            height: 160px;
+            border-radius: 6px 6px 0 0;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            padding: 12px 8px;
+            text-align: center;
+            position: relative;
+            box-shadow: 3px 3px 10px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .book-cover-fallback {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+        }
+        .book-cover-title {
+            color: white;
+            font-size: 0.85em;
+            font-weight: 600;
+            line-height: 1.3;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+        }
+        .book-cover-author {
+            color: rgba(255,255,255,0.8);
+            font-size: 0.7em;
+            margin-top: 8px;
+        }
+        .lexile-badge {
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 700;
+            box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+            z-index: 1;
+        }
+        .lexile-badge.beginner {
+            background: linear-gradient(135deg, #10B981, #34D399);
+        }
+        .lexile-badge.intermediate {
+            background: linear-gradient(135deg, #F59E0B, #FBBF24);
+        }
+        .lexile-badge.advanced {
+            background: linear-gradient(135deg, #EF4444, #F87171);
+        }
+        .book-spine-base {
+            width: 120px;
+            height: 12px;
+            background: linear-gradient(to bottom, rgba(139,90,43,0.8), rgba(101,67,33,0.9));
+            border-radius: 0 0 4px 4px;
+        }
+
+        .book-delete-btn {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #EF4444;
+            border: 2px solid white;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            opacity: 0;
+            transition: all 0.2s;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        .book-spine:hover .book-delete-btn {
+            opacity: 1;
+        }
+
+        .book-delete-btn:hover {
+            background: #DC2626;
+            transform: scale(1.1);
+        }
+
+        /* 导入卡片 - 超小尺寸 */
+        .import-card {
+            width: 90px;
+            min-height: 140px;
+            background: white;
+            border: 3px dashed var(--primary-light);
+            border-radius: 16px;
+            padding: 10px 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
 
         .import-card:hover {
             border-color: var(--primary);
             background: rgba(79, 70, 229, 0.1);
+            transform: translateY(-4px);
         }
 
         .import-card .icon {
-            font-size: 2.5em;
-            margin-bottom: 12px;
+            font-size: 2em;
+            margin-bottom: 0;
         }
 
         .import-card .text {
             color: var(--text-secondary);
-            font-size: 0.95em;
+            font-size: 0.8em;
         }
 
         .import-card .hint {
-            color: var(--text-secondary);
+            display: none;
+        }
+        .book-title-full {
+            color: var(--text-primary);
             font-size: 0.8em;
+            margin-top: 8px;
+            text-align: center;
+            line-height: 1.3;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .book-meta {
+            color: var(--text-secondary);
+            font-size: 0.7em;
+            text-align: center;
             margin-top: 4px;
-            opacity: 0.7;
         }
 
         /* 阅读器页 */
@@ -1211,6 +1430,20 @@
         ::-webkit-scrollbar-thumb:hover {
             background: var(--text-secondary);
         }
+
+        /* 音色选择 */
+        .voice-select {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            font-size: 0.85em;
+            cursor: pointer;
+        }
+        .voice-select:hover {
+            border-color: var(--primary);
+        }
     </style>
 </head>
 <body>
@@ -1224,6 +1457,14 @@
             <a href="/tutor" class="nav-link">跟读学习</a>
             <a href="/grammar" class="nav-link">语法学习</a>
             <a href="/stats" class="nav-link">📊 统计</a>
+            <select class="voice-select" id="voice-select" onchange="changeVoice(this.value)">
+                <option value="en-US-AriaNeural">🔊 Aria (女声)</option>
+                <option value="en-US-JennyNeural">🔊 Jenny (女声)</option>
+                <option value="en-US-EmmaNeural">🔊 Emma (女声)</option>
+                <option value="en-US-AndrewNeural">🔊 Andrew (男声)</option>
+                <option value="en-US-BrianNeural">🔊 Brian (男声)</option>
+                <option value="en-US-GuyNeural">🔊 Guy (男声)</option>
+            </select>
         </div>
     </nav>
 
@@ -1470,6 +1711,17 @@
         let vocabulary = JSON.parse(localStorage.getItem('vocabulary') || '[]');
         let lookedWords = JSON.parse(localStorage.getItem('lookedWords') || '{}');
 
+        // TTS音色设置
+        let currentVoice = localStorage.getItem('ttsVoice') || 'en-US-AriaNeural';
+
+        // 初始化音色选择器
+        document.getElementById('voice-select').value = currentVoice;
+
+        function changeVoice(voice) {
+            currentVoice = voice;
+            localStorage.setItem('ttsVoice', voice);
+        }
+
         // 艾宾浩斯复习间隔（天）
         const REVIEW_INTERVALS = [1, 3, 7, 14, 30];
 
@@ -1512,16 +1764,75 @@
                 const grid = document.getElementById('book-grid');
 
                 if (data.success && data.books.length > 0) {
-                    grid.innerHTML = data.books.map(b => `
-                        <div class="book-card" onclick="loadBook('${b.id}')">
-                            <button class="delete-btn" onclick="event.stopPropagation(); deleteBook('${b.id}', '${b.title.replace(/'/g, "\\'")}')">×</button>
-                            <div class="book-card-icon">📚</div>
-                            <div class="book-card-title">${b.title}</div>
-                            <div class="book-card-meta">${b.chapters} 章节 · ${b.sentences} 句子</div>
-                        </div>
-                    `).join('');
+                    // 按蓝思值分组
+                    const low = data.books.filter(b => b.lexile >= 500 && b.lexile < 800);
+                    const mid = data.books.filter(b => b.lexile >= 800 && b.lexile <= 1000);
+                    const high = data.books.filter(b => b.lexile > 1000 || b.lexile === 0);
+
+                    let html = '';
+
+                    function getLevelClass(lexile) {
+                        if (lexile >= 500 && lexile < 800) return 'beginner';
+                        if (lexile >= 800 && lexile <= 1000) return 'intermediate';
+                        return 'advanced';
+                    }
+
+                    function getSearchTitle(title) {
+                        // 清理书名用于搜索
+                        return title.replace(/[_-]/g, ' ').replace(/J\. K\./g, 'JK').replace(/Rick Riordan/g, '').replace(/Jeff Kinney/g, '').trim();
+                    }
+
+                    function getCoverUrl(book) {
+                        // 优先使用本地封面
+                        if (book.cover) {
+                            return book.cover;
+                        }
+                        // 降级使用Open Library网络封面
+                        const searchTitle = getSearchTitle(book.title);
+                        return `https://covers.openlibrary.org/b/title/${encodeURIComponent(searchTitle)}-M.jpg`;
+                    }
+
+                    function renderShelf(books, icon, name, level, levelClass) {
+                        if (books.length === 0) return '';
+                        let html = `<div class="bookshelf-section">
+                            <div class="shelf-label ${levelClass}">
+                                <span class="shelf-label-icon">${icon}</span>
+                                <span class="shelf-label-text">${name}</span>
+                                <span class="shelf-label-level">${level}</span>
+                            </div>
+                            <div class="bookshelf">`;
+                        books.forEach((b, i) => {
+                            const levelClass = getLevelClass(b.lexile);
+                            const coverUrl = getCoverUrl(b);
+                            const hasLocalCover = !!b.cover;
+                            const fallbackColor = ['#667eea-#764ba2', '#11998e-#38ef7d', '#fc4a1a-#f7b733', '#4facfe-#00f2fe', '#f093fb-#f5576c'][i % 5];
+
+                            html += `
+                                <div class="book-spine" onclick="loadBook('${b.id}')" title="${b.title}">
+                                    <span class="lexile-badge ${levelClass}">${b.lexile > 0 ? b.lexile + 'L' : '?'}</span>
+                                    <button class="book-delete-btn" onclick="event.stopPropagation(); deleteBook('${b.id}', '${b.title.replace(/'/g, "\\'")}')" title="删除">×</button>
+                                    <div class="book-cover" style="background:linear-gradient(135deg,${fallbackColor});">
+                                        <img src="${coverUrl}" alt="${b.title}"
+                                             style="width:100%;height:100%;object-fit:cover;border-radius:6px;opacity:0;"
+                                             onload="this.style.opacity='1';this.previousElementSibling.style.opacity='0';"
+                                             onerror="this.style.display='none';">
+                                        <span class="book-cover-fallback" style="position:absolute;color:white;font-size:0.75em;font-weight:600;text-align:center;line-height:1.3;padding:8px;text-shadow:1px 1px 2px rgba(0,0,0,0.5);">${b.title}</span>
+                                    </div>
+                                    <div class="book-spine-base"></div>
+                                </div>
+                            `;
+                        });
+                        html += `</div></div>`;
+                        return html;
+                    }
+
+                    html += renderShelf(low, '🌱', '入门级', '500-800L', 'beginner');
+                    html += renderShelf(mid, '📖', '进阶级', '800-1000L', 'intermediate');
+                    html += renderShelf(high, '🏆', '高级', '1000L+', 'advanced');
+
+                    grid.innerHTML = html;
                 } else {
-                    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-secondary);padding:40px;">还没有书籍，请导入 EPUB</div>';
+                    grid.innerHTML = '<div style="text-align:center;color:var(--text-secondary);padding:60px;font-size:1.2em;">还没有书籍，请导入 EPUB</div>';
                 }
 
                 // 添加导入卡片
@@ -1666,6 +1977,16 @@
             if (!cleanWord) return;
 
             currentWord = cleanWord;
+
+            // 如果已经标记过，则取消标记
+            if (lookedWords[cleanWord]) {
+                element.classList.remove('looked');
+                delete lookedWords[cleanWord];
+                localStorage.setItem('lookedWords', JSON.stringify(lookedWords));
+                return;
+            }
+
+            // 标记为已查
             element.classList.add('looked');
             lookedWords[cleanWord] = true;
             localStorage.setItem('lookedWords', JSON.stringify(lookedWords));
@@ -1689,19 +2010,36 @@
                     const entry = data[0];
                     document.getElementById('modal-phonetic').textContent = entry.phonetic || '';
 
-                    let html = '';
+                    // 收集所有释义并获取中文翻译
+                    const meanings = [];
                     entry.meanings.slice(0, 3).forEach(m => {
                         m.definitions.slice(0, 2).forEach(def => {
+                            meanings.push({ part: m.partOfSpeech, def: def.definition, example: def.example });
+                        });
+                    });
+
+                    // 批量获取中文翻译
+                    const cnPromises = meanings.map(m =>
+                        fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(m.def)}&langpair=en|zh-CN`)
+                            .then(res => res.json())
+                            .then(cnData => cnData?.responseData?.translatedText || '')
+                            .catch(() => '')
+                    );
+
+                    Promise.all(cnPromises).then(cnDefs => {
+                        let html = '';
+                        meanings.forEach((m, i) => {
                             html += `
                                 <div class="word-meaning-item">
-                                    <div class="word-meaning-part">${m.partOfSpeech}</div>
-                                    <div class="word-meaning-def">${def.definition}</div>
-                                    ${def.example ? `<div class="word-meaning-example">"${def.example}"</div>` : ''}
+                                    <div class="word-meaning-part">${m.part}</div>
+                                    <div class="word-meaning-def">${m.def}</div>
+                                    ${cnDefs[i] ? `<div class="word-meaning-cn">${cnDefs[i]}</div>` : ''}
+                                    ${m.example ? `<div class="word-meaning-example">"${m.example}"</div>` : ''}
                                 </div>
                             `;
                         });
+                        document.getElementById('modal-meanings').innerHTML = html || '<div>未找到释义</div>';
                     });
-                    document.getElementById('modal-meanings').innerHTML = html || '<div>未找到释义</div>';
                 } else {
                     document.getElementById('modal-meanings').innerHTML = '<div>未找到释义</div>';
                 }
@@ -1714,43 +2052,27 @@
             document.getElementById('word-modal').classList.remove('show');
         }
 
-        // 发音 (优先使用浏览器Web Speech API，离线可用)
+        // 发音 (使用微软edge-tts)
         function playPronunciation() {
             if (!currentWord) return;
 
-            // 优先使用浏览器内置TTS（离线可用）
-            if ('speechSynthesis' in window) {
-                try {
+            // 优先使用微软edge-tts
+            fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: currentWord, voice: currentVoice })
+            }).then(res => res.json()).then(data => {
+                if (data.success) new Audio(data.audio_url).play();
+            }).catch(err => {
+                // 降级使用浏览器TTS
+                if ('speechSynthesis' in window) {
                     speechSynthesis.cancel();
                     const utterance = new SpeechSynthesisUtterance(currentWord);
                     utterance.lang = 'en-US';
                     utterance.rate = 0.9;
-                    let voices = speechSynthesis.getVoices();
-
-                    // Chrome 安卓可能需要等待语音加载
-                    if (voices.length === 0) {
-                        speechSynthesis.onvoiceschanged = () => {
-                            voices = speechSynthesis.getVoices();
-                        };
-                    }
-
-                    const englishVoice = voices.find(v => v.lang.startsWith('en')) || null;
-                    if (englishVoice) utterance.voice = englishVoice;
                     speechSynthesis.speak(utterance);
-                    return;
-                } catch (e) {
-                    console.log('Speech synthesis failed, trying API');
                 }
-            }
-
-            // 降级：使用后端API
-            fetch('/api/tts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: currentWord })
-            }).then(res => res.json()).then(data => {
-                if (data.success) new Audio(data.audio_url).play();
-            }).catch(err => {});
+            });
         }
 
         // 生词本
@@ -2003,7 +2325,7 @@
             document.getElementById('ar-modal').classList.remove('show');
         }
 
-        // TTS 播放 (优先使用浏览器Web Speech API，离线可用)
+        // TTS 播放 (优先使用微软edge-tts，备用浏览器TTS)
         async function playCurrentSentence() {
             if (!sentences || sentences.length === 0) return;
 
@@ -2014,7 +2336,40 @@
             btn.disabled = true;
             status.classList.remove('hidden');
 
-            // 优先使用浏览器内置TTS（离线可用）
+            // 优先使用微软edge-tts（音质更好）
+            try {
+                const res = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, voice: currentVoice })
+                });
+                const data = await res.json();
+
+                if (data.success && data.audio_url) {
+                    if (audioElement) audioElement.pause();
+                    audioElement = new Audio(data.audio_url);
+                    isPlaying = true;
+
+                    audioElement.onended = () => {
+                        isPlaying = false;
+                        btn.disabled = false;
+                        status.classList.add('hidden');
+                    };
+
+                    audioElement.onerror = () => {
+                        isPlaying = false;
+                        btn.disabled = false;
+                        status.classList.add('hidden');
+                    };
+
+                    audioElement.play();
+                    return;
+                }
+            } catch (err) {
+                console.log('Edge TTS failed, trying browser TTS');
+            }
+
+            // 降级：使用浏览器内置TTS
             if ('speechSynthesis' in window) {
                 speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(text);
@@ -2038,41 +2393,8 @@
                 return;
             }
 
-            // 降级：使用后端API
-            try {
-                const res = await fetch('/api/tts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text })
-                });
-                const data = await res.json();
-
-                if (data.success && data.audio_url) {
-                    if (audioElement) audioElement.pause();
-                    audioElement = new Audio(data.audio_url);
-                    isPlaying = true;
-
-                    audioElement.onended = () => {
-                        isPlaying = false;
-                        btn.disabled = false;
-                        status.classList.add('hidden');
-                    };
-
-                    audioElement.onerror = () => {
-                        isPlaying = false;
-                        btn.disabled = false;
-                        status.classList.add('hidden');
-                    };
-
-                    audioElement.play();
-                } else {
-                    btn.disabled = false;
-                    status.classList.add('hidden');
-                }
-            } catch (err) {
-                btn.disabled = false;
-                status.classList.add('hidden');
-            }
+            btn.disabled = false;
+            status.classList.add('hidden');
         }
 
         // 导入书籍
