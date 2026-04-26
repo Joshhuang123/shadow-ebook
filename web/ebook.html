@@ -861,6 +861,381 @@
             color: white;
         }
 
+        /* ==================== 分页阅读器样式 ==================== */
+
+        /* 顶部控制栏 */
+        .top-control-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: white;
+            border-bottom: 1px solid var(--border);
+            gap: 16px;
+        }
+
+        .chapter-tab-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: var(--bg-dark);
+            border: none;
+            border-radius: 20px;
+            font-size: 0.9em;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+        .chapter-tab-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .top-playback {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .play-btn-sm {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+        .play-btn-sm:hover {
+            transform: scale(1.05);
+        }
+
+        .page-indicator-top {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            font-weight: 600;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        /* 章节选择面板 */
+        .chapter-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 100;
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .chapter-panel.hidden {
+            display: none;
+        }
+
+        .chapter-panel-content {
+            background: white;
+            border-radius: 20px 20px 0 0;
+            width: 100%;
+            max-height: 70vh;
+            overflow: hidden;
+        }
+
+        .chapter-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+        }
+
+        .chapter-panel-header button {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--bg-dark);
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .chapter-list {
+            padding: 16px;
+            max-height: 60vh;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .chapter-item {
+            padding: 14px;
+            background: var(--bg-dark);
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9em;
+        }
+        .chapter-item:hover {
+            background: var(--primary);
+            color: white;
+        }
+        .chapter-item.active {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white;
+        }
+
+        /* 书本翻页区域 */
+        .book-container {
+            flex: 1;
+            display: flex;
+            align-items: stretch;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%);
+        }
+
+        .page-turn-zone {
+            width: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 10;
+        }
+
+        .book-container:hover .page-turn-zone {
+            opacity: 0.6;
+        }
+
+        .page-turn-zone:hover {
+            opacity: 1 !important;
+        }
+
+        .page-turn-zone.left {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+        }
+
+        .page-turn-zone.right {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+        }
+
+        .page-turn-arrow {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: var(--primary);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+        }
+
+        /* 书页视图 */
+        .book-page-view {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 30px 100px;
+            overflow: hidden;
+        }
+
+        .page-content {
+            flex: 1;
+            background: white;
+            border-radius: 8px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            font-family: 'Georgia', serif;
+            font-size: 1.15em;
+            line-height: 1.9;
+            color: #333;
+            position: relative;
+        }
+
+        .page-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: linear-gradient(to bottom, rgba(255,255,255,1), transparent);
+            pointer-events: none;
+        }
+
+        .page-content::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: linear-gradient(to top, rgba(255,255,255,1), transparent);
+            pointer-events: none;
+        }
+
+        .page-text {
+            text-indent: 2em;
+            margin-bottom: 1em;
+        }
+
+        .page-text:first-child {
+            text-indent: 0;
+        }
+
+        .page-word {
+            cursor: pointer;
+            border-bottom: 1px dashed var(--primary-light);
+            transition: all 0.2s;
+        }
+        .page-word:hover {
+            background: rgba(79, 70, 229, 0.1);
+        }
+        .page-word.looked {
+            background: rgba(245, 158, 11, 0.2);
+            border-bottom-color: var(--accent);
+        }
+
+        .page-shadow {
+            display: none;
+        }
+
+        /* 翻页动画 */
+        @keyframes pageTurnLeft {
+            from { transform: translateX(0) rotateY(0); opacity: 1; }
+            to { transform: translateX(-30%) rotateY(-10deg); opacity: 0; }
+        }
+
+        @keyframes pageTurnRight {
+            from { transform: translateX(0) rotateY(0); opacity: 1; }
+            to { transform: translateX(30%) rotateY(10deg); opacity: 0; }
+        }
+
+        @keyframes pageAppearLeft {
+            from { transform: translateX(30%) rotateY(10deg); opacity: 0; }
+            to { transform: translateX(0) rotateY(0); opacity: 1; }
+        }
+
+        @keyframes pageAppearRight {
+            from { transform: translateX(-30%) rotateY(-10deg); opacity: 0; }
+            to { transform: translateX(0) rotateY(0); opacity: 1; }
+        }
+
+        .page-turning-left {
+            animation: pageTurnLeft 0.3s ease forwards;
+        }
+
+        .page-turning-right {
+            animation: pageTurnRight 0.3s ease forwards;
+        }
+
+        .page-appearing-left {
+            animation: pageAppearLeft 0.3s ease forwards;
+        }
+
+        .page-appearing-right {
+            animation: pageAppearRight 0.3s ease forwards;
+        }
+
+        /* 底部进度条 */
+        .bottom-progress-bar {
+            padding: 12px 20px;
+            background: white;
+            border-top: 1px solid var(--border);
+        }
+
+        .progress-track {
+            height: 6px;
+            background: var(--bg-dark);
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress-track:hover {
+            height: 10px;
+        }
+
+        .progress-track .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        .progress-label {
+            text-align: center;
+            margin-top: 8px;
+            font-size: 0.85em;
+            color: var(--text-secondary);
+        }
+
+        /* 底部操作栏 */
+        .bottom-actions-bar {
+            display: flex;
+            gap: 12px;
+            padding: 12px 20px;
+            background: white;
+            border-top: 1px solid var(--border);
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 14px;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .action-btn:not(.primary) {
+            background: var(--bg-dark);
+            color: var(--text-primary);
+        }
+
+        .action-btn.primary {
+            background: linear-gradient(135deg, var(--secondary), #34D399);
+            color: white;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        /* 滑动手势区域 */
+        .swipe-gesture-area {
+            position: fixed;
+            top: 80px;
+            left: 0;
+            right: 0;
+            bottom: 120px;
+            z-index: 5;
+            touch-action: pan-y;
+        }
+
         /* 测验按钮 */
         .quiz-btn {
             padding: 12px 24px;
@@ -1875,78 +2250,83 @@
 
         <!-- 阅读器页 -->
         <div class="reader-page" id="reader-page">
-            <!-- 滑动手势区域 -->
-            <div class="swipe-area swipe-area-left" onclick="prevPage()"></div>
-            <div class="swipe-area swipe-area-right" onclick="nextPage()"></div>
-            <div class="swipe-hint" id="swipe-hint">← 左右滑动翻页 →</div>
-
             <div class="reader-header">
                 <a href="#" class="back-btn" onclick="showBookList()">
                     <span>←</span>
-                    <span>返回书架</span>
+                    <span>书架</span>
                 </a>
                 <div class="reader-title" id="reader-title">Loading...</div>
-                <div style="width:80px;"></div>
+                <div style="width:60px;"></div>
             </div>
 
-            <div class="reader-main">
-                <div class="text-panel">
-                    <!-- 章节标签 -->
-                    <div class="chapter-tabs" id="chapter-tabs"></div>
+            <!-- 顶部控制栏 -->
+            <div class="top-control-bar">
+                <button class="chapter-tab-btn" id="btn-chapter-tabs" onclick="toggleChapterPanel()">
+                    <span id="current-chapter-name">第1章</span>
+                    <span style="font-size:0.8em">▼</span>
+                </button>
+                <div class="top-playback">
+                    <button class="play-btn-sm" id="btn-play" onclick="playCurrentPage()">
+                        <span id="play-icon">▶</span>
+                    </button>
+                </div>
+                <div class="page-indicator-top">
+                    <span id="current-page">1</span> / <span id="total-pages">10</span>
+                </div>
+            </div>
 
-                    <!-- 固定播放控制栏 -->
-                    <div class="fixed-playback-bar">
-                        <!-- 章节导航 -->
-                        <div class="chapter-nav-compact">
-                            <button class="chapter-nav-btn-sm" id="btn-chapter-prev" onclick="prevChapter()">◀</button>
-                            <span class="chapter-name" id="current-chapter-name">第1章</span>
-                            <button class="chapter-nav-btn-sm" id="btn-chapter-next" onclick="nextChapter()">▶</button>
-                        </div>
+            <!-- 章节选择面板 -->
+            <div class="chapter-panel hidden" id="chapter-panel">
+                <div class="chapter-panel-header">
+                    <span>选择章节</span>
+                    <button onclick="toggleChapterPanel()">×</button>
+                </div>
+                <div class="chapter-list" id="chapter-list"></div>
+            </div>
 
-                        <!-- 播放控制 -->
-                        <div class="playback-center">
-                            <button class="nav-btn-sm" id="btn-prev" onclick="prevSentence()">◀</button>
-                            <button class="play-btn-mid" id="btn-play" onclick="playCurrentSentence()">
-                                <span id="play-icon">▶</span>
-                            </button>
-                            <button class="nav-btn-sm" id="btn-next" onclick="nextSentence()">▶</button>
-                        </div>
+            <!-- 书本翻页区域 -->
+            <div class="book-container" id="book-container">
+                <!-- 左翻页区 -->
+                <div class="page-turn-zone left" onclick="prevPage()">
+                    <div class="page-turn-arrow">‹</div>
+                </div>
 
-                        <!-- 进度信息 -->
-                        <div class="progress-compact">
-                            <span id="current-page">1</span> / <span id="total-pages">10</span>
-                        </div>
+                <!-- 当前页面 -->
+                <div class="book-page-view" id="book-page-view">
+                    <div class="page-content" id="page-content">
+                        <!-- 动态加载页面内容 -->
                     </div>
+                    <div class="page-shadow"></div>
+                </div>
 
-                    <!-- 状态指示 -->
-                    <div class="status-playing hidden" id="status-playing">
-                        <div class="audio-bars">
-                            <div class="audio-bar"></div>
-                            <div class="audio-bar"></div>
-                            <div class="audio-bar"></div>
-                            <div class="audio-bar"></div>
-                        </div>
-                        <span>正在朗读...</span>
-                    </div>
+                <!-- 右翻页区 -->
+                <div class="page-turn-zone right" onclick="nextPage()">
+                    <div class="page-turn-arrow">›</div>
+                </div>
+            </div>
 
-                    <!-- 可滚动的句子显示区 -->
-                    <div class="sentence-scroll-area" id="sentence-scroll-area">
-                        <div class="sentence-display" id="sentence-display"></div>
-                    </div>
+            <!-- 底部进度条 -->
+            <div class="bottom-progress-bar">
+                <div class="progress-track" id="progress-track" onclick="jumpToPage(event)">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <div class="progress-label">
+                    <span id="progress-text">第 1 页 / 共 10 页</span>
+                </div>
+            </div>
 
-                    <!-- 底部操作栏 -->
-                    <div class="bottom-actions">
-                        <div class="progress-bar-wrap">
-                            <div class="progress-bar">
-                                <div class="progress-fill" id="progress-fill"></div>
-                            </div>
-                            <span class="progress-text" id="progress-text">0 / 0</span>
-                        </div>
+            <!-- 底部操作 -->
+            <div class="bottom-actions-bar">
+                <button class="action-btn" onclick="showVocab()">
+                    📝 生词本
+                </button>
+                <button class="action-btn primary" id="btn-comp" onclick="showComprehensionModal()">
+                    📖 章节测验
+                </button>
+            </div>
 
-                        <button class="btn btn-secondary quiz-btn" id="btn-comp" onclick="showComprehensionModal()">
-                            📖 章节测验
-                        </button>
-                    </div>
+            <!-- 滑动手势 -->
+            <div class="swipe-gesture-area" id="swipe-area"></div>
                 </div>
 
                 <div class="sidebar">
@@ -2112,6 +2492,9 @@
         let currentChapterIndex = 0;
         let currentSentenceIndex = 0;
         let sentences = [];
+        let pages = [];           // 分页数据
+        let currentPageIndex = 0;  // 当前页码
+        const SENTENCES_PER_PAGE = 5; // 每页句子数
         let audioElement = null;
         let isPlaying = false;
         let currentWord = null;
@@ -2464,19 +2847,13 @@
                     currentBookId = bookId;
                     document.getElementById('reader-title').textContent = bookData.book;
 
-                    // 渲染章节标签
-                    const tabsContainer = document.getElementById('chapter-tabs');
-                    tabsContainer.innerHTML = '';
-                    bookData.chapters.forEach((ch, i) => {
-                        const tab = document.createElement('button');
-                        tab.className = 'chapter-tab' + (i === 0 ? ' active' : '');
-                        tab.textContent = ch.name || `第${i + 1}章`;
-                        tab.onclick = () => selectChapter(i);
-                        tabsContainer.appendChild(tab);
-                    });
-
+                    // 初始化第一章
                     selectChapter(0);
+
+                    // 显示阅读器
                     showReader();
+
+                    // 计算蓝思值
                     calculateAR();
                 }
             } catch (err) {
@@ -2488,26 +2865,159 @@
         function selectChapter(index) {
             currentChapterIndex = parseInt(index);
             sentences = bookData.chapters[currentChapterIndex].sentences;
-            currentSentenceIndex = 0;
+
+            // 生成分页（每5句一页）
+            pages = [];
+            for (let i = 0; i < sentences.length; i += SENTENCES_PER_PAGE) {
+                pages.push(sentences.slice(i, i + SENTENCES_PER_PAGE));
+            }
+            currentPageIndex = 0;
 
             // 更新章节名称
             const ch = bookData.chapters[currentChapterIndex];
             document.getElementById('current-chapter-name').textContent = ch.name || `第${currentChapterIndex + 1}章`;
 
-            // 更新章节标签高亮
-            document.querySelectorAll('.chapter-tab').forEach((tab, i) => {
-                tab.classList.toggle('active', i === currentChapterIndex);
+            // 更新章节选择面板
+            updateChapterPanel();
+
+            // 渲染当前页
+            renderCurrentPage();
+
+            // 更新进度
+            updateProgress();
+        }
+
+        // 更新章节选择面板
+        function updateChapterPanel() {
+            const list = document.getElementById('chapter-list');
+            if (!list || !bookData) return;
+
+            list.innerHTML = '';
+            bookData.chapters.forEach((ch, i) => {
+                const item = document.createElement('div');
+                item.className = 'chapter-item' + (i === currentChapterIndex ? ' active' : '');
+                item.textContent = ch.name || `第${i + 1}章`;
+                item.onclick = () => {
+                    toggleChapterPanel();
+                    selectChapter(i);
+                };
+                list.appendChild(item);
+            });
+        }
+
+        // 切换章节面板
+        function toggleChapterPanel() {
+            const panel = document.getElementById('chapter-panel');
+            if (panel) panel.classList.toggle('hidden');
+        }
+
+        // 渲染当前页
+        function renderCurrentPage() {
+            const pageContent = document.getElementById('page-content');
+            if (!pageContent || pages.length === 0) return;
+
+            const page = pages[currentPageIndex];
+
+            let html = '';
+            page.forEach((sentence, idx) => {
+                const words = sentence.split(/(\s+)/);
+                let wordHtml = words.map(w => {
+                    if (/^[a-zA-Z]+$/.test(w)) {
+                        const isLooked = lookedWords[w.toLowerCase()];
+                        return `<span class="page-word ${isLooked ? 'looked' : ''}" onclick="lookupWord('${w}', this, event)">${w}</span>`;
+                    }
+                    return w;
+                }).join('');
+
+                html += `<p class="page-text">${wordHtml}</p>`;
             });
 
-            // 更新章节导航按钮
-            document.getElementById('btn-chapter-prev').disabled = currentChapterIndex === 0;
-            document.getElementById('btn-chapter-next').disabled = currentChapterIndex >= bookData.chapters.length - 1;
+            pageContent.innerHTML = html;
 
-            // 滚动到顶部
-            document.getElementById('sentence-scroll-area').scrollTop = 0;
+            // 更新页码显示
+            document.getElementById('current-page').textContent = currentPageIndex + 1;
+            document.getElementById('total-pages').textContent = pages.length;
+        }
 
-            updateDisplay();
-            clearTranslation();
+        // 更新进度
+        function updateProgress() {
+            if (pages.length === 0) return;
+
+            const percent = ((currentPageIndex + 1) / pages.length) * 100;
+            document.getElementById('progress-fill').style.width = percent + '%';
+            document.getElementById('progress-text').textContent = `第 ${currentPageIndex + 1} 页 / 共 ${pages.length} 页`;
+        }
+
+        // 翻到下一页
+        function nextPage() {
+            if (currentPageIndex < pages.length - 1) {
+                const pageContent = document.getElementById('page-content');
+                pageContent.classList.add('page-turning-left');
+
+                setTimeout(() => {
+                    currentPageIndex++;
+                    renderCurrentPage();
+                    pageContent.classList.remove('page-turning-left');
+                    pageContent.classList.add('page-appearing-right');
+                    setTimeout(() => pageContent.classList.remove('page-appearing-right'), 300);
+                    updateProgress();
+                }, 150);
+            }
+        }
+
+        // 翻到上一页
+        function prevPage() {
+            if (currentPageIndex > 0) {
+                const pageContent = document.getElementById('page-content');
+                pageContent.classList.add('page-turning-right');
+
+                setTimeout(() => {
+                    currentPageIndex--;
+                    renderCurrentPage();
+                    pageContent.classList.remove('page-turning-right');
+                    pageContent.classList.add('page-appearing-left');
+                    setTimeout(() => pageContent.classList.remove('page-appearing-left'), 300);
+                    updateProgress();
+                }, 150);
+            }
+        }
+
+        // 跳转到指定页
+        function jumpToPage(event) {
+            const track = document.getElementById('progress-track');
+            if (!track) return;
+            const rect = track.getBoundingClientRect();
+            const percent = (event.clientX - rect.left) / rect.width;
+            const targetPage = Math.floor(percent * pages.length);
+            if (targetPage !== currentPageIndex && targetPage >= 0 && targetPage < pages.length) {
+                currentPageIndex = targetPage;
+                renderCurrentPage();
+                updateProgress();
+            }
+        }
+
+        // 播放当前页
+        function playCurrentPage() {
+            if (pages.length === 0) return;
+            const page = pages[currentPageIndex];
+            page.forEach((sentence, i) => {
+                setTimeout(() => {
+                    playSentence(sentence);
+                }, i * 1500);
+            });
+        }
+
+        // 播放单句
+        function playSentence(text) {
+            if ('speechSynthesis' in window) {
+                speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.85;
+                const voices = speechSynthesis.getVoices();
+                utterance.voice = voices.find(v => v.lang.startsWith('en')) || voices[0];
+                speechSynthesis.speak(utterance);
+            }
         }
 
         // 上一章
@@ -3292,15 +3802,12 @@
 
         function handleSwipe() {
             if (!document.getElementById('reader-page').classList.contains('active')) return;
-            if (isTwoPageMode()) {
-                const diff = touchStartX - touchEndX;
-                if (Math.abs(diff) > 80) {
-                    if (diff > 0) {
-                        nextPage();
-                    } else {
-                        prevPage();
-                    }
-                    showSwipeHint();
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > 80) {
+                if (diff > 0) {
+                    nextPage();
+                } else {
+                    prevPage();
                 }
             }
         }
@@ -3315,16 +3822,14 @@
         document.addEventListener('keydown', (e) => {
             if (document.getElementById('reader-page').classList.contains('active')) {
                 if (e.key === 'ArrowLeft') {
-                    if (isTwoPageMode()) prevPage();
-                    else prevSentence();
+                    prevPage();
                 }
                 else if (e.key === 'ArrowRight') {
-                    if (isTwoPageMode()) nextPage();
-                    else nextSentence();
+                    nextPage();
                 }
                 else if (e.key === ' ' || e.key === 'Enter') {
                     e.preventDefault();
-                    playCurrentSentence();
+                    playCurrentPage();
                 }
                 else if (e.key === 'Escape') {
                     closeWordModal();
