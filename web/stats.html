@@ -4,8 +4,8 @@
 <script>
 (function(){
   var T={
-    day:  {--primary:'#6366F1',--primary-light:'#818CF8',--secondary:'#10B981',--bg:'#F8FAFC',--card:'#FFFFFF',--text:'#1E293B',--sub:'#64748B',--border:'#E2E8F0',--accent:'#F59E0B',--nav:'#FFFFFF',--shadow:'0 4px 20px rgba(0,0,0,0.1)',--body:'linear-gradient(135deg,#E0E7FF 0%,#F0FDF4 100%)',--input:'#F1F5F9',--btn-hover:'#4F46E5'},
-    night:{--primary:'#818CF8',--primary-light:'#A78BFA',--secondary:'#34D399',--bg:'#0F172A',--card:'#1E293B',--text:'#F1F5F9',--sub:'#94A3B8',--border:'#334155',--accent:'#FBBF24',--nav:'#1E293B',--shadow:'0 4px 20px rgba(0,0,0,0.5)',--body:'linear-gradient(135deg,#0F172A 0%,#1E1B4B 100%)',--input:'#334155',--btn-hover:'#6366F1'}
+    day:  {'--primary':'#6366F1','--primary-light':'#818CF8','--secondary':'#10B981','--bg':'#F8FAFC','--card':'#FFFFFF','--text':'#1E293B','--sub':'#64748B','--border':'#E2E8F0','--accent':'#F59E0B','--nav':'#FFFFFF','--shadow':'0 4px 20px rgba(0,0,0,0.1)','--body':'linear-gradient(135deg,#E0E7FF 0%,#F0FDF4 100%)','--input':'#F1F5F9','--btn-hover':'#4F46E5'},
+    night:{ '--primary':'#818CF8','--primary-light':'#A78BFA','--secondary':'#34D399','--bg':'#0F172A','--card':'#1E293B','--text':'#F1F5F9','--sub':'#94A3B8','--border':'#334155','--accent':'#FBBF24','--nav':'#1E293B','--shadow':'0 4px 20px rgba(0,0,0,0.5)','--body':'linear-gradient(135deg,#0F172A 0%,#1E1B4B 100%)','--input':'#334155','--btn-hover':'#6366F1'}
   };
   var apply=function(m){
     if(m==='system'){document.documentElement.removeAttribute('data-theme');localStorage.removeItem('shTheme');}
@@ -540,17 +540,13 @@
             { q: "Which word means '综合'?", o: ["synthesize", "sympathize", "systemize", "symbolize"], a: 0, level: 4 }
         ];
 
-        // 书单推荐数据
-        const BOOK_RECOMMENDATIONS = [
-            { title: "The Cat in the Hat", lexile: "BR", difficulty: "入门", suitable: "0-500词", desc: "经典儿童绘本，词汇简单" },
-            { title: "Frog and Toad Are Friends", lexile: "BR", difficulty: "入门", suitable: "0-500词", desc: "简单对话，基础词汇" },
-            { title: "Charlotte's Web", lexile: "680L", difficulty: "初级", suitable: "500-1000词", desc: "经典儿童文学，词汇量适中" },
-            { title: "Diary of a Wimpy Kid", lexile: "910L", difficulty: "初级", suitable: "800-1500词", desc: "轻松幽默，适合青少年" },
-            { title: "Harry Potter #1", lexile: "880L", difficulty: "中级", suitable: "1000-2000词", desc: "经典奇幻小说，词汇丰富" },
-            { title: "The Hobbit", lexile: "1000L", difficulty: "中级", suitable: "1500-2500词", desc: "托尔金经典，中等难度" },
-            { title: "The Great Gatsby", lexile: "1070L", difficulty: "中高级", suitable: "2000-3000词", desc: "美国文学经典，词汇较难" },
-            { title: "1984", lexile: "1090L", difficulty: "高级", suitable: "3000+词", desc: "反乌托邦小说，词汇量要求高" }
-        ];
+        // 难度等级映射
+        const LEVEL_MAP = {
+            1: { name: "入门", minLexile: 0, maxLexile: 600 },
+            2: { name: "初级", minLexile: 500, maxLexile: 800 },
+            3: { name: "中级", minLexile: 750, maxLexile: 950 },
+            4: { name: "高级", minLexile: 900, maxLexile: 2000 }
+        };
 
         let vocabTestIndex = 0;
         let vocabTestCorrect = 0;
@@ -600,15 +596,15 @@
             document.getElementById('vocab-test-content').classList.add('hidden');
             document.getElementById('book-rec-section').classList.remove('hidden');
 
-            let level, levelName;
+            let level;
             if (savedLevel !== undefined) {
                 level = savedLevel;
             } else {
                 const accuracy = vocabTestCorrect / vocabTestQuestions.length;
-                if (accuracy >= 0.9) { level = 4; levelName = "高级 (3000+词)"; }
-                else if (accuracy >= 0.7) { level = 3; levelName = "中高级 (2000-3000词)"; }
-                else if (accuracy >= 0.5) { level = 2; levelName = "中级 (1000-2000词)"; }
-                else { level = 1; levelName = "初级 (500-1000词)"; }
+                if (accuracy >= 0.9) { level = 4; }
+                else if (accuracy >= 0.7) { level = 3; }
+                else if (accuracy >= 0.5) { level = 2; }
+                else { level = 1; }
 
                 // 保存结果
                 const stats = loadStats();
@@ -618,28 +614,49 @@
 
             // 根据等级获取名称
             const levelNames = { 1: "初级 (500-1000词)", 2: "中级 (1000-2000词)", 3: "中高级 (2000-3000词)", 4: "高级 (3000+词)" };
-            levelName = levelNames[level] || "初级 (500-1000词)";
+            const levelInfo = LEVEL_MAP[level] || LEVEL_MAP[1];
+            document.getElementById('book-rec-level').textContent = `你的词汇水平: ${levelNames[level]}`;
 
-            // 显示推荐书单
-            document.getElementById('book-rec-level').textContent = `你的词汇水平: ${levelName}`;
-            const suitableBooks = BOOK_RECOMMENDATIONS.filter(b => {
-                if (level <= 1 && b.difficulty === "入门") return true;
-                if (level === 2 && (b.difficulty === "初级" || b.difficulty === "入门")) return true;
-                if (level === 3 && (b.difficulty === "中级" || b.difficulty === "初级" || b.difficulty === "入门")) return true;
-                if (level >= 4) return true;
-                return false;
-            });
+            // 从API获取书籍并推荐
+            fetch('/api/books')
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success || !data.books.length) {
+                        document.getElementById('book-rec-list').innerHTML = '<div class="empty-state">暂无书籍，请先导入EPUB</div>';
+                        return;
+                    }
+                    const books = data.books;
+                    // 优先推荐：当前等级 + 略高一级（i+1原则）
+                    const rec = books.filter(b => {
+                        const lex = b.lexile || 0;
+                        return lex >= levelInfo.minLexile && lex <= levelInfo.maxLexile + 150;
+                    }).sort((a, b) => {
+                        // 优先推荐最接近当前等级的
+                        const target = levelInfo.minLexile + 100;
+                        return Math.abs(a.lexile - target) - Math.abs(b.lexile - target);
+                    }).slice(0, 5);
 
-            document.getElementById('book-rec-list').innerHTML = suitableBooks.slice(0, 3).map(book => `
-                <div class="book-rec-item">
-                    <div class="book-rec-icon">📚</div>
-                    <div class="book-rec-info">
-                        <div class="book-rec-title">${book.title}</div>
-                        <div class="book-rec-meta">${book.desc}</div>
-                    </div>
-                    <span class="book-rec-level-tag">${book.difficulty}</span>
-                </div>
-            `).join('');
+                    if (rec.length === 0) {
+                        // 如果没有匹配的，显示全部书籍
+                        rec.push(...books.slice(0, 5));
+                    }
+
+                    document.getElementById('book-rec-list').innerHTML = rec.map(book => {
+                        const diff = book.lexile < levelInfo.minLexile + 200 ? "推荐" : "挑战";
+                        return `
+                        <div class="book-rec-item" onclick="window.location.href='/ebook'">
+                            <div class="book-rec-icon">📖</div>
+                            <div class="book-rec-info">
+                                <div class="book-rec-title">${book.title.replace(/_/g, ' ')}</div>
+                                <div class="book-rec-meta">${book.chapters}章节 · ${book.sentences}句子</div>
+                            </div>
+                            <span class="book-rec-level-tag">${book.lexile}L · ${diff}</span>
+                        </div>`;
+                    }).join('');
+                })
+                .catch(() => {
+                    document.getElementById('book-rec-list').innerHTML = '<div class="empty-state">加载书单失败</div>';
+                });
         }
 
         function retestVocab() {
