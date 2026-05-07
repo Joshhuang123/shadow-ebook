@@ -11,6 +11,10 @@ from flask import Flask, render_template, jsonify, request, send_from_directory
 
 app = Flask(__name__, template_folder='web', static_folder='web')
 
+def send_html(filename):
+    """统一返回 HTML 文件，避免路径拼接问题"""
+    return send_from_directory(str(Path(__file__).parent / 'web'), filename)
+
 # ==================== 课程内容 ====================
 
 # 新概念2A 核心句子（按单元组织）
@@ -237,42 +241,42 @@ start_tts_pregeneration()
 
 @app.route('/')
 def index():
-    return send_from_directory(app.root_path + '/web', 'ebook.html')
+    return send_html('ebook.html')
 
 @app.route('/tutor')
 def tutor_page():
     """跟读辅导页面"""
-    return send_from_directory(app.root_path + '/web', 'tutor.html')
+    return send_html('tutor.html')
 
 @app.route('/grammar/<page>')
 def grammar_page(page):
     """语法学习页面"""
-    return send_from_directory(app.root_path + '/web', page)
+    return send_html(page)
 
 @app.route('/grammar')
 def grammar_index():
     """语法学习首页"""
-    return send_from_directory(app.root_path + '/web', 'grammar.html')
+    return send_html('grammar.html')
 
 @app.route('/ebook')
 def ebook_page():
     """电子书阅读页面"""
-    return send_from_directory(app.root_path + '/web', 'ebook.html')
+    return send_html('ebook.html')
 
 @app.route('/manifest.json')
 def manifest():
     """PWA manifest"""
-    return send_from_directory(app.root_path + '/web', 'manifest.json')
+    return send_from_directory(str(Path(__file__).parent / 'web'), 'manifest.json')
 
 @app.route('/service-worker.js')
 def service_worker():
     """Service Worker"""
-    return send_from_directory(app.root_path + '/web', 'service-worker.js')
+    return send_from_directory(str(Path(__file__).parent / 'web'), 'service-worker.js')
 
 @app.route('/stats')
 def stats_page():
     """学习统计页面"""
-    return send_from_directory(app.root_path + '/web', 'stats.html')
+    return send_html('stats.html')
 
 @app.route('/api/course')
 def get_course():
@@ -442,8 +446,8 @@ def list_books():
                 "lexile": lexile,
                 "cover": data.get('cover')
             })
-        except:
-            pass
+        except Exception as e:
+            print(f"⚠️ 加载书籍失败 {f.stem}: {e}")
 
     return jsonify({"success": True, "books": books})
 
@@ -507,7 +511,8 @@ def import_book():
                             cover_path = f'/data/covers/{cover_filename}'
                             print(f'封面已提取: {cover_filename}')
                             break
-                    except:
+                    except Exception as e:
+                        print(f'尝试封面图案失败: {e}')
                         continue
             except Exception as e:
                 print(f'提取封面出错: {e}')
@@ -522,8 +527,8 @@ def import_book():
                 # 提取 id 到文件名映射
                 id_to_file = dict(re.findall(r'<item[^>]+id=["\']([^"\']+)["\'][^>]+href=["\']([^"\']+)["\']', content_opf))
                 spine_items = [id_to_file.get(sid, '') for sid in spine_ids if sid in id_to_file]
-            except:
-                pass
+            except Exception as e:
+                print(f'解析spine顺序失败: {e}')
 
             # 按 spine 顺序处理文件，没有 spine 则按文件名排序
             ordered_files = spine_items if spine_items else sorted(html_files)
@@ -611,7 +616,8 @@ def import_book():
                         if len(current_sentences) >= 50:
                             chapters.append({"name": f"Part {len(chapters)+1}", "sentences": current_sentences[:50]})
                             current_sentences = current_sentences[50:]
-                    except:
+                    except Exception as e:
+                        print(f'解析HTML章节失败: {e}')
                         continue
                 if current_sentences:
                     chapters.append({"name": f"Part {len(chapters)+1}", "sentences": current_sentences})
@@ -716,7 +722,8 @@ def transcribe_audio():
                     text = data.get('text', '').strip()
                     if text:
                         return jsonify({"success": True, "text": text})
-                except:
+                except Exception as e:
+                    print(f'Whisper识别出错: {e}')
                     pass
                 return jsonify({"success": False, "error": "Whisper 识别失败"})
             finally:
@@ -737,12 +744,26 @@ def serve_audio(filename):
 # ==================== 启动 ====================
 
 if __name__ == '__main__':
-    print("🦊 英语跟读辅导系统")
-    print("=" * 50)
-    print("🌐 打开浏览器访问: http://localhost:5002")
-    print()
+    import socket
 
-    import webbrowser
-    webbrowser.open('http://localhost:5002')
+    def get_lan_ip():
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except:
+            return "localhost"
+
+    lan_ip = get_lan_ip()
+
+    print("🦊 Shadow Learning - 原版阅读社团版")
+    print("=" * 50)
+    print(f"🌐 本机访问: http://localhost:5002")
+    print(f"📱 局域网访问: http://{lan_ip}:5002")
+    print()
+    print("让小朋友在浏览器打开上面的局域网地址")
+    print()
 
     app.run(host='0.0.0.0', port=5002, debug=False)
