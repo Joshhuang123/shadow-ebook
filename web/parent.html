@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<script src="/theme.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shadow Learning - 家长监控</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/kid-touch.css">
+    <style>
+        :root {
+            --primary: #6366F1;
+            --primary-light: #818CF8;
+            --secondary: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --bg: #F8FAFC;
+            --card: #FFFFFF;
+            --text: #1E293B;
+            --sub: #64748B;
+            --border: #E2E8F0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #E0E7FF 0%, #F0FDF4 100%);
+            min-height: 100vh;
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .top-nav {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 12px 24px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 1.3em;
+            color: var(--primary);
+        }
+
+        .lock-icon {
+            font-size: 1.5em;
+        }
+
+        .nav-right {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .main-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 90px 20px 40px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .card-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Login Section */
+        .login-section {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .lock-icon-large {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        .login-section h2 {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+
+        .login-section p {
+            color: var(--sub);
+            margin-bottom: 30px;
+        }
+
+        .password-input {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .pwd-digit {
+            width: 60px;
+            height: 60px;
+            text-align: center;
+            font-size: 2em;
+            border: 3px solid var(--border);
+            border-radius: 16px;
+            outline: none;
+            font-weight: bold;
+        }
+
+        .pwd-digit:focus {
+            border-color: var(--primary);
+        }
+
+        .pwd-error {
+            color: var(--danger);
+            margin-top: 15px;
+            font-weight: 600;
+            display: none;
+        }
+
+        .default-pwd-hint {
+            background: #FEF3C7;
+            border: 2px solid #F59E0B;
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .default-pwd-hint strong {
+            color: var(--warning);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #EEF2FF 0%, #F0FDF4 100%);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-card .icon {
+            font-size: 2.5em;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .value {
+            font-size: 2.2em;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-card .label {
+            color: var(--sub);
+            font-size: 0.95em;
+        }
+
+        .stat-card.warning .value {
+            color: var(--warning);
+        }
+
+        .stat-card.success .value {
+            color: var(--secondary);
+        }
+
+        /* Activity Chart */
+        .activity-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            height: 150px;
+            padding: 20px 0;
+            gap: 8px;
+        }
+
+        .chart-bar {
+            flex: 1;
+            background: linear-gradient(180deg, var(--primary) 0%, var(--primary-light) 100%);
+            border-radius: 8px 8px 0 0;
+            min-width: 30px;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .chart-bar:hover {
+            opacity: 0.8;
+            transform: scaleY(1.05);
+        }
+
+        .chart-bar .day-label {
+            position: absolute;
+            bottom: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75em;
+            color: var(--sub);
+        }
+
+        .chart-bar .time-label {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.7em;
+            color: var(--sub);
+            white-space: nowrap;
+        }
+
+        /* Recent Activity */
+        .activity-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            gap: 15px;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-item .icon {
+            font-size: 2em;
+            width: 50px;
+            text-align: center;
+        }
+
+        .activity-item .info {
+            flex: 1;
+        }
+
+        .activity-item .title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .activity-item .time {
+            font-size: 0.85em;
+            color: var(--sub);
+        }
+
+        .activity-item .duration {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        /* Vocabulary Progress */
+        .vocab-progress {
+            margin: 20px 0;
+        }
+
+        .vocab-bar {
+            height: 20px;
+            background: var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+        }
+
+        .vocab-bar .segment {
+            height: 100%;
+            transition: width 0.5s;
+        }
+
+        .vocab-bar .segment.learning {
+            background: var(--warning);
+        }
+
+        .vocab-bar .segment.practicing {
+            background: var(--primary);
+        }
+
+        .vocab-bar .segment.familiar {
+            background: var(--secondary);
+        }
+
+        .vocab-bar .segment.mastered {
+            background: #10B981;
+        }
+
+        .vocab-legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .vocab-legend .item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9em;
+        }
+
+        .vocab-legend .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        /* Settings */
+        .settings-group {
+            margin-bottom: 24px;
+        }
+
+        .settings-group h4 {
+            font-size: 1.1em;
+            margin-bottom: 12px;
+            color: var(--text);
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: #F8FAFC;
+            border-radius: 12px;
+            margin-bottom: 10px;
+        }
+
+        .setting-item .label {
+            font-weight: 600;
+        }
+
+        .setting-item .desc {
+            font-size: 0.85em;
+            color: var(--sub);
+        }
+
+        /* Toggle Switch */
+        .toggle {
+            position: relative;
+            width: 56px;
+            height: 32px;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #CBD5E1;
+            border-radius: 16px;
+            transition: 0.3s;
+        }
+
+        .toggle .slider:before {
+            position: absolute;
+            content: "";
+            height: 24px;
+            width: 24px;
+            left: 4px;
+            bottom: 4px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        .toggle input:checked + .slider {
+            background: var(--primary);
+        }
+
+        .toggle input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        /* Export Buttons */
+        .export-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 16px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #E2E8F0;
+            color: var(--text);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .btn-export {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: white;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Time Limit Setting */
+        .time-limit-setting {
+            background: #FEF3C7;
+            border: 2px solid #F59E0B;
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .time-input {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .time-input input {
+            width: 80px;
+            height: 44px;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            outline: none;
+        }
+
+        .time-input input:focus {
+            border-color: var(--primary);
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .password-input {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="nav-brand">
+            <span class="lock-icon">🔐</span>
+            <span>家长监控</span>
+        </div>
+        <div class="nav-right">
+            <button class="btn btn-secondary" onclick="logout()">退出</button>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <!-- Login Section -->
+        <div id="loginSection" class="card login-section">
+            <div class="lock-icon-large">🔒</div>
+            <h2>家长模式</h2>
+            <p>请输入密码以查看学习报告</p>
+            
+            <div class="password-input">
+                <input type="password" class="pwd-digit" maxlength="1" id="pwd1" autofocus>
+                <input type="password" class="pwd-digit" maxlength="1" id="pwd2">
+                <input type="password" class="pwd-digit" maxlength="1" id="pwd3">
+                <input type="password" class="pwd-digit" maxlength="1" id="pwd4">
+            </div>
+            
+            <p id="pwdError" class="pwd-error">密码错误，请重试</p>
+            
+            <div class="default-pwd-hint">
+                <strong>默认密码：</strong>0000（首次使用请修改）
+            </div>
+        </div>
+
+        <!-- Dashboard Section -->
+        <div id="dashboardSection" class="hidden">
+            <!-- Overview Stats -->
+            <div class="card">
+                <div class="card-title">📊 学习概览</div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="icon">📚</div>
+                        <div class="value" id="totalBooks">0</div>
+                        <div class="label">阅读书籍</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon">⏱️</div>
+                        <div class="value" id="totalMinutes">0</div>
+                        <div class="label">总学习分钟</div>
+                    </div>
+                    <div class="stat-card success">
+                        <div class="icon">🔥</div>
+                        <div class="value" id="streakDays">0</div>
+                        <div class="label">连续学习天数</div>
+                    </div>
+                    <div class="stat-card warning">
+                        <div class="icon">📝</div>
+                        <div class="value" id="newWords">0</div>
+                        <div class="label">新学单词</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weekly Activity Chart -->
+            <div class="card">
+                <div class="card-title">📈 本周学习时长</div>
+                <div class="activity-chart" id="weeklyChart">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card">
+                <div class="card-title">🕐 最近活动</div>
+                <ul class="activity-list" id="activityList">
+                    <li class="activity-item">
+                        <div class="icon">📖</div>
+                        <div class="info">
+                            <div class="title">暂无活动记录</div>
+                            <div class="time">开始学习后显示</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Vocabulary Progress -->
+            <div class="card">
+                <div class="card-title">📝 词汇进度</div>
+                <div class="vocab-progress">
+                    <div class="vocab-bar" id="vocabBar">
+                        <div class="segment learning" style="width: 20%"></div>
+                        <div class="segment practicing" style="width: 20%"></div>
+                        <div class="segment familiar" style="width: 30%"></div>
+                        <div class="segment mastered" style="width: 30%"></div>
+                    </div>
+                    <div class="vocab-legend">
+                        <div class="item"><div class="dot" style="background:#F59E0B"></div>学习中</div>
+                        <div class="item"><div class="dot" style="background:#6366F1"></div>练习中</div>
+                        <div class="item"><div class="dot" style="background:#10B981"></div>熟悉</div>
+                        <div class="item"><div class="dot" style="background:#059669"></div>已掌握</div>
+                    </div>
+                </div>
+                <div class="stats-grid" style="margin-top:20px;">
+                    <div class="stat-card warning">
+                        <div class="value" id="vocabLearning">0</div>
+                        <div class="label">学习中</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value" id="vocabPracticing">0</div>
+                        <div class="label">练习中</div>
+                    </div>
+                    <div class="stat-card success">
+                        <div class="value" id="vocabFamiliar">0</div>
+                        <div class="label">熟悉</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value" id="vocabMastered">0</div>
+                        <div class="label">已掌握</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div class="card">
+                <div class="card-title">⚙️ 设置</div>
+                
+                <div class="settings-group">
+                    <h4>🛡️ 安全设置</h4>
+                    
+                    <div class="setting-item">
+                        <div>
+                            <div class="label">修改密码</div>
+                            <div class="desc">设置4位数字密码</div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="showChangePwd()">修改</button>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <h4>⏰ 使用限制</h4>
+                    
+                    <div class="setting-item time-limit-setting">
+                        <div>
+                            <div class="label">每日学习时间上限</div>
+                            <div class="desc">超过后提醒休息（设为0则不限制）</div>
+                        </div>
+                        <div class="time-input">
+                            <input type="number" id="timeLimit" value="0" min="0" max="180">
+                            <span>分钟</span>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div>
+                            <div class="label">启用时间限制</div>
+                            <div class="desc">开启后每天限时使用</div>
+                        </div>
+                        <label class="toggle">
+                            <input type="checkbox" id="enableTimeLimit">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <h4>💾 数据管理</h4>
+                    <div class="export-buttons">
+                        <button class="btn btn-export" onclick="exportData('json')">
+                            📥 导出JSON
+                        </button>
+                        <button class="btn btn-export" onclick="exportData('csv')">
+                            📊 导出CSV
+                        </button>
+                        <button class="btn btn-secondary" onclick="resetData()">
+                            🗑️ 重置学习记录
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== 家长监控 JS ==========
+
+        const DEFAULT_PASSWORD = '0000';
+        const STORAGE_KEY = 'shadowParentPin';
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initPasswordInputs();
+            loadSettings();
+            
+            // 检查是否已登录
+            if (localStorage.getItem('parentLoggedIn') === 'true') {
+                showDashboard();
+            }
+        });
+
+        // 密码输入处理
+        function initPasswordInputs() {
+            const inputs = document.querySelectorAll('.pwd-digit');
+            inputs.forEach((input, index) => {
+                input.addEventListener('input', (e) => {
+                    if (e.target.value.length === 1 && index < inputs.length - 1) {
+                        inputs[index + 1].focus();
+                    }
+                    
+                    // 检查是否输完4位
+                    const pwd = Array.from(inputs).map(i => i.value).join('');
+                    if (pwd.length === 4) {
+                        checkPassword(pwd);
+                    }
+                });
+                
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Backspace' && input.value === '' && index > 0) {
+                        inputs[index - 1].focus();
+                    }
+                });
+            });
+        }
+
+        function checkPassword(pwd) {
+            const savedPin = localStorage.getItem(STORAGE_KEY) || DEFAULT_PASSWORD;
+            
+            if (pwd === savedPin) {
+                localStorage.setItem('parentLoggedIn', 'true');
+                showDashboard();
+            } else {
+                document.getElementById('pwdError').style.display = 'block';
+                document.querySelectorAll('.pwd-digit').forEach(i => i.value = '');
+                document.getElementById('pwd1').focus();
+            }
+        }
+
+        function showDashboard() {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.remove('hidden');
+            loadStats();
+        }
+
+        function logout() {
+            localStorage.removeItem('parentLoggedIn');
+            document.getElementById('dashboardSection').classList.add('hidden');
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.querySelectorAll('.pwd-digit').forEach(i => i.value = '');
+            document.getElementById('pwdError').style.display = 'none';
+        }
+
+        function showChangePwd() {
+            const newPwd = prompt('请输入新密码（4位数字）：');
+            if (newPwd && newPwd.length === 4 && /^\d+$/.test(newPwd)) {
+                localStorage.setItem(STORAGE_KEY, newPwd);
+                alert('密码修改成功！');
+            } else if (newPwd) {
+                alert('请输入4位数字！');
+            }
+        }
+
+        // 加载统计数据
+        async function loadStats() {
+            // 从localStorage获取学习数据
+            const stats = JSON.parse(localStorage.getItem('shadowStats') || '{}');
+            const vocabulary = JSON.parse(localStorage.getItem('shadowVocabulary') || '{}');
+            
+            // 更新概览
+            document.getElementById('totalBooks').textContent = stats.totalBooks || 0;
+            document.getElementById('totalMinutes').textContent = stats.totalMinutes || 0;
+            document.getElementById('streakDays').textContent = stats.streakDays || 0;
+            document.getElementById('newWords').textContent = vocabulary.newWords?.length || 0;
+            
+            // 生成周图表
+            generateWeeklyChart(stats.weeklyMinutes || {});
+            
+            // 更新词汇进度
+            const vocabDist = vocabulary.masteryDistribution || { learning: 0, practicing: 0, familiar: 0, mastered: 0 };
+            document.getElementById('vocabLearning').textContent = vocabDist.learning || 0;
+            document.getElementById('vocabPracticing').textContent = vocabDist.practicing || 0;
+            document.getElementById('vocabFamiliar').textContent = vocabDist.familiar || 0;
+            document.getElementById('vocabMastered').textContent = vocabDist.mastered || 0;
+            
+            // 更新词汇条
+            const total = vocabDist.learning + vocabDist.practicing + vocabDist.familiar + vocabDist.mastered;
+            if (total > 0) {
+                const bar = document.getElementById('vocabBar');
+                bar.innerHTML = `
+                    <div class="segment learning" style="width:${(vocabDist.learning/total*100).toFixed(0)}%"></div>
+                    <div class="segment practicing" style="width:${(vocabDist.practicing/total*100).toFixed(0)}%"></div>
+                    <div class="segment familiar" style="width:${(vocabDist.familiar/total*100).toFixed(0)}%"></div>
+                    <div class="segment mastered" style="width:${(vocabDist.mastered/total*100).toFixed(0)}%"></div>
+                `;
+            }
+            
+            // 最近活动
+            const activities = stats.recentActivities || [];
+            const listEl = document.getElementById('activityList');
+            if (activities.length === 0) {
+                listEl.innerHTML = `
+                    <li class="activity-item">
+                        <div class="icon">📖</div>
+                        <div class="info">
+                            <div class="title">暂无活动记录</div>
+                            <div class="time">开始学习后显示</div>
+                        </div>
+                    </li>
+                `;
+            } else {
+                listEl.innerHTML = activities.slice(0, 10).map(act => `
+                    <li class="activity-item">
+                        <div class="icon">${act.icon || '📖'}</div>
+                        <div class="info">
+                            <div class="title">${act.title || ''}</div>
+                            <div class="time">${act.time || ''}</div>
+                        </div>
+                        <div class="duration">${act.duration || ''}</div>
+                    </li>
+                `).join('');
+            }
+        }
+
+        function generateWeeklyChart(weeklyMinutes) {
+            const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+            const chartEl = document.getElementById('weeklyChart');
+            const maxMinutes = Math.max(...Object.values(weeklyMinutes || {}), 30);
+            
+            const today = new Date().getDay();
+            const mondayIndex = today === 0 ? 6 : today - 1;
+            const orderedDays = [...days.slice(mondayIndex), ...days.slice(0, mondayIndex)];
+            const orderedMinutes = [...Object.values(weeklyMinutes || {}), ...Object.keys(weeklyMinutes || {}).map((_, i) => i).slice(0, 7-Object.keys(weeklyMinutes || {}).length)];
+            
+            chartEl.innerHTML = orderedDays.map((day, i) => {
+                const minutes = weeklyMinutes[day] || 0;
+                const height = minutes > 0 ? (minutes / maxMinutes * 100) : 5;
+                return `
+                    <div class="chart-bar" style="height:${height}%">
+                        <span class="day-label">${day}</span>
+                        ${minutes > 0 ? `<span class="time-label">${minutes}m</span>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function loadSettings() {
+            const timeLimit = localStorage.getItem('dailyTimeLimit') || '0';
+            const enableLimit = localStorage.getItem('enableTimeLimit') === 'true';
+            
+            document.getElementById('timeLimit').value = timeLimit;
+            document.getElementById('enableTimeLimit').checked = enableLimit;
+            
+            document.getElementById('timeLimit').addEventListener('change', (e) => {
+                localStorage.setItem('dailyTimeLimit', e.target.value);
+            });
+            
+            document.getElementById('enableTimeLimit').addEventListener('change', (e) => {
+                localStorage.setItem('enableTimeLimit', e.target.checked);
+            });
+        }
+
+        function exportData(format) {
+            const stats = JSON.parse(localStorage.getItem('shadowStats') || '{}');
+            const vocabulary = JSON.parse(localStorage.getItem('shadowVocabulary') || '{}');
+            
+            let content, filename, type;
+            
+            if (format === 'json') {
+                content = JSON.stringify({ stats, vocabulary }, null, 2);
+                filename = 'shadow_learning_data.json';
+                type = 'application/json';
+            } else {
+                // CSV格式
+                const vocabList = vocabulary.newWords || [];
+                content = '单词,掌握度,复习次数,最后复习时间\n';
+                content += vocabList.map(w => `${w.word},${w.mastery || 0},${w.reviewCount || 0},${w.lastReview || ''}`).join('\n');
+                filename = 'shadow_vocabulary.csv';
+                type = 'text/csv';
+            }
+            
+            const blob = new Blob([content], { type });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function resetData() {
+            if (confirm('确定要重置所有学习记录吗？此操作不可撤销！')) {
+                if (confirm('再次确认：清除所有学习数据？')) {
+                    localStorage.removeItem('shadowStats');
+                    localStorage.removeItem('shadowVocabulary');
+                    loadStats();
+                    alert('学习记录已重置');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

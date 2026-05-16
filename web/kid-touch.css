@@ -1,0 +1,233 @@
+/* ============================================
+   Shadow Ebook - 儿童触摸优化CSS
+   适配10岁儿童使用 iPad/平板
+   ============================================ */
+
+/* 最小触摸目标尺寸（iOS标准48px） */
+:root {
+    --touch-min: 48px;
+    --btn-padding: 16px 28px;
+    --btn-font: 18px;
+    --card-padding: 20px;
+}
+
+/* ==================== 按钮优化 ==================== */
+
+/* 所有可点击按钮最小尺寸 */
+.btn, button, .clickable, 
+[class*="btn"], 
+[class*="option"],
+[class*="card"],
+.nav-link,
+.book-card,
+.comp-option,
+.quality-btn,
+.voice-select {
+    min-height: var(--touch-min) !important;
+    min-width: var(--touch-min) !important;
+    padding: var(--btn-padding) !important;
+    font-size: var(--btn-font) !important;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* 导航链接增大 */
+.nav-link {
+    padding: 14px 24px !important;
+    font-size: 20px !important;
+    border-radius: 24px !important;
+}
+
+/* 书籍卡片增大 */
+.book-card {
+    padding: 24px !important;
+    border-radius: 20px !important;
+}
+
+/* 选项按钮（选择题等） */
+[class*="option"], .comp-option {
+    padding: 18px 24px !important;
+    min-height: 60px !important;
+    font-size: 20px !important;
+    border-radius: 16px !important;
+    margin: 8px 0 !important;
+}
+
+/* 进度条触摸优化 */
+.progress-bar {
+    height: 16px !important;
+    border-radius: 8px !important;
+    cursor: pointer;
+}
+
+/* 音量/播放按钮特别大 */
+.play-btn, .audio-btn, [class*="play"] {
+    width: 72px !important;
+    height: 72px !important;
+    font-size: 32px !important;
+    border-radius: 50% !important;
+}
+
+/* ==================== 字体大小优化 ==================== */
+
+/* 正文字体不小于16px */
+body {
+    font-size: 18px !important;
+    line-height: 1.8 !important;
+}
+
+/* 标题字体 */
+.hero-title {
+    font-size: 2.8em !important;
+}
+
+.section-title {
+    font-size: 1.5em !important;
+}
+
+/* 句子/单词显示（阅读时需要大字体） */
+.sentence-text, .word-display, .reading-text {
+    font-size: 24px !important;
+    line-height: 2 !important;
+}
+
+/* 翻译文字 */
+.translation-text {
+    font-size: 20px !important;
+    line-height: 1.8 !important;
+}
+
+/* 按钮文字 */
+.btn {
+    font-size: 20px !important;
+    font-weight: 600 !important;
+}
+
+/* ==================== 间距优化 ==================== */
+
+/* 卡片间距增大 */
+.card, .book-card, .material-item {
+    padding: var(--card-padding) !important;
+    margin-bottom: 16px !important;
+    border-radius: 20px !important;
+}
+
+/* 列表项间距 */
+.list-item, .exercise-item {
+    padding: 16px !important;
+    margin-bottom: 12px !important;
+    border-radius: 16px !important;
+}
+
+/* ==================== 滑动手势支持 ==================== */
+
+/* 启用触摸滑动 */
+.reader-content, .book-content, .content-area {
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* 滑动指示器 */
+.swipe-hint {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 30px;
+    font-size: 16px;
+    opacity: 0.8;
+    z-index: 50;
+    animation: fadeInOut 3s ease-in-out infinite;
+}
+
+@keyframes fadeInOut {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+/* ==================== 儿童模式切换 ==================== */
+
+/* 儿童模式开关 */
+.kid-mode-toggle {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #F59E0B, #EF4444);
+    border-radius: 50%;
+    border: none;
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+    z-index: 200;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 儿童模式激活时的额外样式 */
+body.kid-mode .nav-link {
+    padding: 18px 30px !important;
+    font-size: 24px !important;
+}
+
+body.kid-mode .btn {
+    padding: 20px 36px !important;
+    font-size: 24px !important;
+    border-radius: 24px !important;
+}
+
+body.kid-mode .sentence-text {
+    font-size: 32px !important;
+}
+
+body.kid-mode .translation-text {
+    font-size: 26px !important;
+}
+
+/* ==================== iPad横屏优化 ==================== */
+
+@media (orientation: landscape) and (max-height: 800px) {
+    :root {
+        --touch-min: 44px;
+        --btn-padding: 12px 20px;
+        --btn-font: 16px;
+    }
+    
+    .hero-title {
+        font-size: 2em !important;
+    }
+}
+
+/* ==================== 触摸反馈 ==================== */
+
+/* 按下效果 */
+.btn:active, button:active, .clickable:active {
+    transform: scale(0.96);
+    opacity: 0.8;
+}
+
+/* 卡片按下效果 */
+.book-card:active, .card:active {
+    transform: scale(0.98);
+}
+
+/* ==================== 安全区域（iPhone X等） ==================== */
+
+@supports (padding: max(0px)) {
+    .main-container {
+        padding-left: max(20px, env(safe-area-inset-left));
+        padding-right: max(20px, env(safe-area-inset-right));
+        padding-bottom: max(40px, env(safe-area-inset-bottom));
+    }
+    
+    .top-nav {
+        padding-top: max(12px, env(safe-area-inset-top));
+    }
+}

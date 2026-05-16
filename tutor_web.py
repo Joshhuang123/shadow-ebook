@@ -273,6 +273,10 @@ def service_worker():
     """Service Worker"""
     return send_from_directory(str(Path(__file__).parent / 'web'), 'service-worker.js')
 
+@app.route('/xiaozhi_voice_demo')
+def xiaozhi_voice_demo():
+    return send_html('xiaozhi_voice_demo.html')
+
 @app.route('/stats')
 def stats_page():
     """学习统计页面"""

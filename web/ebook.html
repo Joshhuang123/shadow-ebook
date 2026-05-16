@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shadow Ebook - 英语电子书阅读</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/kid-touch.css">
     <style>
         :root {
             --primary: #6366F1;
@@ -738,7 +739,7 @@
             font-size: 1.2em;
         }
 
-        /* 分页导航 */
+        /* 分页导航（sidebar版本用） */
         .pagination-controls {
             display: flex;
             align-items: center;
@@ -747,9 +748,6 @@
             margin: 24px 0 16px;
         }
         .page-btn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
             padding: 10px 18px;
             background: white;
             border: 2px solid var(--border);
@@ -767,25 +765,6 @@
         }
         .page-btn-icon {
             font-size: 0.8em;
-        }
-        .page-indicator {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            padding: 8px 16px;
-            background: var(--bg-dark);
-            border-radius: 20px;
-            font-weight: 600;
-        }
-        .current-page {
-            font-size: 1.3em;
-            color: var(--primary);
-        }
-        .page-separator {
-            color: var(--text-secondary);
-        }
-        .total-pages {
-            color: var(--text-secondary);
         }
         .play-btn-large {
             width: 64px;
@@ -1674,6 +1653,7 @@
             <a href="/tutor" class="nav-link">跟读学习</a>
             <a href="/grammar" class="nav-link">语法学习</a>
             <a href="/stats" class="nav-link">📊 统计</a>
+            <a href="/parent" class="nav-link" style="color:var(--warning)">🔐 家长</a>
             <select class="voice-select" id="voice-select" onchange="changeVoice(this.value)">
                 <option value="en-US-AriaNeural">🔊 Aria (女声)</option>
                 <option value="en-US-JennyNeural">🔊 Jenny (女声)</option>
@@ -1748,46 +1728,39 @@
                     <div id="single-page-view">
                         <div class="sentence-display" id="sentence-display"></div>
                     </div>
-
-                    <!-- 分页导航 -->
-                    <div class="pagination-controls">
-                        <button class="page-btn" id="btn-prev" onclick="prevSentence()">
-                            <span class="page-btn-icon">◀</span>
-                            <span>上一句</span>
-                        </button>
-
-                        <div class="page-indicator" id="page-indicator">
-                            <span class="current-page" id="current-page">1</span>
-                            <span class="page-separator">/</span>
-                            <span class="total-pages" id="total-pages">10</span>
-                        </div>
-
-                        <button class="play-btn-large" id="btn-play" onclick="playCurrentSentence()">
-                            <span id="play-icon">▶</span>
-                        </button>
-
-                        <button class="page-btn" id="btn-next" onclick="nextSentence()">
-                            <span>下一句</span>
-                            <span class="page-btn-icon">▶</span>
-                        </button>
-                    </div>
-
-                    <!-- 章节导航 -->
-                    <div class="chapter-nav">
-                        <button class="chapter-nav-btn" id="btn-chapter-prev" onclick="prevChapter()">
-                            <span>◀ 上一章</span>
-                        </button>
-                        <button class="chapter-nav-btn" id="btn-chapter-next" onclick="nextChapter()">
-                            <span>下一章 ▶</span>
-                        </button>
-                    </div>
-
-                    <button class="btn btn-secondary quiz-btn" id="btn-comp" onclick="showComprehensionModal()">
-                        📖 章节测验
-                    </button>
                 </div>
 
                 <div class="sidebar">
+                    <!-- 播放导航控制 -->
+                    <div class="sidebar-card" style="text-align:center;">
+                        <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px;">
+                            <button class="page-btn" id="btn-prev" onclick="prevSentence()" style="padding:8px 12px;">
+                                <span class="page-btn-icon">◀</span>
+                            </button>
+                            <button class="play-btn-large" id="btn-play" onclick="playCurrentSentence()" style="width:56px;height:56px;">
+                                <span id="play-icon">▶</span>
+                            </button>
+                            <button class="page-btn" id="btn-next" onclick="nextSentence()" style="padding:8px 12px;">
+                                <span class="page-btn-icon">▶</span>
+                            </button>
+                        </div>
+                        <div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:0.85em;color:var(--text-secondary);margin-bottom:12px;">
+                            <span id="current-page">1</span>
+                            <span>/</span>
+                            <span id="total-pages">10</span>
+                        </div>
+                        <div style="display:flex;gap:8px;justify-content:center;">
+                            <button class="chapter-nav-btn" id="btn-chapter-prev" onclick="prevChapter()">
+                                <span>◀ 上一章</span>
+                            </button>
+                            <button class="chapter-nav-btn" id="btn-chapter-next" onclick="nextChapter()">
+                                <span>下一章 ▶</span>
+                            </button>
+                        </div>
+                        <button class="btn btn-secondary quiz-btn" id="btn-comp" onclick="showComprehensionModal()" style="width:100%;margin-top:12px;font-size:0.9em;">
+                            📖 章节测验
+                        </button>
+                    </div>
                     <!-- 跟读评分 -->
                     <div class="pronunciation-card">
                         <div class="sidebar-title">🎤 跟读评分</div>
@@ -3528,6 +3501,22 @@
             navigator.serviceWorker.register('/service-worker.js')
                 .then(() => console.log('SW registered'))
                 .catch(err => console.log('SW registration failed:', err));
+        }
+
+        // ========== 儿童模式切换 ==========
+        const kidModeToggle = document.createElement('button');
+        kidModeToggle.className = 'kid-mode-toggle';
+        kidModeToggle.innerHTML = '👦';
+        kidModeToggle.title = '切换儿童模式';
+        kidModeToggle.onclick = () => {
+            document.body.classList.toggle('kid-mode');
+            localStorage.setItem('kidMode', document.body.classList.contains('kid-mode'));
+        };
+        document.body.appendChild(kidModeToggle);
+
+        // 恢复儿童模式状态
+        if (localStorage.getItem('kidMode') === 'true') {
+            document.body.classList.add('kid-mode');
         }
     </script>
 </body>

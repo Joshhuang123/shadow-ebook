@@ -1,38 +1,78 @@
-const CACHE_NAME = 'shadow-ebook-v1';
+const CACHE_NAME = 'shadow-ebook-v2';
 const STATIC_ASSETS = [
   '/',
+  '/index',
   '/tutor',
   '/grammar',
   '/ebook',
-  '/manifest.json'
+  '/stats',
+  '/manifest.json',
+  '/theme.js',
+  '/icon-48.png',
+  '/icon-72.png',
+  '/icon-96.png',
+  '/icon-128.png',
+  '/icon-144.png',
+  '/icon-152.png',
+  '/icon-192.png',
+  '/icon-384.png',
+  '/icon-512.png'
 ];
+
+const MAX_CACHE_SIZE = 50;
 
 // 安装 Service Worker
 self.addEventListener('install', (event) => {
+  console.log('[SW] Installing...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('[SW] Caching static assets');
-        return cache.addAll(STATIC_ASSETS);
+        return cache.addAll(STATIC_ASSETS).catch(err => {
+          console.log('[SW] Cache failed, continuing:', err);
+        });
       })
-      .then(() => self.skipWaiting())
+      .then(() => {
+        console.log('[SW] Skip waiting');
+        return self.skipWaiting();
+      })
   );
 });
 
 // 激活并清理旧缓存
 self.addEventListener('activate', (event) => {
+  console.log('[SW] Activating...');
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
         return Promise.all(
           cacheNames
-            .filter((name) => name !== CACHE_NAME)
-            .map((name) => caches.delete(name))
+            .filter((name) => name.startsWith('shadow-') && name !== CACHE_NAME)
+            .map((name) => {
+              console.log('[SW] Deleting old cache:', name);
+              return caches.delete(name);
+            })
         );
       })
-      .then(() => self.clients.claim())
+      .then(() => {
+        console.log('[SW] Claiming clients');
+        return self.clients.claim();
+      })
   );
 });
+
+// 清理过多缓存
+async function cleanupCache() {
+  const cache = await caches.open(CACHE_NAME);
+  const keys = await cache.keys();
+  if (keys.length > MAX_CACHE_SIZE) {
+    // 删除最老的缓存项
+    const deleteCount = keys.length - MAX_CACHE_SIZE;
+    for (let i = 0; i < deleteCount; i++) {
+      await cache.delete(keys[i]);
+    }
+  }
+}
 
 // 请求拦截
 self.addEventListener('fetch', (event) => {
@@ -50,7 +90,6 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // 缓存成功的 API 响应
           if (response.ok) {
             const responseClone = response.clone();
             caches.open(CACHE_NAME).then((cache) => {
@@ -60,8 +99,29 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => {
-          // 网络失败时从缓存读取
           return caches.match(request);
+        })
+    );
+    return;
+  }
+
+  // HTML页面使用网络优先，回退到缓存
+  if (request.headers.get('accept')?.includes('text/html')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          return caches.match(request).then(cached => {
+            return cached || caches.match('/');
+          });
         })
     );
     return;
@@ -85,10 +145,8 @@ self.addEventListener('fetch', (event) => {
           return cachedResponse;
         }
 
-        // 缓存中没有，从网络获取
         return fetch(request)
           .then((response) => {
-            // 缓存成功的响应
             if (response.ok) {
               const responseClone = response.clone();
               caches.open(CACHE_NAME).then((cache) => {
@@ -99,11 +157,19 @@ self.addEventListener('fetch', (event) => {
           });
       })
   );
+  
+  // 定期清理缓存
+  cleanupCache();
 });
 
 // 处理消息
 self.addEventListener('message', (event) => {
   if (event.data === 'skipWaiting') {
     self.skipWaiting();
+  }
+  if (event.data === 'clearCache') {
+    caches.delete(CACHE_NAME).then(() => {
+      console.log('[SW] Cache cleared');
+    });
   }
 });
