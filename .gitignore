@@ -62,3 +62,13 @@ htmlcov/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Large binaries accidentally dropped in repo root
+*.pkg
+*.dmg
+*.iso
+
+# Capacitor / Android wrap (generated artifacts, not source)
+node_modules/
+android/
+capacitor.config.json
