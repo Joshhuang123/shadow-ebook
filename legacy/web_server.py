@@ -12,7 +12,7 @@ from flask import Flask, render_template, jsonify, request, send_from_directory
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-app = Flask(__name__, template_folder='web', static_folder='web')
+app = Flask(__name__, template_folder='.', static_folder='.')
 
 # Import services
 from services import ShadowLearningService
