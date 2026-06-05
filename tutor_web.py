@@ -263,6 +263,11 @@ def ebook_page():
     """电子书阅读页面"""
     return send_html('ebook.html')
 
+@app.route('/parent')
+def parent_page():
+    """家长监控页面"""
+    return send_html('parent.html')
+
 @app.route('/theme.js')
 def theme_js():
     return send_from_directory(str(Path(__file__).parent / 'web'), 'theme.js')

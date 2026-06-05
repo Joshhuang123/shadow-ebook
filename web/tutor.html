@@ -9,37 +9,50 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Shadow Ebook">
-    <meta name="theme-color" content="#6366F1">
+    <meta name="theme-color" content="#CC785C">
     <style>
+        :root {
+            --primary: #CC785C;
+            --primary-light: #E8B59E;
+            --secondary: #7A9A65;
+            --bg: #FAF9F6;
+            --bg-card: #FFFFFF;
+            --bg-dark: #F5F2EC;
+            --text-primary: #2D2A26;
+            --text-secondary: #6B655C;
+            --border: #E8E5DE;
+            --accent: #D4A574;
+            --danger: #C25B56;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; touch-action: manipulation; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #F5EDE5 0%, #EDE3D6 100%);
             min-height: 100vh;
-            color: #333;
+            color: var(--text-primary);
         }
         .container { max-width: 800px; margin: 0 auto; padding: 20px; }
         header {
             text-align: center;
             padding: 25px 20px;
-            color: white;
+            color: var(--text-primary);
         }
         header h1 { font-size: 2.2em; margin-bottom: 8px; }
-        header p { opacity: 0.9; }
+        header p { opacity: 0.7; }
         .card {
-            background: white;
+            background: var(--bg-card);
             border-radius: 20px;
             padding: 25px;
             margin: 15px 0;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 40px rgba(115,99,78,0.08);
         }
-        .card h2 { color: #667eea; margin-bottom: 15px; font-size: 1.3em; }
+        .card h2 { color: var(--primary); margin-bottom: 15px; font-size: 1.3em; }
 
         /* 单元选择 */
         .unit-list { display: grid; gap: 10px; }
         .unit-item {
             padding: 15px 20px;
-            background: #f8f9fa;
+            background: #F5F2EC;
             border-radius: 12px;
             cursor: pointer;
             transition: all 0.2s;
@@ -47,13 +60,13 @@
             justify-content: space-between;
             align-items: center;
         }
-        .unit-item:hover { background: #e8f0fe; transform: translateX(5px); }
-        .unit-name { font-weight: 600; color: #333; }
-        .unit-count { color: #888; font-size: 0.9em; }
+        .unit-item:hover { background: #F5EDE5; transform: translateX(5px); }
+        .unit-name { font-weight: 600; color: var(--text-primary); }
+        .unit-count { color: var(--text-secondary); font-size: 0.9em; }
 
         /* 跟读界面 */
         .sentence-display {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #CC785C 0%, #B86F4D 100%);
             color: white;
             padding: 30px;
             border-radius: 15px;
@@ -94,32 +107,32 @@
             z-index: 11;
         }
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #CC785C 0%, #B86F4D 100%);
             color: white;
         }
-        .btn-primary:hover { transform: scale(1.05); box-shadow: 0 5px 20px rgba(102,126,234,0.4); }
-        .btn-secondary { background: #e8f0fe; color: #667eea; }
-        .btn-secondary:hover { background: #d0e0ff; }
-        .btn-danger { background: #ff6b6b; color: white; }
-        .btn-danger:hover { background: #ff5252; transform: scale(1.05); }
-        .btn-success { background: #51cf66; color: white; }
-        .btn-success:hover { background: #69d179; transform: scale(1.05); }
+        .btn-primary:hover { transform: scale(1.05); box-shadow: 0 5px 20px rgba(204,120,92,0.4); }
+        .btn-secondary { background: #F5EDE5; color: #CC785C; }
+        .btn-secondary:hover { background: #F5EDE5; }
+        .btn-danger { background: #C25B56; color: white; }
+        .btn-danger:hover { background: #A04B47; transform: scale(1.05); }
+        .btn-success { background: #7A9A65; color: white; }
+        .btn-success:hover { background: #9DB87F; transform: scale(1.05); }
 
         /* 进度 */
         .progress-bar {
-            background: #e9ecef;
+            background: #E8E5DE;
             border-radius: 10px;
             height: 10px;
             margin: 15px 0;
             overflow: hidden;
         }
         .progress-fill {
-            background: linear-gradient(90deg, #667eea, #764ba2);
+            background: linear-gradient(90deg, #CC785C, #B86F4D);
             height: 100%;
             border-radius: 10px;
             transition: width 0.3s;
         }
-        .progress-text { text-align: center; color: #888; font-size: 0.9em; }
+        .progress-text { text-align: center; color: var(--text-secondary); font-size: 0.9em; }
 
         /* 录音状态 */
         .record-status {
@@ -129,9 +142,9 @@
             margin: 15px 0;
             font-weight: 500;
         }
-        .record-ready { background: #e3f2fd; color: #1976d2; }
-        .record-recording { background: #ffebee; color: #d32f2f; animation: pulse 1s infinite; }
-        .record-done { background: #e8f5e9; color: #388e3c; }
+        .record-ready { background: #F5EDE5; color: #B86F4D; }
+        .record-recording { background: #F5DDDD; color: #C25B56; animation: pulse 1s infinite; }
+        .record-done { background: #E5EEDF; color: #5C7A4A; }
 
         @keyframes pulse {
             0%, 100% { opacity: 1; }
@@ -149,7 +162,7 @@
         }
         .audio-bar {
             width: 6px;
-            background: linear-gradient(to top, #667eea, #764ba2);
+            background: linear-gradient(to top, #CC785C, #B86F4D);
             border-radius: 3px;
             transition: height 0.1s ease;
         }
@@ -158,7 +171,7 @@
         .waveform-comparison {
             margin: 15px 0;
             padding: 15px;
-            background: #f8f9fa;
+            background: #F5F2EC;
             border-radius: 12px;
         }
         .waveform-comparison.hidden { display: none; }
@@ -167,7 +180,7 @@
         }
         .waveform-label {
             font-size: 0.85em;
-            color: #666;
+            color: var(--text-secondary);
             margin: 8px 0 4px;
             display: flex;
             justify-content: space-between;
@@ -175,7 +188,7 @@
         }
         .waveform-play-btn {
             padding: 4px 12px;
-            background: #667eea;
+            background: #CC785C;
             color: white;
             border: none;
             border-radius: 15px;
@@ -190,18 +203,18 @@
             height: 60px;
             background: #fff;
             border-radius: 8px;
-            border: 1px solid #e9ecef;
+            border: 1px solid #E8E5DE;
         }
         .waveform-tips {
             font-size: 0.85em;
-            color: #888;
+            color: var(--text-secondary);
             text-align: center;
             margin-top: 10px;
         }
 
         /* 反馈 */
         .feedback {
-            background: #f8f9fa;
+            background: #F5F2EC;
             padding: 20px;
             border-radius: 12px;
             margin: 15px 0;
@@ -210,32 +223,32 @@
             display: flex;
             align-items: center;
             padding: 8px 0;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border);
         }
         .feedback-item:last-child { border-bottom: none; }
-        .feedback-good { color: #51cf66; }
-        .feedback-bad { color: #ff6b6b; }
+        .feedback-good { color: #7A9A65; }
+        .feedback-bad { color: #C25B56; }
         .feedback-icon { font-size: 1.2em; margin-right: 10px; }
 
         /* 测验 */
         .question-text {
             font-size: 1.2em;
             margin-bottom: 20px;
-            color: #333;
+            color: var(--text-primary);
         }
         .options { display: grid; gap: 10px; }
         .option {
             padding: 15px 20px;
-            background: #f8f9fa;
-            border: 2px solid #e9ecef;
+            background: #F5F2EC;
+            border: 2px solid #E8E5DE;
             border-radius: 12px;
             cursor: pointer;
             transition: all 0.2s;
             font-size: 1.1em;
         }
-        .option:hover { border-color: #667eea; background: #f0f4ff; }
-        .option.correct { background: #e8f5e9; border-color: #51cf66; }
-        .option.wrong { background: #ffebee; border-color: #ff6b6b; }
+        .option:hover { border-color: #CC785C; background: #F5EDE5; }
+        .option.correct { background: #E5EEDF; border-color: #7A9A65; }
+        .option.wrong { background: #F5DDDD; border-color: #C25B56; }
 
         /* 导航按钮 */
         .nav-buttons { display: flex; justify-content: space-between; margin-top: 20px; }
@@ -246,17 +259,17 @@
             padding: 40px;
         }
         .completion-icon { font-size: 4em; }
-        .completion h3 { color: #667eea; margin: 15px 0; font-size: 1.5em; }
-        .completion-stats { color: #666; margin: 20px 0; }
+        .completion h3 { color: #CC785C; margin: 15px 0; font-size: 1.5em; }
+        .completion-stats { color: var(--text-secondary); margin: 20px 0; }
 
         /* 隐藏 */
         .hidden { display: none !important; }
 
         /* 顶部导航 */
         .top-nav {
-            background: rgba(15, 23, 42, 0.9);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            background: var(--bg-card);
+            box-shadow: 0 2px 10px rgba(115, 99, 78, 0.08);
+            border-bottom: 1px solid var(--border);
             padding: 12px 20px;
             display: flex;
             justify-content: space-between;
@@ -272,15 +285,15 @@
         }
         .nav-links { display: flex; gap: 8px; }
         .nav-link {
-            color: #94A3B8;
+            color: var(--text-secondary);
             text-decoration: none;
             padding: 6px 14px;
             border-radius: 8px;
             font-size: 0.85em;
             transition: all 0.2s;
         }
-        .nav-link:hover { color: #F8FAFC; background: rgba(255,255,255,0.1); }
-        .nav-link.active { color: #F8FAFC; background: #4F46E5; }
+        .nav-link:hover { color: var(--primary); background: #F5EDE5; }
+        .nav-link.active { color: white; background: var(--primary); }
 
         /* ==================== 平板适配 ==================== */
         /* 平板竖屏 (600px - 768px) */
@@ -358,11 +371,11 @@
                 transform: scale(0.97);
             }
             .unit-item:active {
-                background: #e8f0fe;
+                background: #F5EDE5;
                 transform: translateX(3px);
             }
             .option:active {
-                background: #e8f0fe;
+                background: #F5EDE5;
             }
         }
 
@@ -384,20 +397,20 @@
         }
     
         /* Theme fallback vars */
-        --primary: var(--primary, #6366F1);
-        --primary-light: var(--primary-light, #818CF8);
-        --secondary: var(--secondary, #10B981);
-        --bg: var(--bg, #F8FAFC);
+        --primary: var(--primary, #CC785C);
+        --primary-light: var(--primary-light, #E8B59E);
+        --secondary: var(--secondary, #7A9A65);
+        --bg: var(--bg, #FAF9F6);
         --card: var(--card, #FFFFFF);
-        --text: var(--text, #1E293B);
-        --sub: var(--sub, #64748B);
-        --border: var(--border, #E2E8F0);
+        --text: var(--text, #2D2A26);
+        --sub: var(--sub, #6B655C);
+        --border: var(--border, #E8E5DE);
         --nav: var(--nav, #FFFFFF);
-        --accent: var(--accent, #F59E0B);
-        --shadow: var(--shadow, 0 4px 20px rgba(0,0,0,0.1));
-        --body: var(--body, linear-gradient(135deg, #E0E7FF 0%, #F0FDF4 100%));
-        --input: var(--input, #F1F5F9);
-        --btn-hover: var(--btn-hover, #4F46E5);
+        --accent: var(--accent, #D4A574);
+        --shadow: var(--shadow, 0 4px 20px rgba(115,99,78,0.08));
+        --body: var(--body, linear-gradient(135deg, #F5EDE5 0%, #EDE3D6 100%));
+        --input: var(--input, #F5F2EC);
+        --btn-hover: var(--btn-hover, #B86F4D);
 </style>
 </head>
 <body>
@@ -409,7 +422,7 @@
             <a href="/grammar" class="nav-link">语法学习</a>
             <a href="/stats" class="nav-link">📊 统计</a>
         </div>
-    <button id="themeBtn" onclick="cycleTheme()" style="background:var(--primary,#6366F1);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1.1em;cursor:pointer;margin-left:12px;flex-shrink:0;">&#xD83D;&#xDD0C;</button>
+    <button id="themeBtn" onclick="cycleTheme()" style="background:var(--primary,#CC785C);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1.1em;cursor:pointer;margin-left:12px;flex-shrink:0;">&#xD83D;&#xDD0C;</button>
         </nav>
     <div class="container">
         <header>
@@ -1098,7 +1111,7 @@
                     const arrayBuffer = await response.arrayBuffer();
                     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                     originalAudioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-                    drawWaveform(originalCanvas, originalAudioBuffer, '#4F46E5');
+                    drawWaveform(originalCanvas, originalAudioBuffer, '#CC785C');
 
                     // 预加载原音用于播放
                     if (currentAudioElement) currentAudioElement.pause();
@@ -1114,7 +1127,7 @@
                 const arrayBuffer = await response.arrayBuffer();
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 recordedAudioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-                drawWaveform(recordedCanvas, recordedAudioBuffer, '#10B981');
+                drawWaveform(recordedCanvas, recordedAudioBuffer, '#7A9A65');
             } catch (e) {
                 console.log('Could not load recorded audio for waveform');
             }

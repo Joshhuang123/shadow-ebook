@@ -11,27 +11,27 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Shadow Ebook">
-    <meta name="theme-color" content="#6366F1">
+    <meta name="theme-color" content="#CC785C">
     <style>
         * { touch-action: manipulation; }
         :root {
-            --primary: #6366F1;
-            --primary-light: #818CF8;
-            --secondary: #10B981;
-            --warning: #F59E0B;
-            --danger: #EF4444;
-            --bg: #F8FAFC;
+            --primary: #CC785C;
+            --primary-light: #E8B59E;
+            --secondary: #7A9A65;
+            --warning: #D4A574;
+            --danger: #C25B56;
+            --bg: #FAF9F6;
             --card: #FFFFFF;
-            --text: #1E293B;
-            --sub: #64748B;
-            --border: #E2E8F0;
+            --text: #2D2A26;
+            --sub: #6B655C;
+            --border: #E8E5DE;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #E0E7FF 0%, #F0FDF4 100%);
+            background: linear-gradient(135deg, #F5EDE5 0%, #EDE3D6 100%);
             min-height: 100vh;
             color: var(--text);
             line-height: 1.6;
@@ -39,7 +39,7 @@
 
         .top-nav {
             background: white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(115, 99, 78, 0.08);
             padding: 12px 24px;
             position: fixed;
             top: 0;
@@ -81,7 +81,7 @@
             border-radius: 20px;
             padding: 24px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 20px rgba(115, 99, 78, 0.08);
         }
 
         .card-title {
@@ -145,8 +145,8 @@
         }
 
         .default-pwd-hint {
-            background: #FEF3C7;
-            border: 2px solid #F59E0B;
+            background: #F5EDE5;
+            border: 2px solid #D4A574;
             border-radius: 12px;
             padding: 15px;
             margin-top: 20px;
@@ -165,7 +165,7 @@
         }
 
         .stat-card {
-            background: linear-gradient(135deg, #EEF2FF 0%, #F0FDF4 100%);
+            background: linear-gradient(135deg, #F5EDE5 0%, #EDE3D6 100%);
             border-radius: 16px;
             padding: 20px;
             text-align: center;
@@ -312,7 +312,7 @@
         }
 
         .vocab-bar .segment.mastered {
-            background: #10B981;
+            background: #5D7D4D;
         }
 
         .vocab-legend {
@@ -352,7 +352,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 16px;
-            background: #F8FAFC;
+            background: #F5F2EC;
             border-radius: 12px;
             margin-bottom: 10px;
         }
@@ -386,7 +386,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: #CBD5E1;
+            background: #D6CFC0;
             border-radius: 16px;
             transition: 0.3s;
         }
@@ -437,17 +437,17 @@
         }
 
         .btn-secondary {
-            background: #E2E8F0;
+            background: #E8E5DE;
             color: var(--text);
         }
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(115, 99, 78, 0.1);
         }
 
         .btn-export {
-            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            background: linear-gradient(135deg, #7A9A65 0%, #5D7D4D 100%);
             color: white;
         }
 
@@ -457,8 +457,8 @@
 
         /* Time Limit Setting */
         .time-limit-setting {
-            background: #FEF3C7;
-            border: 2px solid #F59E0B;
+            background: #F5EDE5;
+            border: 2px solid #D4A574;
             border-radius: 12px;
             padding: 16px;
         }
@@ -591,10 +591,10 @@
                         <div class="segment mastered" style="width: 30%"></div>
                     </div>
                     <div class="vocab-legend">
-                        <div class="item"><div class="dot" style="background:#F59E0B"></div>学习中</div>
-                        <div class="item"><div class="dot" style="background:#6366F1"></div>练习中</div>
-                        <div class="item"><div class="dot" style="background:#10B981"></div>熟悉</div>
-                        <div class="item"><div class="dot" style="background:#059669"></div>已掌握</div>
+                        <div class="item"><div class="dot" style="background:#D4A574"></div>学习中</div>
+                        <div class="item"><div class="dot" style="background:#CC785C"></div>练习中</div>
+                        <div class="item"><div class="dot" style="background:#7A9A65"></div>熟悉</div>
+                        <div class="item"><div class="dot" style="background:#5D7D4D"></div>已掌握</div>
                     </div>
                 </div>
                 <div class="stats-grid" style="margin-top:20px;">

@@ -4,8 +4,8 @@
 */
 (function(){
   var T={
-    day:  {'--primary':'#6366F1','--primary-light':'#818CF8','--secondary':'#10B981','--bg':'#F8FAFC','--card':'#FFFFFF','--text':'#1E293B','--sub':'#64748B','--border':'#E2E8F0','--accent':'#F59E0B','--nav':'#FFFFFF','--shadow':'0 4px 20px rgba(0,0,0,0.1)','--body':'linear-gradient(135deg,#E0E7FF 0%,#F0FDF4 100%)','--input':'#F1F5F9','--btn-hover':'#4F46E5'},
-    night:{'--primary':'#818CF8','--primary-light':'#A78BFA','--secondary':'#34D399','--bg':'#0F172A','--card':'#1E293B','--text':'#F1F5F9','--sub':'#94A3B8','--border':'#334155','--accent':'#FBBF24','--nav':'#1E293B','--shadow':'0 4px 20px rgba(0,0,0,0.5)','--body':'linear-gradient(135deg,#0F172A 0%,#1E1B4B 100%)','--input':'#334155','--btn-hover':'#6366F1'}
+    day:  {'--primary':'#CC785C','--primary-light':'#E8B59E','--secondary':'#7A9A65','--bg':'#FAF9F6','--card':'#FFFFFF','--text':'#2D2A26','--sub':'#6B655C','--border':'#E8E5DE','--accent':'#D4A574','--nav':'#FFFFFF','--shadow':'0 4px 20px rgba(115,99,78,0.08)','--body':'linear-gradient(135deg,#F5EDE5 0%,#EDE3D6 100%)','--input':'#F5F2EC','--btn-hover':'#B86F4D'},
+    night:{'--primary':'#D89B7E','--primary-light':'#E8C4B0','--secondary':'#8FAA7A','--bg':'#2A2520','--card':'#352F28','--text':'#F5F2EC','--sub':'#A39A8E','--border':'#4A4239','--accent':'#D4A574','--nav':'#352F28','--shadow':'0 4px 20px rgba(0,0,0,0.4)','--body':'linear-gradient(135deg,#2A2520 0%,#1F1B17 100%)','--input':'#352F28','--btn-hover':'#CC785C'}
   };
   var apply=function(m){
     if(m==='system'){document.documentElement.removeAttribute('data-theme');localStorage.removeItem('shTheme');}
