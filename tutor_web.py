@@ -263,6 +263,22 @@ def ebook_page():
     """电子书阅读页面"""
     return send_html('ebook.html')
 
+@app.route('/theme.js')
+def theme_js():
+    return send_from_directory(str(Path(__file__).parent / 'web'), 'theme.js')
+
+@app.route('/kid-touch.css')
+def kid_touch_css():
+    return send_from_directory(str(Path(__file__).parent / 'web'), 'kid-touch.css')
+
+@app.route('/fonts/fonts.css')
+def fonts_css():
+    return send_from_directory(str(Path(__file__).parent / 'web' / 'fonts'), 'fonts.css')
+
+@app.route('/fonts/<path:filename>')
+def font_file(filename):
+    return send_from_directory(str(Path(__file__).parent / 'web' / 'fonts'), filename)
+
 @app.route('/manifest.json')
 def manifest():
     """PWA manifest"""

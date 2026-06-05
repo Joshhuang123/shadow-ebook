@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shadow-ebook-v2';
+const CACHE_NAME = 'shadow-ebook-v4';
 const STATIC_ASSETS = [
   '/',
   '/index',
@@ -8,6 +8,14 @@ const STATIC_ASSETS = [
   '/stats',
   '/manifest.json',
   '/theme.js',
+  '/kid-touch.css',
+  '/fonts/fonts.css',
+  '/fonts/noto-serif-sc-400.ttf',
+  '/fonts/noto-serif-sc-600.ttf',
+  '/fonts/noto-serif-sc-700.ttf',
+  '/fonts/nunito-400.ttf',
+  '/fonts/nunito-600.ttf',
+  '/fonts/nunito-700.ttf',
   '/icon-48.png',
   '/icon-72.png',
   '/icon-96.png',

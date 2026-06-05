@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shadow Ebook - 英语电子书阅读</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/kid-touch.css">
+    <!-- <link rel="stylesheet" href="/kid-touch.css"> -->
+    <link rel="stylesheet" href="/fonts/fonts.css">
     <style>
         :root {
             --primary: #6366F1;
@@ -19,6 +19,7 @@
             --border: #E2E8F0;
             --accent: #F59E0B;
             --shadow: 0 4px 20px rgba(0,0,0,0.1);
+            --sentence-font-size: 20px;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -823,7 +824,7 @@
 
         .sentence-display {
             font-family: 'Noto Serif SC', serif;
-            font-size: 1.25em;
+            font-size: var(--sentence-font-size);
             line-height: 2.2;
             color: var(--text-primary);
         }
@@ -1746,6 +1747,15 @@
                         <button class="btn btn-secondary quiz-btn" id="btn-comp" onclick="showComprehensionModal()" style="width:100%;margin-top:12px;font-size:0.9em;">
                             📖 章节测验
                         </button>
+                        <!-- 字体大小调节 -->
+                        <div class="sidebar-card" style="padding:12px 16px;">
+                            <div class="sidebar-title" style="margin-bottom:8px;font-size:0.85em;">🔤 字体大小</div>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <button class="page-btn" onclick="changeFontSize(-2)" style="padding:6px 12px;font-size:0.9em;">A-</button>
+                                <span id="font-size-display" style="flex:1;text-align:center;font-size:0.9em;">20px</span>
+                                <button class="page-btn" onclick="changeFontSize(2)" style="padding:6px 12px;font-size:0.9em;">A+</button>
+                            </div>
+                        </div>
                     </div>
                     <!-- 跟读评分 -->
                     <div class="pronunciation-card">
@@ -2064,6 +2074,7 @@
 
         // 显示阅读器
         function showReader() {
+            initFontSize();
             document.getElementById('book-list-page').classList.add('hidden');
             document.getElementById('reader-page').classList.add('active');
         }
@@ -2128,7 +2139,7 @@
                                     <div class="book-cover" style="background:linear-gradient(135deg,${fallbackColor});">
                                         <img src="${coverUrl}" alt="${b.title}"
                                              style="width:100%;height:100%;object-fit:cover;border-radius:6px;opacity:0;"
-                                             onload="this.style.opacity='1';this.previousElementSibling.style.opacity='0';"
+                                             onload="this.style.opacity='1';this.nextElementSibling.style.opacity='0';"
                                              onerror="this.style.display='none';">
                                         <span class="book-cover-fallback" style="position:absolute;color:white;font-size:0.75em;font-weight:600;text-align:center;line-height:1.3;padding:8px;text-shadow:1px 1px 2px rgba(0,0,0,0.5);">${b.title}</span>
                                     </div>
@@ -3240,7 +3251,6 @@
                 if (interimTranscript) {
                     document.getElementById('record-hint').textContent = '🎤 听到: ' + interimTranscript;
                 }
-                console.log(' interim:', interimTranscript, '| final:', finalTranscript);
             };
 
             recognition.onerror = (event) => {
@@ -3260,7 +3270,6 @@
             };
 
             recognition.onend = () => {
-                console.log('识别结束, final:', finalTranscript);
                 stopRecording();
                 if (finalTranscript.trim()) {
                     const original = sentences[currentSentenceIndex];
@@ -3272,7 +3281,6 @@
 
             try {
                 recognition.start();
-                console.log('识别已启动');
             } catch (err) {
                 console.error('启动识别失败:', err);
                 document.getElementById('record-hint').textContent = '❌ 无法启动识别';
@@ -3282,7 +3290,6 @@
             // 可选：自动停止（15秒）
             setTimeout(() => {
                 if (isRecording) {
-                    console.log('超时，停止');
                     recognition.stop();
                 }
             }, 15000);
@@ -3303,7 +3310,6 @@
             if (audioContext) {
                 audioContext.close();
             }
-            console.log('停止');
         }
 
         // 播放参考音频
@@ -3327,7 +3333,6 @@
 
         // 显示发音评分
         function showPronunciationScore(original, transcribed) {
-            console.log('评分:', original, 'vs', transcribed);
             const score = calculateSimilarity(original, transcribed);
             const level = getScoreLevel(score);
 
@@ -3436,6 +3441,27 @@
             showCompQuestion();
         }
 
+        // 字体大小调节
+        function changeFontSize(delta) {
+            const root = document.documentElement;
+            const current = parseInt(getComputedStyle(root).getPropertyValue('--sentence-font-size')) || 20;
+            const newSize = Math.max(12, Math.min(36, current + delta));
+            root.style.setProperty('--sentence-font-size', newSize + 'px');
+            localStorage.setItem('sentenceFontSize', newSize);
+            document.getElementById('font-size-display').textContent = newSize + 'px';
+        }
+
+        function initFontSize() {
+            const saved = localStorage.getItem('sentenceFontSize');
+            if (saved) {
+                const size = parseInt(saved, 10);
+                if (Number.isFinite(size) && size >= 12 && size <= 36) {
+                    document.documentElement.style.setProperty('--sentence-font-size', size + 'px');
+                    document.getElementById('font-size-display').textContent = size + 'px';
+                }
+            }
+        }
+
         function showCompQuestion() {
             const content = document.getElementById('comp-content');
             if (compIndex >= compQuestions.length) {
@@ -3503,7 +3529,6 @@
         // PWA 注册
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js')
-                .then(() => console.log('SW registered'))
                 .catch(err => console.log('SW registration failed:', err));
         }
 
