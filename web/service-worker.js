@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shadow-ebook-v4';
+const CACHE_NAME = 'shadow-ebook-v5';
 const STATIC_ASSETS = [
   '/',
   '/index',
@@ -128,7 +128,7 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           return caches.match(request).then(cached => {
-            return cached || caches.match('/');
+            return cached || caches.match('/') || new Response('Offline', { status: 503, statusText: 'Offline' });
           });
         })
     );
@@ -164,6 +164,7 @@ self.addEventListener('fetch', (event) => {
             return response;
           });
       })
+      .catch(() => new Response('Offline', { status: 503, statusText: 'Offline' }))
   );
   
   // 定期清理缓存
