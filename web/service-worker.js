@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shadow-ebook-v5';
+const CACHE_NAME = 'shadow-ebook-v6';
 const STATIC_ASSETS = [
   '/',
   '/index',

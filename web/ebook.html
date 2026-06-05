@@ -640,45 +640,6 @@
             }
         }
 
-        /* iPad 横屏：滑动翻页区域 + 提示气泡 */
-        @media (min-width: 1024px) and (orientation: landscape) {
-            .swipe-area {
-                position: fixed;
-                top: 0;
-                bottom: 0;
-                width: 30%;
-                z-index: 50;
-                cursor: pointer;
-            }
-
-            .swipe-area-left {
-                left: 0;
-            }
-
-            .swipe-area-right {
-                right: 0;
-            }
-
-            .swipe-hint {
-                position: fixed;
-                bottom: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: rgba(79, 70, 229, 0.9);
-                color: white;
-                padding: 8px 20px;
-                border-radius: 20px;
-                font-size: 0.85em;
-                opacity: 0;
-                transition: opacity 0.3s;
-                pointer-events: none;
-            }
-
-            .swipe-hint.show {
-                opacity: 1;
-            }
-        }
-
         /* 文本区域 */
         .text-panel {
             background: var(--bg-card);
@@ -1071,8 +1032,6 @@
             background: var(--primary);
             border-color: var(--primary);
             color: white;
-        }
-            justify-content: center;
         }
 
         .nav-btn:hover:not(:disabled) {
@@ -1679,11 +1638,6 @@
 
         <!-- 阅读器页 -->
         <div class="reader-page" id="reader-page">
-            <!-- 滑动手势区域 -->
-            <div class="swipe-area swipe-area-left" onclick="prevPage()"></div>
-            <div class="swipe-area swipe-area-right" onclick="nextPage()"></div>
-            <div class="swipe-hint" id="swipe-hint">← 左右滑动翻页 →</div>
-
             <div class="reader-header">
                 <a href="#" class="back-btn" onclick="showBookList()">
                     <span>←</span>
@@ -2333,44 +2287,6 @@
             }
         }
 
-        // 更新显示
-        function updateDisplay() {
-            const container = document.getElementById('sentence-display');
-
-            let html = '';
-            sentences.forEach((sent, i) => {
-                let className = 'sentence-item';
-                if (i < currentSentenceIndex) className += ' read';
-                if (i === currentSentenceIndex) className += ' active';
-
-                const words = sent.split(/(\s+)/);
-                const processedWords = words.map(w => {
-                    if (/^[a-zA-Z]+$/.test(w)) {
-                        const isLooked = lookedWords[w.toLowerCase()];
-                        return `<span class="word-inline ${isLooked ? 'looked' : ''}" onclick="lookupWord('${w}', this, event)">${w}</span>`;
-                    }
-                    return w;
-                }).join('');
-
-                html += `<span class="${className}" onclick="jumpTo(${i})">${processedWords} </span> `;
-            });
-
-            container.innerHTML = html;
-
-            // 更新进度
-            const total = sentences.length;
-            const current = currentSentenceIndex + 1;
-            const percent = total > 0 ? Math.round((currentSentenceIndex / total) * 100) : 0;
-            document.getElementById('progress-fill').style.width = percent + '%';
-            document.getElementById('progress-text').textContent = `第 ${current} 页 / 共 ${total} 页`;
-            document.getElementById('current-page').textContent = current;
-            document.getElementById('total-pages').textContent = total;
-
-            // 更新按钮状态
-            document.getElementById('btn-prev').disabled = currentSentenceIndex === 0;
-            document.getElementById('btn-next').disabled = currentSentenceIndex >= sentences.length - 1;
-        }
-
         // 跳转到句子
         function jumpTo(index) {
             currentSentenceIndex = index;
@@ -3002,42 +2918,13 @@
             }
         }
 
-        // 双页模式：每次翻一页（每页一句）
-        const SENTENCES_PER_PAGE = 1;
-
-        // 检测是否为 iPad 横屏双页模式
-        function isTwoPageMode() {
-            return window.innerWidth >= 1024 && window.innerHeight <= 768 && window.innerHeight < window.innerWidth;
-        }
-
-        // 渲染单页或双页
+        // 渲染单页（iPad 横屏用单页滚动 + 固定 sidebar，67d5df2 的设计）
         function updateDisplay() {
             const container = document.getElementById('sentence-display');
-            const isTwoPage = isTwoPageMode();
-
             let html = '';
-
-            if (isTwoPage) {
-                // 双页模式：左页当前句，右页下一句
-                const leftSent = sentences[currentSentenceIndex] || '';
-                const rightSent = sentences[currentSentenceIndex + 1] || '';
-
-                html = `<div class="book-spread">
-                    <div class="book-page">
-                        ${formatSentence(leftSent, currentSentenceIndex)}
-                    </div>
-                    <div class="page-gutter"></div>
-                    <div class="book-page book-page-right">
-                        ${rightSent ? formatSentence(rightSent, currentSentenceIndex + 1) : '<div style="color:var(--text-secondary);text-align:center;padding:40px;">下一章 →</div>'}
-                    </div>
-                </div>`;
-            } else {
-                // 单页模式
-                sentences.forEach((sent, i) => {
-                    html += formatSentence(sent, i);
-                });
-            }
-
+            sentences.forEach((sent, i) => {
+                html += formatSentence(sent, i);
+            });
             container.innerHTML = html;
 
             // 更新进度
@@ -3085,70 +2972,14 @@
             }
         }
 
-        // 翻到下一页（双页模式）
-        function nextPage() {
-            if (currentSentenceIndex < sentences.length - 1) {
-                currentSentenceIndex += SENTENCES_PER_PAGE;
-                if (currentSentenceIndex >= sentences.length) currentSentenceIndex = sentences.length - 1;
-                updateDisplay();
-                translateSentence(sentences[currentSentenceIndex]);
-            }
-        }
-
-        // 翻到上一页（双页模式）
-        function prevPage() {
-            if (currentSentenceIndex > 0) {
-                currentSentenceIndex -= SENTENCES_PER_PAGE;
-                if (currentSentenceIndex < 0) currentSentenceIndex = 0;
-                updateDisplay();
-                translateSentence(sentences[currentSentenceIndex]);
-            }
-        }
-
-        // 滑动手势检测
-        let touchStartX = 0;
-        let touchEndX = 0;
-
-        document.addEventListener('touchstart', (e) => {
-            touchStartX = e.changedTouches[0].screenX;
-        }, { passive: true });
-
-        document.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            handleSwipe();
-        }, { passive: true });
-
-        function handleSwipe() {
-            if (!document.getElementById('reader-page').classList.contains('active')) return;
-            if (isTwoPageMode()) {
-                const diff = touchStartX - touchEndX;
-                if (Math.abs(diff) > 80) {
-                    if (diff > 0) {
-                        nextPage();
-                    } else {
-                        prevPage();
-                    }
-                    showSwipeHint();
-                }
-            }
-        }
-
-        function showSwipeHint() {
-            const hint = document.getElementById('swipe-hint');
-            hint.classList.add('show');
-            setTimeout(() => hint.classList.remove('show'), 2000);
-        }
-
         // 键盘快捷键
         document.addEventListener('keydown', (e) => {
             if (document.getElementById('reader-page').classList.contains('active')) {
                 if (e.key === 'ArrowLeft') {
-                    if (isTwoPageMode()) prevPage();
-                    else prevSentence();
+                    prevSentence();
                 }
                 else if (e.key === 'ArrowRight') {
-                    if (isTwoPageMode()) nextPage();
-                    else nextSentence();
+                    nextSentence();
                 }
                 else if (e.key === ' ' || e.key === 'Enter') {
                     e.preventDefault();
