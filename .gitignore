@@ -68,7 +68,5 @@ htmlcov/
 *.dmg
 *.iso
 
-# Capacitor / Android wrap (generated artifacts, not source)
+# Node.js
 node_modules/
-android/
-capacitor.config.json

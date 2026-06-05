@@ -1,0 +1,29 @@
+{
+  "name": "shadow-learning",
+  "version": "1.0.0",
+  "description": "免费开源的英语电子书阅读器，支持 EPUB 导入、点击查词、TTS 朗读、蓝思值计算，专为英语学习者设计。",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Joshhuang123/shadow-ebook.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Joshhuang123/shadow-ebook/issues"
+  },
+  "homepage": "https://github.com/Joshhuang123/shadow-ebook#readme",
+  "dependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/cli": "^8.3.4",
+    "@capacitor/core": "^8.3.4"
+  }
+}

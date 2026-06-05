@@ -115,13 +115,45 @@ shadow-learning/
 │   ├── tutor.html        # 跟读辅导界面
 │   ├── grammar.html      # 语法学习
 │   ├── stats.html        # 学习统计
+│   ├── parent.html       # 家长仪表盘
 │   ├── manifest.json     # PWA 配置
 │   └── service-worker.js # 离线支持
+├── android/              # Capacitor Android 壳工程（npm run sync 后可编译 APK）
+├── capacitor.config.json # Capacitor 配置（webDir=web）
+├── package.json          # npm 依赖（@capacitor/core/cli/android）
 ├── data/
 │   └── books/            # 电子书 JSON 文件
 └── audio/
     └── tts/              # TTS 缓存音频
 ```
+
+## 📦 打包为 Android App
+
+项目已经配置好 Capacitor 壳工程，可以打包成 Android APK / AAB 发到平板上离线使用。
+
+**前置条件**：本机装了 Node.js 18+ 和 Android Studio（首次构建会下载 Gradle + Android SDK）。
+
+**构建步骤**：
+
+```bash
+# 1. 安装 npm 依赖（仅首次或 Capacitor 升级时）
+npm install
+
+# 2. 把 web/ 同步到 android/app/src/main/assets/public/
+#    注意：android/app/src/main/assets/public/ 已经在 android/.gitignore 里被排除，
+#    不要手动 commit 这个目录。
+npx cap sync android
+
+# 3. 在 Android Studio 中打开 android/ 目录构建 APK：
+#    - Open → 选择 android/
+#    - 等 Gradle sync 完 → Build → Build Bundle(s) / APK(s) → Build APK(s)
+#    - APK 输出在 android/app/build/outputs/apk/debug/
+#
+# 或者用命令行：
+cd android && ./gradlew assembleDebug
+```
+
+> **更新 web 后的重新打包**：改完 web/ 里的文件，跑一次 `npx cap sync android`，然后重新构建 APK。`web/fonts/` 44MB 的字体文件会跟着一起打包进 APK，离线可用。
 
 ## 🛠️ 技术栈
 
