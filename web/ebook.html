@@ -3,7 +3,12 @@
 <head>
 <script src="/theme.js"></script>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Shadow Ebook">
+    <meta name="theme-color" content="#6366F1">
+    <link rel="apple-touch-icon" href="/icon-192.png">
     <title>Shadow Ebook - 英语电子书阅读</title>
     <!-- <link rel="stylesheet" href="/kid-touch.css"> -->
     <link rel="stylesheet" href="/fonts/fonts.css">
@@ -22,7 +27,7 @@
             --sentence-font-size: 20px;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; touch-action: manipulation; }
 
         body {
             font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
