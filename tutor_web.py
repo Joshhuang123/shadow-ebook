@@ -289,6 +289,17 @@ def service_worker():
     """Service Worker"""
     return send_from_directory(str(Path(__file__).parent / 'web'), 'service-worker.js')
 
+@app.route('/icon-<int:size>.png')
+@app.route('/screenshot.png')
+def icon_or_screenshot(size=None):
+    """PWA 图标和截图 — manifest 和 apple-touch-icon 都期望根路径。
+
+    Flask static_folder='web' 把 web/ 挂在 /web/ 路径下，但 manifest.json
+    和 service-worker.js 都引用 /icon-*.png 根路径，所以显式路由一下。
+    """
+    filename = f'icon-{size}.png' if size else 'screenshot.png'
+    return send_from_directory(str(Path(__file__).parent / 'web'), filename)
+
 @app.route('/xiaozhi_voice_demo')
 def xiaozhi_voice_demo():
     return send_html('xiaozhi_voice_demo.html')
