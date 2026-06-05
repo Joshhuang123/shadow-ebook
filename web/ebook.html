@@ -7,24 +7,24 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Shadow Ebook">
-    <meta name="theme-color" content="#CC785C">
+    <meta name="theme-color" content="#B86A4E">
     <link rel="apple-touch-icon" href="/icon-192.png">
     <title>Shadow Ebook - 英语电子书阅读</title>
     <!-- <link rel="stylesheet" href="/kid-touch.css"> -->
     <link rel="stylesheet" href="/fonts/fonts.css">
     <style>
         :root {
-            --primary: #CC785C;
-            --primary-light: #E8B59E;
-            --secondary: #7A9A65;
+            --primary: #B86A4E;
+            --primary-light: #D89B7E;
+            --secondary: #6B8A52;
             --bg-dark: #FAF9F6;
             --bg-card: #FFFFFF;
             --text-primary: #2D2A26;
-            --text-secondary: #6B655C;
-            --border: #E8E5DE;
+            --text-secondary: #5A544C;
+            --border: #D6CFC0;
             --accent: #D4A574;
             --danger: #C25B56;
-            --shadow: 0 4px 20px rgba(115,99,78,0.08);
+            --shadow: 0 4px 20px rgba(115,99,78,0.15);
             --sentence-font-size: 20px;
         }
 
@@ -41,7 +41,7 @@
         /* 顶部导航 */
         .top-nav {
             background: var(--bg-card);
-            box-shadow: 0 2px 10px rgba(115,99,78,0.08);
+            box-shadow: 0 2px 10px rgba(115,99,78,0.15);
             padding: 12px 24px;
             position: fixed;
             top: 0;
@@ -65,7 +65,7 @@
         .nav-brand .logo {
             width: 40px;
             height: 40px;
-            background: linear-gradient(135deg, var(--primary), #E8B59E);
+            background: linear-gradient(135deg, var(--primary), #D89B7E);
             border-radius: 12px;
             display: flex;
             align-items: center;
@@ -140,7 +140,7 @@
             font-size: 2.5em;
             font-weight: 700;
             margin-bottom: 10px;
-            background: linear-gradient(135deg, var(--primary), #E8B59E);
+            background: linear-gradient(135deg, var(--primary), #D89B7E);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -275,68 +275,114 @@
             margin-bottom: 12px;
         }
 
-        /* 书架样式 - 儿童友好 */
+        /* 书架样式 - 高级精装书架 */
         .bookshelf-section {
-            margin-bottom: 24px;
-            background: white;
+            margin-bottom: 32px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
             border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 4px 16px rgba(115,99,78,0.08);
+            padding: 24px 24px 26px;
+            box-shadow: 0 4px 24px rgba(115, 99, 78, 0.15);
         }
         .shelf-label {
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-bottom: 16px;
-            padding: 10px 16px;
-            border-radius: 16px;
+            margin-bottom: 26px;
+            padding: 10px 18px;
+            border-radius: 14px;
             background: linear-gradient(135deg, var(--primary), var(--primary-light));
             color: white;
+            box-shadow: 0 4px 12px rgba(184, 106, 78, 0.3);
         }
-        .shelf-label.beginner { background: linear-gradient(135deg, #7A9A65, #9DB87F); }
-        .shelf-label.intermediate { background: linear-gradient(135deg, #D4A574, #E0B988); }
-        .shelf-label.advanced { background: linear-gradient(135deg, #C25B56, #D88078); }
+        .shelf-label.beginner {
+            background: linear-gradient(135deg, #5C7A4A, #8FAA7A);
+            box-shadow: 0 4px 12px rgba(92, 122, 74, 0.3);
+        }
+        .shelf-label.intermediate {
+            background: linear-gradient(135deg, #C8985F, #E0B988);
+            box-shadow: 0 4px 12px rgba(200, 152, 95, 0.3);
+        }
+        .shelf-label.advanced {
+            background: linear-gradient(135deg, #A04B47, #C25B56);
+            box-shadow: 0 4px 12px rgba(160, 75, 71, 0.3);
+        }
         .shelf-label-icon {
             font-size: 1.5em;
         }
         .shelf-label-text {
             font-size: 1.1em;
             font-weight: 700;
+            letter-spacing: 0.02em;
         }
         .shelf-label-level {
-            opacity: 0.9;
-            font-weight: 400;
-            font-size: 0.9em;
+            opacity: 0.95;
+            font-weight: 500;
+            font-size: 0.85em;
             margin-left: auto;
+            padding: 3px 12px;
+            background: rgba(255, 255, 255, 0.22);
+            border-radius: 10px;
         }
+
+        /* 木板书架 */
         .bookshelf {
             display: flex;
-            gap: 16px;
+            gap: 14px;
             flex-wrap: wrap;
-            padding: 10px 0;
-        }
-        .book-spine {
-            width: 120px;
-            cursor: pointer;
-            transition: all 0.3s;
+            padding: 4px 0 16px;
             position: relative;
+            align-items: flex-end;
+        }
+
+        .bookshelf::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: -2px;
+            right: -2px;
+            height: 14px;
+            background: linear-gradient(180deg, #A88660 0%, #6B5436 65%, #3D2E1E 100%);
+            border-radius: 2px 2px 6px 6px;
+            box-shadow:
+                0 2px 4px rgba(60, 40, 20, 0.3),
+                0 8px 20px rgba(60, 40, 20, 0.18);
+            z-index: 0;
+        }
+
+        .book-spine {
+            width: 132px;
+            cursor: pointer;
+            transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            z-index: 1;
         }
         .book-spine:hover {
-            transform: translateY(-8px);
+            transform: translateY(-16px);
         }
         .book-cover {
-            width: 120px;
-            height: 160px;
-            border-radius: 6px 6px 0 0;
+            width: 132px;
+            height: 182px;
+            border-radius: 4px 4px 1px 1px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 12px 8px;
+            padding: 16px 10px;
             text-align: center;
             position: relative;
-            box-shadow: 3px 3px 10px rgba(115,99,78,0.18);
             overflow: hidden;
+            box-shadow:
+                inset 3px 0 5px rgba(255, 255, 255, 0.18),
+                inset -2px 0 5px rgba(0, 0, 0, 0.22),
+                4px 4px 14px rgba(60, 40, 20, 0.32);
+            transition: box-shadow 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .book-spine:hover .book-cover {
+            box-shadow:
+                inset 3px 0 5px rgba(255, 255, 255, 0.22),
+                inset -2px 0 5px rgba(0, 0, 0, 0.28),
+                6px 12px 28px rgba(60, 40, 20, 0.45);
         }
 
         .book-cover-fallback {
@@ -380,7 +426,7 @@
             z-index: 1;
         }
         .lexile-badge.beginner {
-            background: linear-gradient(135deg, #7A9A65, #9DB87F);
+            background: linear-gradient(135deg, #6B8A52, #9DB87F);
         }
         .lexile-badge.intermediate {
             background: linear-gradient(135deg, #D4A574, #E0B988);
@@ -389,10 +435,11 @@
             background: linear-gradient(135deg, #C25B56, #D88078);
         }
         .book-spine-base {
-            width: 120px;
-            height: 12px;
-            background: linear-gradient(to bottom, rgba(139,90,43,0.8), rgba(101,67,33,0.9));
-            border-radius: 0 0 4px 4px;
+            width: 132px;
+            height: 7px;
+            background: linear-gradient(180deg, #F0DDB5 0%, #C4A883 100%);
+            border-radius: 0 0 2px 2px;
+            box-shadow: 0 1px 2px rgba(60, 40, 20, 0.25);
         }
 
         .book-delete-btn {
@@ -431,7 +478,7 @@
             position: absolute;
             top: -8px;
             left: -8px;
-            background: linear-gradient(135deg, #7A9A65, #9DB87F);
+            background: linear-gradient(135deg, #6B8A52, #9DB87F);
             color: white;
             padding: 4px 8px;
             border-radius: 12px;
@@ -449,7 +496,7 @@
             width: 28px;
             height: 28px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #7A9A65, #9DB87F);
+            background: linear-gradient(135deg, #6B8A52, #9DB87F);
             border: 2px solid white;
             color: white;
             font-size: 14px;
@@ -469,7 +516,7 @@
 
         .cache-audio-btn:hover {
             transform: scale(1.1);
-            background: linear-gradient(135deg, #5C7A4A, #7A9A65);
+            background: linear-gradient(135deg, #5C7A4A, #6B8A52);
         }
 
         .cache-audio-btn.caching {
@@ -979,7 +1026,7 @@
         }
 
         .score-level.excellent { color: #22C55E; }
-        .score-level.great { color: #7A9A65; }
+        .score-level.great { color: #6B8A52; }
         .score-level.good { color: #3B82F6; }
         .score-level.practice { color: #D4A574; }
         .score-level.try { color: #C25B56; }
@@ -1207,8 +1254,8 @@
 
         .review-btn.correct {
             background: rgba(122, 154, 101, 0.2);
-            color: #7A9A65;
-            border: 1px solid #7A9A65;
+            color: #6B8A52;
+            border: 1px solid #6B8A52;
         }
 
         .review-btn.correct:hover {
@@ -1247,7 +1294,7 @@
             font-weight: 600;
         }
 
-        .review-stat-value.correct { color: #7A9A65; }
+        .review-stat-value.correct { color: #6B8A52; }
         .review-stat-value.wrong { color: #C25B56; }
 
         /* 阅读理解 */
@@ -1279,8 +1326,8 @@
         }
         .comp-option.correct {
             background: rgba(122, 154, 101, 0.2);
-            border-color: #7A9A65;
-            color: #7A9A65;
+            border-color: #6B8A52;
+            color: #6B8A52;
         }
         .comp-option.wrong {
             background: rgba(194, 91, 86, 0.2);
@@ -1308,7 +1355,7 @@
             font-size: 1.8em;
             font-weight: 600;
         }
-        .comp-stat-value.correct { color: #7A9A65; }
+        .comp-stat-value.correct { color: #6B8A52; }
         .comp-stat-value.wrong { color: #C25B56; }
 
         /* AR 面板 */
@@ -1581,17 +1628,17 @@
         }
     
         /* Theme fallback vars */
-        --primary: var(--primary, #CC785C);
-        --primary-light: var(--primary-light, #E8B59E);
-        --secondary: var(--secondary, #7A9A65);
+        --primary: var(--primary, #B86A4E);
+        --primary-light: var(--primary-light, #D89B7E);
+        --secondary: var(--secondary, #6B8A52);
         --bg: var(--bg, #FAF9F6);
         --card: var(--card, #FFFFFF);
         --text: var(--text, #2D2A26);
-        --sub: var(--sub, #6B655C);
-        --border: var(--border, #E8E5DE);
+        --sub: var(--sub, #5A544C);
+        --border: var(--border, #D6CFC0);
         --nav: var(--nav, #FFFFFF);
         --accent: var(--accent, #D4A574);
-        --shadow: var(--shadow, 0 4px 20px rgba(115,99,78,0.10));
+        --shadow: var(--shadow, 0 4px 20px rgba(115,99,78,0.18));
         --body: var(--body, linear-gradient(135deg, #F5EDE5 0%, #EDE3D6 100%));
         --input: var(--input, #F5F2EC);
         --btn-hover: var(--btn-hover, #B86F4D);
@@ -1618,7 +1665,7 @@
                 <option value="en-US-GuyNeural">🔊 Guy (男声)</option>
             </select>
         </div>
-    <button id="themeBtn" onclick="cycleTheme()" style="background:var(--primary,#CC785C);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1em;cursor:pointer;margin-left:12px;flex-shrink:0;font-weight:bold;">日</button>
+    <button id="themeBtn" onclick="cycleTheme()" style="background:var(--primary,#B86A4E);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1em;cursor:pointer;margin-left:12px;flex-shrink:0;font-weight:bold;">日</button>
         </nav>
 
     <div class="main-container">
@@ -2091,7 +2138,7 @@
                             const levelClass = getLevelClass(b.lexile);
                             const coverUrl = getCoverUrl(b);
                             const hasLocalCover = !!b.cover;
-                            const fallbackColor = ['#CC785C-#B86F4D', '#7A9A65-#9DB87F', '#D4A574-#E0B988', '#A8755C-#8B5A3C', '#C25B56-#D88078'][i % 5];
+                            const fallbackColor = ['#B86A4E-#9A5238', '#5C7A4A-#3D5A2E', '#C8985F-#A07A45', '#7A3A40-#5A2A30', '#4A6B3A-#2D4A20', '#8B4A2C-#5C2E18', '#A04B47-#7A3530'][i % 7];
 
                             html += `
                                 <div class="book-spine" onclick="loadBook('${b.id}')" title="${b.title}">
@@ -3219,7 +3266,7 @@
         // 获取评分等级
         function getScoreLevel(score) {
             if (score >= 90) return { text: '🌟 非常棒！', class: 'excellent', color: '#22C55E' };
-            if (score >= 75) return { text: '👍 很棒！', class: 'great', color: '#7A9A65' };
+            if (score >= 75) return { text: '👍 很棒！', class: 'great', color: '#6B8A52' };
             if (score >= 60) return { text: '📚 不错！', class: 'good', color: '#3B82F6' };
             if (score >= 40) return { text: '💪 继续加油', class: 'practice', color: '#D4A574' };
             return { text: '📖 多读几遍', class: 'try', color: '#C25B56' };

@@ -9,18 +9,18 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Shadow Ebook">
-    <meta name="theme-color" content="#CC785C">
+    <meta name="theme-color" content="#B86A4E">
     <style>
         :root {
-            --primary: #CC785C;
-            --primary-light: #E8B59E;
-            --secondary: #7A9A65;
+            --primary: #B86A4E;
+            --primary-light: #D89B7E;
+            --secondary: #6B8A52;
             --bg: #FAF9F6;
             --bg-card: #FFFFFF;
             --bg-dark: #F5F2EC;
             --text-primary: #2D2A26;
-            --text-secondary: #6B655C;
-            --border: #E8E5DE;
+            --text-secondary: #5A544C;
+            --border: #D6CFC0;
             --accent: #D4A574;
             --danger: #C25B56;
         }
@@ -44,7 +44,7 @@
             border-radius: 20px;
             padding: 25px;
             margin: 15px 0;
-            box-shadow: 0 10px 40px rgba(115,99,78,0.08);
+            box-shadow: 0 10px 40px rgba(115,99,78,0.15);
         }
         .card h2 { color: var(--primary); margin-bottom: 15px; font-size: 1.3em; }
 
@@ -66,7 +66,7 @@
 
         /* 跟读界面 */
         .sentence-display {
-            background: linear-gradient(135deg, #CC785C 0%, #B86F4D 100%);
+            background: linear-gradient(135deg, #B86A4E 0%, #B86F4D 100%);
             color: white;
             padding: 30px;
             border-radius: 15px;
@@ -107,27 +107,27 @@
             z-index: 11;
         }
         .btn-primary {
-            background: linear-gradient(135deg, #CC785C 0%, #B86F4D 100%);
+            background: linear-gradient(135deg, #B86A4E 0%, #B86F4D 100%);
             color: white;
         }
         .btn-primary:hover { transform: scale(1.05); box-shadow: 0 5px 20px rgba(204,120,92,0.4); }
-        .btn-secondary { background: #F5EDE5; color: #CC785C; }
+        .btn-secondary { background: #F5EDE5; color: #B86A4E; }
         .btn-secondary:hover { background: #F5EDE5; }
         .btn-danger { background: #C25B56; color: white; }
         .btn-danger:hover { background: #A04B47; transform: scale(1.05); }
-        .btn-success { background: #7A9A65; color: white; }
+        .btn-success { background: #6B8A52; color: white; }
         .btn-success:hover { background: #9DB87F; transform: scale(1.05); }
 
         /* 进度 */
         .progress-bar {
-            background: #E8E5DE;
+            background: #D6CFC0;
             border-radius: 10px;
             height: 10px;
             margin: 15px 0;
             overflow: hidden;
         }
         .progress-fill {
-            background: linear-gradient(90deg, #CC785C, #B86F4D);
+            background: linear-gradient(90deg, #B86A4E, #B86F4D);
             height: 100%;
             border-radius: 10px;
             transition: width 0.3s;
@@ -162,7 +162,7 @@
         }
         .audio-bar {
             width: 6px;
-            background: linear-gradient(to top, #CC785C, #B86F4D);
+            background: linear-gradient(to top, #B86A4E, #B86F4D);
             border-radius: 3px;
             transition: height 0.1s ease;
         }
@@ -188,7 +188,7 @@
         }
         .waveform-play-btn {
             padding: 4px 12px;
-            background: #CC785C;
+            background: #B86A4E;
             color: white;
             border: none;
             border-radius: 15px;
@@ -203,7 +203,7 @@
             height: 60px;
             background: #fff;
             border-radius: 8px;
-            border: 1px solid #E8E5DE;
+            border: 1px solid #D6CFC0;
         }
         .waveform-tips {
             font-size: 0.85em;
@@ -226,7 +226,7 @@
             border-bottom: 1px solid var(--border);
         }
         .feedback-item:last-child { border-bottom: none; }
-        .feedback-good { color: #7A9A65; }
+        .feedback-good { color: #6B8A52; }
         .feedback-bad { color: #C25B56; }
         .feedback-icon { font-size: 1.2em; margin-right: 10px; }
 
@@ -240,14 +240,14 @@
         .option {
             padding: 15px 20px;
             background: #F5F2EC;
-            border: 2px solid #E8E5DE;
+            border: 2px solid #D6CFC0;
             border-radius: 12px;
             cursor: pointer;
             transition: all 0.2s;
             font-size: 1.1em;
         }
-        .option:hover { border-color: #CC785C; background: #F5EDE5; }
-        .option.correct { background: #E5EEDF; border-color: #7A9A65; }
+        .option:hover { border-color: #B86A4E; background: #F5EDE5; }
+        .option.correct { background: #E5EEDF; border-color: #6B8A52; }
         .option.wrong { background: #F5DDDD; border-color: #C25B56; }
 
         /* 导航按钮 */
@@ -259,7 +259,7 @@
             padding: 40px;
         }
         .completion-icon { font-size: 4em; }
-        .completion h3 { color: #CC785C; margin: 15px 0; font-size: 1.5em; }
+        .completion h3 { color: #B86A4E; margin: 15px 0; font-size: 1.5em; }
         .completion-stats { color: var(--text-secondary); margin: 20px 0; }
 
         /* 隐藏 */
@@ -268,7 +268,7 @@
         /* 顶部导航 */
         .top-nav {
             background: var(--bg-card);
-            box-shadow: 0 2px 10px rgba(115, 99, 78, 0.08);
+            box-shadow: 0 2px 10px rgba(115, 99, 78, 0.15);
             border-bottom: 1px solid var(--border);
             padding: 12px 20px;
             display: flex;
@@ -397,17 +397,17 @@
         }
     
         /* Theme fallback vars */
-        --primary: var(--primary, #CC785C);
-        --primary-light: var(--primary-light, #E8B59E);
-        --secondary: var(--secondary, #7A9A65);
+        --primary: var(--primary, #B86A4E);
+        --primary-light: var(--primary-light, #D89B7E);
+        --secondary: var(--secondary, #6B8A52);
         --bg: var(--bg, #FAF9F6);
         --card: var(--card, #FFFFFF);
         --text: var(--text, #2D2A26);
-        --sub: var(--sub, #6B655C);
-        --border: var(--border, #E8E5DE);
+        --sub: var(--sub, #5A544C);
+        --border: var(--border, #D6CFC0);
         --nav: var(--nav, #FFFFFF);
         --accent: var(--accent, #D4A574);
-        --shadow: var(--shadow, 0 4px 20px rgba(115,99,78,0.08));
+        --shadow: var(--shadow, 0 4px 20px rgba(115,99,78,0.15));
         --body: var(--body, linear-gradient(135deg, #F5EDE5 0%, #EDE3D6 100%));
         --input: var(--input, #F5F2EC);
         --btn-hover: var(--btn-hover, #B86F4D);
@@ -422,7 +422,7 @@
             <a href="/grammar" class="nav-link">语法学习</a>
             <a href="/stats" class="nav-link">📊 统计</a>
         </div>
-    <button id="themeBtn" onclick="cycleTheme()" style="background:var(--primary,#CC785C);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1.1em;cursor:pointer;margin-left:12px;flex-shrink:0;">&#xD83D;&#xDD0C;</button>
+    <button id="themeBtn" onclick="cycleTheme()" style="background:var(--primary,#B86A4E);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1.1em;cursor:pointer;margin-left:12px;flex-shrink:0;">&#xD83D;&#xDD0C;</button>
         </nav>
     <div class="container">
         <header>
@@ -1111,7 +1111,7 @@
                     const arrayBuffer = await response.arrayBuffer();
                     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                     originalAudioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-                    drawWaveform(originalCanvas, originalAudioBuffer, '#CC785C');
+                    drawWaveform(originalCanvas, originalAudioBuffer, '#B86A4E');
 
                     // 预加载原音用于播放
                     if (currentAudioElement) currentAudioElement.pause();
@@ -1127,7 +1127,7 @@
                 const arrayBuffer = await response.arrayBuffer();
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 recordedAudioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-                drawWaveform(recordedCanvas, recordedAudioBuffer, '#7A9A65');
+                drawWaveform(recordedCanvas, recordedAudioBuffer, '#6B8A52');
             } catch (e) {
                 console.log('Could not load recorded audio for waveform');
             }

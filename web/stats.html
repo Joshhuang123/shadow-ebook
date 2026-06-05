@@ -14,15 +14,15 @@
     <style>
         * { touch-action: manipulation; }
         :root {
-            --primary: #CC785C;
-            --primary-light: #E8B59E;
-            --secondary: #7A9A65;
+            --primary: #B86A4E;
+            --primary-light: #D89B7E;
+            --secondary: #6B8A52;
             --bg: #FAF9F6;
             --bg-dark: #F5F2EC;
             --bg-card: #FFFFFF;
             --text-primary: #2D2A26;
-            --text-secondary: #6B655C;
-            --border: #E8E5DE;
+            --text-secondary: #5A544C;
+            --border: #D6CFC0;
             --accent: #D4A574;
             --danger: #C25B56;
         }
@@ -39,7 +39,7 @@
 
         .top-nav {
             background: var(--bg-card);
-            box-shadow: 0 2px 10px rgba(115,99,78,0.08);
+            box-shadow: 0 2px 10px rgba(115,99,78,0.15);
             padding: 16px 24px;
             display: flex;
             justify-content: space-between;
@@ -237,8 +237,8 @@
             transition: width 0.5s ease;
         }
 
-        .progress-fill.words { background: linear-gradient(90deg, #7A9A65, #9DB87F); }
-        .progress-fill.grammar { background: linear-gradient(90deg, #B86F4D, #E8B59E); }
+        .progress-fill.words { background: linear-gradient(90deg, #6B8A52, #9DB87F); }
+        .progress-fill.grammar { background: linear-gradient(90deg, #B86F4D, #D89B7E); }
         .progress-fill.speaking { background: linear-gradient(90deg, #D4A574, #D4A574); }
 
         /* 词汇测试 */
@@ -273,7 +273,7 @@
         }
         .vocab-test-option.correct {
             background: rgba(122, 154, 101, 0.2);
-            border-color: #7A9A65;
+            border-color: #6B8A52;
         }
         .vocab-test-option.wrong {
             background: rgba(194, 91, 86, 0.2);
@@ -454,17 +454,17 @@
         }
 
         /* Theme fallback vars */
-        --primary: var(--primary, #CC785C);
-        --primary-light: var(--primary-light, #E8B59E);
-        --secondary: var(--secondary, #7A9A65);
+        --primary: var(--primary, #B86A4E);
+        --primary-light: var(--primary-light, #D89B7E);
+        --secondary: var(--secondary, #6B8A52);
         --bg: var(--bg, #FAF9F6);
         --card: var(--card, #FFFFFF);
         --text: var(--text, #352F28);
-        --sub: var(--sub, #6B655C);
-        --border: var(--border, #E8E5DE);
+        --sub: var(--sub, #5A544C);
+        --border: var(--border, #D6CFC0);
         --nav: var(--nav, #FFFFFF);
         --accent: var(--accent, #D4A574);
-        --shadow: var(--shadow, 0 4px 20px rgba(115,99,78,0.08));
+        --shadow: var(--shadow, 0 4px 20px rgba(115,99,78,0.15));
         --body: var(--body, linear-gradient(135deg, #F5EDE5 0%, #EDE3D6 100%));
         --input: var(--input, #F5F2EC);
         --btn-hover: var(--btn-hover, #B86F4D);
@@ -481,7 +481,7 @@
             <a href="/tutor" class="nav-link">跟读学习</a>
             <a href="/grammar" class="nav-link">语法学习</a>
         </div>
-    <button id="themeBtn" onclick="cycleTheme()" style="background:var(--primary,#CC785C);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1.1em;cursor:pointer;margin-left:12px;flex-shrink:0;">&#xD83D;&#xDD0C;</button>
+    <button id="themeBtn" onclick="cycleTheme()" style="background:var(--primary,#B86A4E);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1.1em;cursor:pointer;margin-left:12px;flex-shrink:0;">&#xD83D;&#xDD0C;</button>
         </nav>
 
     <div class="main-container">
