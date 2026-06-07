@@ -5,17 +5,30 @@ Shadow Learning - 英语跟读辅导系统
 """
 import os
 import re
+import io
 import sys
 import time
 import json
+import html
+import random
 import secrets
 import hashlib
+import socket
+import zipfile
+import asyncio
+import logging
+import threading
+import traceback
 from pathlib import Path
 from functools import wraps
 from flask import (
-    Flask, render_template, jsonify, request, send_from_directory,
-    session, redirect, url_for,
+    Flask, Response, jsonify, request, send_from_directory,
+    session,
 )
+from werkzeug.utils import secure_filename
+
+# edge_tts 是第三方库, 启动时 deferred 导入避免拖慢 server start
+# (见 pregenerate_all_tts / text_to_speech 内 import)
 
 app = Flask(__name__, template_folder='web', static_folder='web')
 app.config['SECRET_KEY'] = os.environ.get('SHADOW_SECRET', secrets.token_hex(32))
@@ -41,6 +54,77 @@ def safe_book_path(book_id):
     if not str(p).startswith(str(BOOKS_DIR) + os.sep):
         return None
     return p
+
+# TTS 缓存 LRU 淘汰: 超过上限时按 mtime (访问时间) 删最旧文件
+TTS_CACHE_MAX_BYTES = 2 * 1024 * 1024 * 1024  # 2GB
+TTS_CACHE_MAX_FILES = 100_000
+
+def _evict_tts_cache(audio_dir: Path):
+    """超过 TTS_CACHE_MAX_BYTES / TTS_CACHE_MAX_FILES 时, 按 mtime 删最旧文件"""
+    if not audio_dir.exists():
+        return
+    try:
+        # 收集 (path, mtime, size) 一次, 避免 glob+stat 间的不一致
+        entries = []
+        for f in audio_dir.glob('*.mp3'):
+            try:
+                st = f.stat()
+            except OSError:
+                continue
+            entries.append((f, st.st_mtime, st.st_size))
+
+        # 0 字节文件优先删 (上回生成失败的残留)
+        evicted_count = 0
+        for f, _, sz in [e for e in entries if e[2] == 0]:
+            try:
+                f.unlink()
+                evicted_count += 1
+            except OSError:
+                pass
+        entries = [e for e in entries if e[2] > 0]
+
+        total_bytes = sum(e[2] for e in entries)
+        if total_bytes <= TTS_CACHE_MAX_BYTES and len(entries) <= TTS_CACHE_MAX_FILES:
+            return
+
+        # 按 mtime 升序排 (最旧在前)
+        entries.sort(key=lambda e: e[1])
+
+        for f, _, sz in entries:
+            if total_bytes <= TTS_CACHE_MAX_BYTES and len(entries) <= TTS_CACHE_MAX_FILES:
+                break
+            try:
+                f.unlink()
+                total_bytes -= sz
+                entries.remove((f, _, sz))
+                evicted_count += 1
+            except OSError:
+                pass
+
+        if evicted_count:
+            print(f"🗑️  TTS 缓存淘汰: 删除 {evicted_count} 个最旧文件, 剩余 {len(entries)} 个 / {total_bytes // (1024*1024)}MB")
+    except Exception as e:
+        print(f"TTS cache evict error: {e}")
+
+
+def _safe_write_json(path: Path, data):
+    """原子写 JSON: 写 .tmp + fsync + rename, 防止并发写半截 / 崩溃残留
+    POSIX 上 rename 是原子的, 读者要么看到旧内容要么看到新内容, 不会看到中间状态
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(path.suffix + f'.tmp.{os.getpid()}.{secrets.token_hex(4)}')
+    try:
+        with open(tmp_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())  # 强制落盘, 防断电留半截
+        os.replace(tmp_path, path)  # 原子 rename
+    except Exception:
+        # 清理残留 tmp
+        try: tmp_path.unlink()
+        except OSError: pass
+        raise
+
 
 # 家长鉴权 decorator, 必须在使用它的路由之前定义
 def require_parent_auth(f):
@@ -76,6 +160,28 @@ def _login_record_failure(ip):
 
 def _login_clear(ip):
     _LOGIN_WINDOW.pop(ip, None)
+
+# 通用 API 限流: per-IP 滑动窗口, 防止 LAN 上有人滥用 anon 写入 / TTS 缓存
+# 用法: 装饰器前调用 _api_rate_limit_ok(ip, 'tts') -> (ok, retry_after)
+_API_RATE = {}  # (ip, bucket) -> [timestamp, ...]
+_API_LIMITS = {
+    'tts':   {'max': 30,  'window': 60},   # 30 req/min/IP, 防 TTS 缓存爆
+    'sync':  {'max': 60,  'window': 60},   # 60 req/min/IP, 防 anon 上报刷数据
+    'global': {'max': 600, 'window': 60},  # 兜底: 任何端点都受这个限制
+}
+
+def _api_rate_limit_ok(ip, bucket='global'):
+    """返回 (ok, retry_after_sec). 超过限制时返回 (False, 至少 1 秒)"""
+    cfg = _API_LIMITS.get(bucket, _API_LIMITS['global'])
+    now = time.time()
+    key = (ip, bucket)
+    arr = [t for t in _API_RATE.get(key, []) if now - t < cfg['window']]
+    if len(arr) >= cfg['max']:
+        retry = int(cfg['window'] - (now - arr[0]))
+        return False, max(retry, 1)
+    arr.append(now)
+    _API_RATE[key] = arr
+    return True, 0
 
 def send_html(filename):
     """统一返回 HTML 文件，避免路径拼接问题"""
@@ -217,8 +323,6 @@ def pregenerate_all_tts():
     """预生成所有电子书和语法音频（仅默认音色, 避免启动时磁盘爆）"""
     import edge_tts
     import asyncio
-    import hashlib
-    import json
 
     # 只预生成默认音色, 其他音色按需生成 (节省 5/6 磁盘)
     VOICES = ['en-US-AriaNeural']
@@ -289,7 +393,6 @@ def pregenerate_all_tts():
         print(f"Pre-generate error: {e}")
 
 # 启动时预生成（延迟执行，不阻塞服务器启动）
-import threading
 def start_tts_pregeneration():
     t = threading.Thread(target=pregenerate_all_tts, daemon=True)
     t.start()
@@ -402,7 +505,6 @@ def get_question(topic):
     """获取理解题"""
     questions = COMPREHENSION_QUESTIONS.get(topic, [])
     if questions:
-        import random
         q = random.choice(questions)
         return jsonify({"success": True, "question": q})
     return jsonify({"success": False, "error": "没有相关题目"})
@@ -410,15 +512,17 @@ def get_question(topic):
 @app.route('/api/tts', methods=['POST'])
 def text_to_speech():
     """TTS语音合成 - 使用 edge-tts，缓存到本地"""
+    ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'tts')
+    if not ok:
+        return jsonify({"success": False, "error": f"请求过快, {retry} 秒后再试"}), 429
+
     data = request.get_json()
     text = data.get('text', '')
     voice = data.get('voice', 'en-US-AriaNeural')  # 默认Aria
 
     if not text:
         return jsonify({"success": False, "error": "文本为空"})
-
     # 生成唯一文件名（包含音色的hash）
-    import hashlib
     text_hash = hashlib.md5((text + voice).encode()).hexdigest()[:12]
     audio_dir = Path(__file__).parent / 'audio' / 'tts'
     audio_dir.mkdir(parents=True, exist_ok=True)
@@ -446,6 +550,8 @@ def text_to_speech():
         return jsonify({"success": False, "error": f"TTS生成失败: {str(e)}"})
 
     if audio_path.exists():
+        # 异步触发 LRU 淘汰 (不阻塞响应)
+        threading.Thread(target=_evict_tts_cache, args=(audio_dir,), daemon=True).start()
         return jsonify({"success": True, "audio_url": f"/audio/tts/{text_hash}.mp3"})
     return jsonify({"success": False, "error": "TTS生成失败"})
 
@@ -486,7 +592,6 @@ def list_books():
 
     def calc_lexile(book_data):
         """根据书名估算蓝思值（因为句子数据不完整）"""
-        import re
         title = book_data.get('book', '').lower()
 
         # 已知蓝思值的书籍（更精确的值）
@@ -593,11 +698,6 @@ def delete_book(book_id):
 @require_parent_auth
 def import_book():
     """导入 EPUB 电子书 (需家长鉴权)"""
-    import zipfile
-    import re
-    import html
-    from werkzeug.utils import secure_filename
-
     if 'epub' not in request.files:
         return jsonify({"success": False, "error": "没有上传文件"})
 
@@ -611,7 +711,6 @@ def import_book():
 
     try:
         # 读取 EPUB (zip 格式)
-        import io
         epub_data = io.BytesIO(file.read())
 
         book_title = filename.replace('.epub', '')
@@ -680,7 +779,6 @@ def import_book():
                 """将文本拆分成句子
                 智能分句: 避开称谓缩写 (Mr./Dr./Mrs.) / 国家缩写 (U.S.A.) / 数字小数点 / 省略号
                 """
-                import re as _re
                 # 1. 先保护"非句末"的点 - 用占位符替换, 分完句再还原
                 PLACEHOLDER = '\x00'
                 # 称谓: Mr. Dr. Mrs. Ms. Prof. Sr. Jr. St. Mt. vs. etc.
@@ -788,7 +886,7 @@ def import_book():
             "cover": cover_path  # 如果提取到封面会有值
         }
         book_path.parent.mkdir(parents=True, exist_ok=True)
-        book_path.write_text(json.dumps(book_data, ensure_ascii=False, indent=2))
+        _safe_write_json(book_path, book_data)
 
         return jsonify({
             "success": True,
@@ -800,7 +898,6 @@ def import_book():
         })
 
     except Exception as e:
-        import traceback
         traceback.print_exc()
         return jsonify({"success": False, "error": "导入失败: " + type(e).__name__})
 
@@ -842,7 +939,7 @@ def _load_parent_data() -> dict:
     return {"stats": {}, "vocabulary": {}, "settings": {}}
 
 def _save_parent_data(data: dict):
-    PARENT_DATA_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2))
+    _safe_write_json(PARENT_DATA_FILE, data)
 
 @app.route('/api/parent/check')
 def parent_check():
@@ -896,6 +993,10 @@ def parent_get_data():
 def parent_post_data():
     """孩子端 anon 上报 stats/vocab/settings, 不需要鉴权
     (合并写入, 不会覆盖整个文件)"""
+    ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'sync')
+    if not ok:
+        return jsonify({"success": False, "error": f"上报过快, {retry} 秒后再试"}), 429
+
     payload = request.json or {}
     current = _load_parent_data()
     for section in ('stats', 'vocabulary', 'settings'):
@@ -913,7 +1014,6 @@ def parent_reset():
 @app.route('/api/parent/export')
 @require_parent_auth
 def parent_export():
-    from flask import Response
     payload = json.dumps(_load_parent_data(), ensure_ascii=False, indent=2)
     return Response(
         payload,
@@ -930,8 +1030,6 @@ def serve_audio(filename):
 # ==================== 启动 ====================
 
 if __name__ == '__main__':
-    import socket
-
     def get_lan_ip():
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

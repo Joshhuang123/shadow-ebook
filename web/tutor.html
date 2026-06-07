@@ -251,6 +251,9 @@
         .option:hover { border-color: #B86A4E; background: #F5EDE5; }
         .option.correct { background: #E5EEDF; border-color: #6B8A52; }
         .option.wrong { background: #F5DDDD; border-color: #C25B56; }
+        /* 对/错不仅用颜色, 还加 ✓/✗ 图标 (色盲友好) */
+        .option.correct::after { content: ' ✓'; color: #6B8A52; font-weight: 700; margin-left: 6px; }
+        .option.wrong::after { content: ' ✗'; color: #C25B56; font-weight: 700; margin-left: 6px; }
 
         /* 导航按钮 */
         .nav-buttons { display: flex; justify-content: space-between; margin-top: 20px; }
@@ -760,14 +763,12 @@
 
         // 选择书籍
         function selectBook(bookId) {
-            console.log('selectBook called with bookId:', bookId);
             currentBook = bookId;
             if (bookId === 'nc2a') {
                 units = nc2aUnits;
                 document.getElementById('header-subtitle').textContent = '新概念英语青少版2A';
                 showNC2AUnits();
             } else if (bookId === 'mth29') {
-                console.log('Showing MTH chapters, mth29Chapters has', mth29Chapters.length, 'chapters');
                 document.getElementById('header-subtitle').textContent = 'Magic Tree House #29: Christmas in Camelot';
                 showMTHChapters();
             }
@@ -805,8 +806,6 @@
 
         // 选择章节 (MTH)
         function selectChapter(chapterId) {
-            console.log('selectChapter called with chapterId:', chapterId);
-            console.log('mth29Chapters[chapterId]:', mth29Chapters[chapterId]);
             currentUnit = chapterId;
             units = mth29Chapters; // 确保使用MTH数据
             currentSentence = 0;
@@ -978,11 +977,8 @@
 
         // 开始录音
         async function startRecording() {
-            console.log('startRecording called');
             try {
-                console.log('Requesting microphone access...');
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                console.log('Microphone access granted, stream:', stream);
 
                 // 设置声波可视化
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -1013,18 +1009,14 @@
 
                 mediaRecorder = new MediaRecorder(stream);
                 audioChunks = [];
-                console.log('MediaRecorder created:', mediaRecorder);
 
                 mediaRecorder.ondataavailable = e => {
-                    console.log('Data available:', e.data);
                     audioChunks.push(e.data);
                 };
                 mediaRecorder.onstop = processRecording;
-                console.log('Starting recording...');
 
                 mediaRecorder.start();
                 isRecording = true;
-                console.log('Recording started, state:', mediaRecorder.state);
 
                 document.getElementById('record-status').textContent = '🎤 录音中... 请跟读！';
                 document.getElementById('record-status').className = 'record-status record-recording';

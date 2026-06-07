@@ -21,9 +21,9 @@
             --warning: #D4A574;
             --danger: #C25B56;
             --bg: #FAF9F6;
-            --card: #FFFFFF;
-            --text: #2D2A26;
-            --sub: #5A544C;
+            --bg-card: #FFFFFF;
+            --text-primary: #2D2A26;
+            --text-secondary: #5A544C;
             --border: #D6CFC0;
         }
 
@@ -33,7 +33,7 @@
             font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
             background: linear-gradient(135deg, #F5EDE5 0%, #EDE3D6 100%);
             min-height: 100vh;
-            color: var(--text);
+            color: var(--text-primary);
             line-height: 1.6;
         }
 
@@ -87,7 +87,7 @@
         .card-title {
             font-size: 1.3em;
             font-weight: 700;
-            color: var(--text);
+            color: var(--text-primary);
             margin-bottom: 20px;
             display: flex;
             align-items: center;
@@ -111,7 +111,7 @@
         }
 
         .login-section p {
-            color: var(--sub);
+            color: var(--text-secondary);
             margin-bottom: 30px;
         }
 
@@ -183,7 +183,7 @@
         }
 
         .stat-card .label {
-            color: var(--sub);
+            color: var(--text-secondary);
             font-size: 0.95em;
         }
 
@@ -225,7 +225,7 @@
             left: 50%;
             transform: translateX(-50%);
             font-size: 0.75em;
-            color: var(--sub);
+            color: var(--text-secondary);
         }
 
         .chart-bar .time-label {
@@ -234,7 +234,7 @@
             left: 50%;
             transform: translateX(-50%);
             font-size: 0.7em;
-            color: var(--sub);
+            color: var(--text-secondary);
             white-space: nowrap;
         }
 
@@ -273,7 +273,7 @@
 
         .activity-item .time {
             font-size: 0.85em;
-            color: var(--sub);
+            color: var(--text-secondary);
         }
 
         .activity-item .duration {
@@ -344,7 +344,7 @@
         .settings-group h4 {
             font-size: 1.1em;
             margin-bottom: 12px;
-            color: var(--text);
+            color: var(--text-primary);
         }
 
         .setting-item {
@@ -363,7 +363,7 @@
 
         .setting-item .desc {
             font-size: 0.85em;
-            color: var(--sub);
+            color: var(--text-secondary);
         }
 
         /* Toggle Switch */
@@ -438,7 +438,7 @@
 
         .btn-secondary {
             background: #D6CFC0;
-            color: var(--text);
+            color: var(--text-primary);
         }
 
         .btn:hover {
@@ -678,19 +678,32 @@
     </div>
 
     <script>
-        // ========== 家长监控 JS ==========
+        // ========== 家长监控 JS (server-side auth) ==========
 
-        const DEFAULT_PASSWORD = '0000';
-        const STORAGE_KEY = 'shadowParentPin';
+        // XSS 防御: 所有外部数据走 textContent
+        const el = (id) => document.getElementById(id);
+
+        function setText(id, text) { el(id).textContent = text ?? ''; }
+
+        function showPwdError(msg) {
+            el('pwdError').textContent = msg;
+            el('pwdError').style.display = 'block';
+        }
+
+        function clearPwdInputs() {
+            document.querySelectorAll('.pwd-digit').forEach(i => i.value = '');
+            el('pwd1').focus();
+        }
 
         // 初始化
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             initPasswordInputs();
-            loadSettings();
-            
-            // 检查是否已登录
-            if (localStorage.getItem('parentLoggedIn') === 'true') {
-                showDashboard();
+            try {
+                const r = await fetch('/api/parent/check', { credentials: 'same-origin' });
+                const j = await r.json();
+                if (j.authenticated) showDashboard();
+            } catch (e) {
+                console.warn('auth check failed', e);
             }
         });
 
@@ -698,18 +711,13 @@
         function initPasswordInputs() {
             const inputs = document.querySelectorAll('.pwd-digit');
             inputs.forEach((input, index) => {
-                input.addEventListener('input', (e) => {
-                    if (e.target.value.length === 1 && index < inputs.length - 1) {
+                input.addEventListener('input', () => {
+                    if (input.value.length === 1 && index < inputs.length - 1) {
                         inputs[index + 1].focus();
                     }
-                    
-                    // 检查是否输完4位
                     const pwd = Array.from(inputs).map(i => i.value).join('');
-                    if (pwd.length === 4) {
-                        checkPassword(pwd);
-                    }
+                    if (pwd.length === 4) checkPassword(pwd);
                 });
-                
                 input.addEventListener('keydown', (e) => {
                     if (e.key === 'Backspace' && input.value === '' && index > 0) {
                         inputs[index - 1].focus();
@@ -718,178 +726,244 @@
             });
         }
 
-        function checkPassword(pwd) {
-            const savedPin = localStorage.getItem(STORAGE_KEY) || DEFAULT_PASSWORD;
-            
-            if (pwd === savedPin) {
-                localStorage.setItem('parentLoggedIn', 'true');
-                showDashboard();
-            } else {
-                document.getElementById('pwdError').style.display = 'block';
-                document.querySelectorAll('.pwd-digit').forEach(i => i.value = '');
-                document.getElementById('pwd1').focus();
+        async function checkPassword(pwd) {
+            try {
+                const r = await fetch('/api/parent/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ pin: pwd })
+                });
+                const j = await r.json();
+                if (j.success) {
+                    el('pwdError').style.display = 'none';
+                    showDashboard();
+                } else {
+                    showPwdError(j.error || 'PIN 错误');
+                    clearPwdInputs();
+                }
+            } catch (e) {
+                showPwdError('网络错误');
+                clearPwdInputs();
             }
         }
 
-        function showDashboard() {
-            document.getElementById('loginSection').classList.add('hidden');
-            document.getElementById('dashboardSection').classList.remove('hidden');
-            loadStats();
+        async function showDashboard() {
+            el('loginSection').classList.add('hidden');
+            el('dashboardSection').classList.remove('hidden');
+            await loadStats();
         }
 
-        function logout() {
-            localStorage.removeItem('parentLoggedIn');
-            document.getElementById('dashboardSection').classList.add('hidden');
-            document.getElementById('loginSection').classList.remove('hidden');
-            document.querySelectorAll('.pwd-digit').forEach(i => i.value = '');
-            document.getElementById('pwdError').style.display = 'none';
+        async function logout() {
+            try {
+                await fetch('/api/parent/logout', {
+                    method: 'POST', credentials: 'same-origin'
+                });
+            } catch (e) { /* 即使网络错误也继续清 UI */ }
+            el('dashboardSection').classList.add('hidden');
+            el('loginSection').classList.remove('hidden');
+            clearPwdInputs();
+            el('pwdError').style.display = 'none';
         }
 
-        function showChangePwd() {
-            const newPwd = prompt('请输入新密码（4位数字）：');
-            if (newPwd && newPwd.length === 4 && /^\d+$/.test(newPwd)) {
-                localStorage.setItem(STORAGE_KEY, newPwd);
-                alert('密码修改成功！');
-            } else if (newPwd) {
-                alert('请输入4位数字！');
+        async function showChangePwd() {
+            const current = prompt('请输入当前 PIN:');
+            if (!current) return;
+            if (!/^\d{4}$/.test(current)) { alert('PIN 必须是 4 位数字'); return; }
+            const newPin = prompt('请输入新 PIN (4 位数字):');
+            if (!newPin) return;
+            if (!/^\d{4}$/.test(newPin)) { alert('新 PIN 必须是 4 位数字'); return; }
+            try {
+                const r = await fetch('/api/parent/change-pin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ current, new: newPin })
+                });
+                const j = await r.json();
+                alert(j.success ? 'PIN 修改成功' : (j.error || '修改失败'));
+            } catch (e) {
+                alert('网络错误');
             }
         }
 
-        // 加载统计数据
+        // 加载统计数据 (从 server)
         async function loadStats() {
-            // 从localStorage获取学习数据
-            const stats = JSON.parse(localStorage.getItem('shadowStats') || '{}');
-            const vocabulary = JSON.parse(localStorage.getItem('shadowVocabulary') || '{}');
-            
-            // 更新概览
-            document.getElementById('totalBooks').textContent = stats.totalBooks || 0;
-            document.getElementById('totalMinutes').textContent = stats.totalMinutes || 0;
-            document.getElementById('streakDays').textContent = stats.streakDays || 0;
-            document.getElementById('newWords').textContent = vocabulary.newWords?.length || 0;
-            
-            // 生成周图表
-            generateWeeklyChart(stats.weeklyMinutes || {});
-            
-            // 更新词汇进度
-            const vocabDist = vocabulary.masteryDistribution || { learning: 0, practicing: 0, familiar: 0, mastered: 0 };
-            document.getElementById('vocabLearning').textContent = vocabDist.learning || 0;
-            document.getElementById('vocabPracticing').textContent = vocabDist.practicing || 0;
-            document.getElementById('vocabFamiliar').textContent = vocabDist.familiar || 0;
-            document.getElementById('vocabMastered').textContent = vocabDist.mastered || 0;
-            
-            // 更新词汇条
-            const total = vocabDist.learning + vocabDist.practicing + vocabDist.familiar + vocabDist.mastered;
-            if (total > 0) {
-                const bar = document.getElementById('vocabBar');
-                bar.innerHTML = `
-                    <div class="segment learning" style="width:${(vocabDist.learning/total*100).toFixed(0)}%"></div>
-                    <div class="segment practicing" style="width:${(vocabDist.practicing/total*100).toFixed(0)}%"></div>
-                    <div class="segment familiar" style="width:${(vocabDist.familiar/total*100).toFixed(0)}%"></div>
-                    <div class="segment mastered" style="width:${(vocabDist.mastered/total*100).toFixed(0)}%"></div>
-                `;
+            let payload = { stats: {}, vocabulary: {}, settings: {} };
+            try {
+                const r = await fetch('/api/parent/data', { credentials: 'same-origin' });
+                if (r.ok) {
+                    const j = await r.json();
+                    payload = j.data || payload;
+                }
+            } catch (e) {
+                console.warn('load parent data failed', e);
             }
-            
+            renderDashboard(payload);
+            loadSettings(payload.settings || {});
+        }
+
+        function renderDashboard({ stats = {}, vocabulary = {} }) {
+            // 概览
+            setText('totalBooks', stats.totalBooks ?? 0);
+            setText('totalMinutes', stats.totalMinutes ?? 0);
+            setText('streakDays', stats.streakDays ?? 0);
+            setText('newWords', (vocabulary.newWords || []).length);
+
+            // 周图表
+            renderWeeklyChart(stats.weeklyMinutes || {});
+
+            // 词汇分布
+            const dist = vocabulary.masteryDistribution || { learning: 0, practicing: 0, familiar: 0, mastered: 0 };
+            setText('vocabLearning', dist.learning ?? 0);
+            setText('vocabPracticing', dist.practicing ?? 0);
+            setText('vocabFamiliar', dist.familiar ?? 0);
+            setText('vocabMastered', dist.mastered ?? 0);
+
+            const total = (dist.learning || 0) + (dist.practicing || 0) + (dist.familiar || 0) + (dist.mastered || 0);
+            renderVocabBar(dist, total);
+
             // 最近活动
-            const activities = stats.recentActivities || [];
-            const listEl = document.getElementById('activityList');
-            if (activities.length === 0) {
-                listEl.innerHTML = `
-                    <li class="activity-item">
-                        <div class="icon">📖</div>
-                        <div class="info">
-                            <div class="title">暂无活动记录</div>
-                            <div class="time">开始学习后显示</div>
-                        </div>
-                    </li>
-                `;
-            } else {
-                listEl.innerHTML = activities.slice(0, 10).map(act => `
-                    <li class="activity-item">
-                        <div class="icon">${act.icon || '📖'}</div>
-                        <div class="info">
-                            <div class="title">${act.title || ''}</div>
-                            <div class="time">${act.time || ''}</div>
-                        </div>
-                        <div class="duration">${act.duration || ''}</div>
-                    </li>
-                `).join('');
+            renderActivityList(stats.recentActivities || []);
+        }
+
+        function renderVocabBar(dist, total) {
+            const bar = el('vocabBar');
+            bar.innerHTML = '';
+            if (total <= 0) return;
+            const segs = [
+                ['learning', dist.learning || 0],
+                ['practicing', dist.practicing || 0],
+                ['familiar', dist.familiar || 0],
+                ['mastered', dist.mastered || 0]
+            ];
+            for (const [cls, val] of segs) {
+                if (val <= 0) continue;
+                const div = document.createElement('div');
+                div.className = 'segment ' + cls;
+                div.style.width = ((val / total) * 100).toFixed(0) + '%';
+                bar.appendChild(div);
             }
         }
 
-        function generateWeeklyChart(weeklyMinutes) {
+        function renderActivityList(activities) {
+            const list = el('activityList');
+            list.innerHTML = '';
+            const data = activities.length > 0 ? activities.slice(0, 10) : [null];
+            for (const act of data) {
+                const li = document.createElement('li');
+                li.className = 'activity-item';
+                const icon = document.createElement('div');
+                icon.className = 'icon';
+                icon.textContent = act?.icon || '📖';
+                const info = document.createElement('div');
+                info.className = 'info';
+                const title = document.createElement('div');
+                title.className = 'title';
+                title.textContent = act?.title || '暂无活动记录';
+                const time = document.createElement('div');
+                time.className = 'time';
+                time.textContent = act?.time || '开始学习后显示';
+                info.appendChild(title);
+                info.appendChild(time);
+                li.appendChild(icon);
+                li.appendChild(info);
+                if (act?.duration) {
+                    const dur = document.createElement('div');
+                    dur.className = 'duration';
+                    dur.textContent = act.duration;
+                    li.appendChild(dur);
+                }
+                list.appendChild(li);
+            }
+        }
+
+        function renderWeeklyChart(weeklyMinutes) {
             const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-            const chartEl = document.getElementById('weeklyChart');
-            const maxMinutes = Math.max(...Object.values(weeklyMinutes || {}), 30);
-            
+            const chart = el('weeklyChart');
+            chart.innerHTML = '';
+            const maxMinutes = Math.max(30, ...Object.values(weeklyMinutes).map(Number).filter(n => !isNaN(n)));
             const today = new Date().getDay();
             const mondayIndex = today === 0 ? 6 : today - 1;
             const orderedDays = [...days.slice(mondayIndex), ...days.slice(0, mondayIndex)];
-            const orderedMinutes = [...Object.values(weeklyMinutes || {}), ...Object.keys(weeklyMinutes || {}).map((_, i) => i).slice(0, 7-Object.keys(weeklyMinutes || {}).length)];
-            
-            chartEl.innerHTML = orderedDays.map((day, i) => {
-                const minutes = weeklyMinutes[day] || 0;
+            for (const day of orderedDays) {
+                const minutes = Number(weeklyMinutes[day] || 0);
                 const height = minutes > 0 ? (minutes / maxMinutes * 100) : 5;
-                return `
-                    <div class="chart-bar" style="height:${height}%">
-                        <span class="day-label">${day}</span>
-                        ${minutes > 0 ? `<span class="time-label">${minutes}m</span>` : ''}
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function loadSettings() {
-            const timeLimit = localStorage.getItem('dailyTimeLimit') || '0';
-            const enableLimit = localStorage.getItem('enableTimeLimit') === 'true';
-            
-            document.getElementById('timeLimit').value = timeLimit;
-            document.getElementById('enableTimeLimit').checked = enableLimit;
-            
-            document.getElementById('timeLimit').addEventListener('change', (e) => {
-                localStorage.setItem('dailyTimeLimit', e.target.value);
-            });
-            
-            document.getElementById('enableTimeLimit').addEventListener('change', (e) => {
-                localStorage.setItem('enableTimeLimit', e.target.checked);
-            });
-        }
-
-        function exportData(format) {
-            const stats = JSON.parse(localStorage.getItem('shadowStats') || '{}');
-            const vocabulary = JSON.parse(localStorage.getItem('shadowVocabulary') || '{}');
-            
-            let content, filename, type;
-            
-            if (format === 'json') {
-                content = JSON.stringify({ stats, vocabulary }, null, 2);
-                filename = 'shadow_learning_data.json';
-                type = 'application/json';
-            } else {
-                // CSV格式
-                const vocabList = vocabulary.newWords || [];
-                content = '单词,掌握度,复习次数,最后复习时间\n';
-                content += vocabList.map(w => `${w.word},${w.mastery || 0},${w.reviewCount || 0},${w.lastReview || ''}`).join('\n');
-                filename = 'shadow_vocabulary.csv';
-                type = 'text/csv';
+                const bar = document.createElement('div');
+                bar.className = 'chart-bar';
+                bar.style.height = height + '%';
+                const dayLabel = document.createElement('span');
+                dayLabel.className = 'day-label';
+                dayLabel.textContent = day;
+                bar.appendChild(dayLabel);
+                if (minutes > 0) {
+                    const timeLabel = document.createElement('span');
+                    timeLabel.className = 'time-label';
+                    timeLabel.textContent = minutes + 'm';
+                    bar.appendChild(timeLabel);
+                }
+                chart.appendChild(bar);
             }
-            
-            const blob = new Blob([content], { type });
+        }
+
+        // 每日学习时间上限 (本地设置, 不用同步到 server)
+        function loadSettings(serverSettings) {
+            const tl = localStorage.getItem('dailyTimeLimit') || '0';
+            const elTl = el('timeLimit');
+            const elEn = el('enableTimeLimit');
+            elTl.value = tl;
+            elEn.checked = localStorage.getItem('enableTimeLimit') === 'true';
+
+            elTl.onchange = (e) => localStorage.setItem('dailyTimeLimit', e.target.value);
+            elEn.onchange = (e) => localStorage.setItem('enableTimeLimit', e.target.checked);
+        }
+
+        // 导出 (从 server 拉)
+        async function exportData(format) {
+            try {
+                if (format === 'json') {
+                    const r = await fetch('/api/parent/export', { credentials: 'same-origin' });
+                    if (!r.ok) { alert('导出失败: ' + r.status); return; }
+                    const blob = await r.blob();
+                    downloadBlob(blob, 'shadow_learning_data.json');
+                } else {
+                    // CSV 从 server 拉的 JSON 里抽 vocab
+                    const r = await fetch('/api/parent/data', { credentials: 'same-origin' });
+                    const j = await r.json();
+                    const vocabList = (j.data?.vocabulary?.newWords) || [];
+                    const csv = '单词,掌握度,复习次数,最后复习时间\n' +
+                        vocabList.map(w => `${w.word || ''},${w.mastery || 0},${w.reviewCount || 0},${w.lastReview || ''}`).join('\n');
+                    downloadBlob(new Blob([csv], { type: 'text/csv' }), 'shadow_vocabulary.csv');
+                }
+            } catch (e) {
+                alert('导出失败');
+            }
+        }
+
+        function downloadBlob(blob, filename) {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
+            a.href = url; a.download = filename;
             a.click();
-            URL.revokeObjectURL(url);
+            setTimeout(() => URL.revokeObjectURL(url), 100);
         }
 
-        function resetData() {
-            if (confirm('确定要重置所有学习记录吗？此操作不可撤销！')) {
-                if (confirm('再次确认：清除所有学习数据？')) {
-                    localStorage.removeItem('shadowStats');
-                    localStorage.removeItem('shadowVocabulary');
-                    loadStats();
+        async function resetData() {
+            if (!confirm('确定要重置所有学习记录吗？此操作不可撤销！')) return;
+            if (!confirm('再次确认：清除所有学习数据？')) return;
+            try {
+                const r = await fetch('/api/parent/reset', {
+                    method: 'POST', credentials: 'same-origin'
+                });
+                const j = await r.json();
+                if (j.success) {
+                    await loadStats();
                     alert('学习记录已重置');
+                } else {
+                    alert('重置失败: ' + (j.error || ''));
                 }
+            } catch (e) {
+                alert('网络错误');
             }
         }
     </script>

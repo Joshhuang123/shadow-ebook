@@ -70,3 +70,8 @@ htmlcov/
 
 # Node.js
 node_modules/
+
+# HTTPS 自签名证书 (本地生成, 不入库)
+certs/server.crt
+certs/server.key
+

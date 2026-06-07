@@ -471,7 +471,7 @@
         }
 
         .book-delete-btn:hover {
-            background: #DC2626;
+            background: var(--danger);
             transform: scale(1.1);
         }
 
@@ -959,7 +959,7 @@
 
         .record-btn.recording {
             animation: pulse 1.5s ease infinite;
-            background: linear-gradient(135deg, #DC2626, #B91C1C);
+            background: linear-gradient(135deg, var(--danger), #A04B47);
         }
 
         @keyframes pulse {
@@ -1027,10 +1027,10 @@
             text-align: center;
         }
 
-        .score-level.excellent { color: #22C55E; }
+        .score-level.excellent { color: var(--secondary); }
         .score-level.great { color: #6B8A52; }
-        .score-level.good { color: #3B82F6; }
-        .score-level.practice { color: #D4A574; }
+        .score-level.good { color: var(--accent); }
+        .score-level.practice { color: var(--text-secondary); }
         .score-level.try { color: #C25B56; }
 
         .transcription-result {
@@ -1264,6 +1264,10 @@
             background: rgba(122, 154, 101, 0.3);
         }
 
+        /* review-btn 是文字按钮已经有"认识 ✓", 但带图标的反馈更明确 */
+        .review-btn.correct::before { content: '✓ '; font-weight: 700; }
+        .review-btn.wrong::before { content: '✗ '; font-weight: 700; }
+
         .review-progress {
             font-size: 0.9em;
             color: var(--text-secondary);
@@ -1336,6 +1340,9 @@
             border-color: #C25B56;
             color: #C25B56;
         }
+        /* 对/错不仅用颜色, 加 ✓/✗ 图标 (色盲友好) */
+        .comp-option.correct::after { content: ' ✓'; font-weight: 700; margin-left: 6px; }
+        .comp-option.wrong::after { content: ' ✗'; font-weight: 700; margin-left: 6px; }
         .comp-done {
             padding: 20px;
             text-align: center;
@@ -2178,14 +2185,14 @@
                     grid.innerHTML = '<div style="text-align:center;color:var(--text-secondary);padding:60px;font-size:1.2em;">还没有书籍，请导入 EPUB</div>';
                 }
 
-                // 添加导入卡片
-                grid.innerHTML += `
+                // 添加导入卡片 (用 insertAdjacentHTML 避免 innerHTML+= 的 re-parse)
+                grid.insertAdjacentHTML('beforeend', `
                     <div class="import-card" onclick="document.getElementById('import-file').click()">
                         <div class="icon">➕</div>
                         <div class="text">导入新书</div>
                         <div class="hint">支持 EPUB 格式</div>
                     </div>
-                `;
+                `);
             } catch (err) {
                 console.error('Failed to load book list:', err);
             }
@@ -3287,9 +3294,9 @@
 
         // 获取评分等级
         function getScoreLevel(score) {
-            if (score >= 90) return { text: '🌟 非常棒！', class: 'excellent', color: '#22C55E' };
+            if (score >= 90) return { text: '🌟 非常棒！', class: 'excellent', color: '#6B8A52' };
             if (score >= 75) return { text: '👍 很棒！', class: 'great', color: '#6B8A52' };
-            if (score >= 60) return { text: '📚 不错！', class: 'good', color: '#3B82F6' };
+            if (score >= 60) return { text: '📚 不错！', class: 'good', color: '#D4A574' };
             if (score >= 40) return { text: '💪 继续加油', class: 'practice', color: '#D4A574' };
             return { text: '📖 多读几遍', class: 'try', color: '#C25B56' };
         }
