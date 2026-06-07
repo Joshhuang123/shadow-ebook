@@ -4,12 +4,78 @@ Shadow Learning - 英语跟读辅导系统
 显示句子 → TTS朗读 → 孩子跟读 → 评价反馈 → 理解题测试
 """
 import os
+import re
 import sys
+import time
 import json
+import secrets
+import hashlib
 from pathlib import Path
-from flask import Flask, render_template, jsonify, request, send_from_directory
+from functools import wraps
+from flask import (
+    Flask, render_template, jsonify, request, send_from_directory,
+    session, redirect, url_for,
+)
 
 app = Flask(__name__, template_folder='web', static_folder='web')
+app.config['SECRET_KEY'] = os.environ.get('SHADOW_SECRET', secrets.token_hex(32))
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB 上传上限
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+# 路径穿越防御: book_id 只能含字母数字下划线连字符
+BOOK_ID_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{1,64}$')
+BOOKS_DIR = (Path(__file__).parent / 'data' / 'books').resolve()
+PARENT_DATA_DIR = (Path(__file__).parent / 'data' / 'parent').resolve()
+PARENT_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+def is_valid_book_id(book_id):
+    return bool(book_id and BOOK_ID_PATTERN.match(book_id))
+
+def safe_book_path(book_id):
+    """返回 book 的绝对路径, 失败返回 None (防止路径穿越 + symlink 攻击)"""
+    if not is_valid_book_id(book_id):
+        return None
+    p = (BOOKS_DIR / f'{book_id}.json').resolve()
+    # 必须在 BOOKS_DIR 之下
+    if not str(p).startswith(str(BOOKS_DIR) + os.sep):
+        return None
+    return p
+
+# 家长鉴权 decorator, 必须在使用它的路由之前定义
+def require_parent_auth(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not session.get('parent_auth'):
+            return jsonify({"success": False, "error": "未授权"}), 401
+        return f(*args, **kwargs)
+    return wrapper
+
+# 登录限流: 防止 LAN 上有人暴力破解 4 位 PIN
+# 每个 IP 在 WINDOW_SEC 内最多 MAX_ATTEMPTS 次失败尝试, 之后锁定 LOCKOUT_SEC
+_LOGIN_WINDOW = {}  # ip -> [timestamp, ...]
+MAX_ATTEMPTS = 5
+WINDOW_SEC = 300  # 5 分钟
+LOCKOUT_SEC = 900  # 锁定 15 分钟
+
+def _login_rate_limit_ok(ip):
+    """返回 (ok, retry_after_sec)"""
+    now = time.time()
+    arr = _LOGIN_WINDOW.get(ip, [])
+    # 清理过期的
+    arr = [t for t in arr if now - t < LOCKOUT_SEC]
+    if len(arr) >= MAX_ATTEMPTS:
+        retry = int(LOCKOUT_SEC - (now - arr[0]))
+        return False, max(retry, 1)
+    _LOGIN_WINDOW[ip] = arr
+    return True, 0
+
+def _login_record_failure(ip):
+    arr = _LOGIN_WINDOW.setdefault(ip, [])
+    arr.append(time.time())
+
+def _login_clear(ip):
+    _LOGIN_WINDOW.pop(ip, None)
 
 def send_html(filename):
     """统一返回 HTML 文件，避免路径拼接问题"""
@@ -148,20 +214,14 @@ COMPREHENSION_QUESTIONS = {
 
 # ==================== 启动时预生成TTS音频 ====================
 def pregenerate_all_tts():
-    """预生成所有电子书和语法音频（离线可用）"""
+    """预生成所有电子书和语法音频（仅默认音色, 避免启动时磁盘爆）"""
     import edge_tts
     import asyncio
     import hashlib
     import json
 
-    VOICES = [
-        'en-US-AriaNeural',
-        'en-US-JennyNeural',
-        'en-US-EmmaNeural',
-        'en-US-AndrewNeural',
-        'en-US-BrianNeural',
-        'en-US-GuyNeural'
-    ]
+    # 只预生成默认音色, 其他音色按需生成 (节省 5/6 磁盘)
+    VOICES = ['en-US-AriaNeural']
 
     GRAMMAR_EXPLAINATIONS = [
         "Present Progressive: Subject plus am, is, are, plus verb-ing.",
@@ -272,6 +332,14 @@ def parent_page():
 def theme_js():
     return send_from_directory(str(Path(__file__).parent / 'web'), 'theme.js')
 
+@app.route('/sync.js')
+def sync_js():
+    return send_from_directory(str(Path(__file__).parent / 'web'), 'sync.js')
+
+@app.route('/a11y.js')
+def a11y_js():
+    return send_from_directory(str(Path(__file__).parent / 'web'), 'a11y.js')
+
 @app.route('/kid-touch.css')
 def kid_touch_css():
     return send_from_directory(str(Path(__file__).parent / 'web'), 'kid-touch.css')
@@ -304,10 +372,6 @@ def icon_or_screenshot(size=None):
     """
     filename = f'icon-{size}.png' if size else 'screenshot.png'
     return send_from_directory(str(Path(__file__).parent / 'web'), filename)
-
-@app.route('/xiaozhi_voice_demo')
-def xiaozhi_voice_demo():
-    return send_html('xiaozhi_voice_demo.html')
 
 @app.route('/stats')
 def stats_page():
@@ -388,16 +452,37 @@ def text_to_speech():
 @app.route('/api/book/<book_id>')
 def get_book(book_id):
     """获取书籍内容"""
-    book_path = Path(__file__).parent / 'data' / 'books' / f'{book_id}.json'
-    if book_path.exists():
-        return jsonify({"success": True, "book": json.loads(book_path.read_text())})
-    return jsonify({"success": False, "error": "书籍不存在"})
+    book_path = safe_book_path(book_id)
+    if book_path is None:
+        return jsonify({"success": False, "error": "非法书籍ID"}), 400
+    if not book_path.exists():
+        return jsonify({"success": False, "error": "书籍不存在"}), 404
+    return jsonify({"success": True, "book": json.loads(book_path.read_text())})
+
+# list_books 缓存: mtime-based, books 目录或任一 book JSON 变更时自动失效
+_BOOKS_CACHE = {"key": None, "result": None}
+
+def _books_cache_key(books_dir: Path):
+    """基于目录 mtime + 各文件 mtime 的缓存 key"""
+    try:
+        dir_mtime = books_dir.stat().st_mtime
+    except FileNotFoundError:
+        return None
+    file_mtimes = tuple(sorted(
+        (f.stat().st_mtime, f.name) for f in books_dir.glob('*.json')
+    ))
+    return (dir_mtime, file_mtimes)
 
 @app.route('/api/books')
 def list_books():
-    """列出所有已导入的书籍"""
+    """列出所有已导入的书籍 (有 mtime 缓存)"""
     books_dir = Path(__file__).parent / 'data' / 'books'
     books_dir.mkdir(parents=True, exist_ok=True)
+
+    # 缓存命中: 目录和文件 mtime 没变就复用
+    key = _books_cache_key(books_dir)
+    if key is not None and key == _BOOKS_CACHE["key"]:
+        return jsonify({"success": True, "books": _BOOKS_CACHE["result"]})
 
     def calc_lexile(book_data):
         """根据书名估算蓝思值（因为句子数据不完整）"""
@@ -485,20 +570,29 @@ def list_books():
         except Exception as e:
             print(f"⚠️ 加载书籍失败 {f.stem}: {e}")
 
+    # 写入缓存
+    if key is not None:
+        _BOOKS_CACHE["key"] = key
+        _BOOKS_CACHE["result"] = books
+
     return jsonify({"success": True, "books": books})
 
 @app.route('/api/book/<book_id>', methods=['DELETE'])
+@require_parent_auth
 def delete_book(book_id):
-    """删除书籍"""
-    book_path = Path(__file__).parent / 'data' / 'books' / f'{book_id}.json'
-    if book_path.exists():
-        book_path.unlink()
-        return jsonify({"success": True})
-    return jsonify({"success": False, "error": "书籍不存在"})
+    """删除书籍 (需家长鉴权)"""
+    book_path = safe_book_path(book_id)
+    if book_path is None:
+        return jsonify({"success": False, "error": "非法书籍ID"}), 400
+    if not book_path.exists():
+        return jsonify({"success": False, "error": "书籍不存在"}), 404
+    book_path.unlink()
+    return jsonify({"success": True})
 
 @app.route('/api/book/import', methods=['POST'])
+@require_parent_auth
 def import_book():
-    """导入 EPUB 电子书"""
+    """导入 EPUB 电子书 (需家长鉴权)"""
     import zipfile
     import re
     import html
@@ -583,13 +677,29 @@ def import_book():
                 return text
 
             def split_sentences(text):
-                """将文本拆分成句子"""
-                # 按句子结束符拆分
-                parts = re.split(r'(?<=[.!?])\s+', text)
+                """将文本拆分成句子
+                智能分句: 避开称谓缩写 (Mr./Dr./Mrs.) / 国家缩写 (U.S.A.) / 数字小数点 / 省略号
+                """
+                import re as _re
+                # 1. 先保护"非句末"的点 - 用占位符替换, 分完句再还原
+                PLACEHOLDER = '\x00'
+                # 称谓: Mr. Dr. Mrs. Ms. Prof. Sr. Jr. St. Mt. vs. etc.
+                text = _re.sub(r'\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|Mt|vs|etc)\.', r'\1' + PLACEHOLDER, text)
+                # 单字母缩写序列: U.S.A. / U.K. / U.S.
+                text = _re.sub(r'\b([A-Z])\.', r'\1' + PLACEHOLDER, text)
+                # 数字小数点: 1.5  2.0  3.14
+                text = _re.sub(r'(\d)\.(\d)', r'\1' + PLACEHOLDER + r'\2', text)
+                # 省略号: ...
+                text = text.replace('...', PLACEHOLDER * 3)
+
+                # 2. 按真正的句末标点切分 (句末 + 空白 + 大写/引号/左括号 = 新句开始)
+                parts = _re.split(r'(?<=[.!?])\s+(?=[A-Z"\'(])', text)
+
+                # 3. 还原占位符 + 去引号
                 sentences = []
                 for p in parts:
-                    p = p.strip()
-                    if len(p) > 10 and len(p.split()) >= 3:  # 过滤太短的内容
+                    p = p.strip().replace(PLACEHOLDER, '.').strip('"\' ')
+                    if len(p) > 10 and len(p.split()) >= 3:
                         sentences.append(p)
                 return sentences
 
@@ -691,7 +801,8 @@ def import_book():
 
     except Exception as e:
         import traceback
-        return jsonify({"success": False, "error": str(e)})
+        traceback.print_exc()
+        return jsonify({"success": False, "error": "导入失败: " + type(e).__name__})
 
 @app.route('/data/covers/<path:filename>')
 def serve_covers(filename):
@@ -699,77 +810,116 @@ def serve_covers(filename):
     covers_dir = Path(__file__).parent / 'data' / 'covers'
     return send_from_directory(covers_dir, filename)
 
-@app.route('/api/transcribe', methods=['POST'])
-def transcribe_audio():
-    """语音识别 - 使用 macOS 内置语音识别"""
-    try:
-        import speech_recognition as sr
-        import tempfile
-        import os
+# ==================== 家长鉴权 (server-side PIN) ====================
+# 之前 PIN 检查只在浏览器, 任何人访问 /parent 都能看 stats。
+# 现在 PIN 校验在 server 端, session 走 HttpOnly cookie。
+# 孩子端页面继续 anon 上报 stats / vocab 到 server, 家长 dashboard 走鉴权读。
 
-        # 保存上传的音频
-        audio_file = request.files.get('audio')
-        if not audio_file:
-            return jsonify({"success": False, "error": "没有音频文件"})
+PIN_FILE = PARENT_DATA_DIR / 'pin.hash'
+PARENT_DATA_FILE = PARENT_DATA_DIR / 'data.json'
 
-        # 保存为临时文件
-        with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as tmp:
-            audio_file.save(tmp.name)
-            tmp_path = tmp.name
+def _hash_pin(pin: str) -> str:
+    return hashlib.sha256(pin.encode('utf-8')).hexdigest()
 
+def _load_pin_hash() -> str:
+    """读取 PIN 哈希, 首次运行写入默认 0000"""
+    if PIN_FILE.exists():
+        return PIN_FILE.read_text().strip()
+    default = _hash_pin('0000')
+    PIN_FILE.write_text(default)
+    print('🔐 家长 PIN 首次初始化: 默认 0000, 请尽快修改', file=sys.stderr)
+    return default
+
+def _check_pin(pin: str) -> bool:
+    return _hash_pin(str(pin)) == _load_pin_hash()
+
+def _load_parent_data() -> dict:
+    if PARENT_DATA_FILE.exists():
         try:
-            # 使用 speech_recognition 识别
-            recognizer = sr.Recognizer()
-            with sr.AudioFile(tmp_path) as source:
-                audio_data = recognizer.record(source)
-                # 使用 macOS 内置语音识别
-                text = recognizer.recognize_speech(audio_data, language='en-US')
-                return jsonify({"success": True, "text": text})
-        finally:
-            # 删除临时文件
-            os.unlink(tmp_path)
+            return json.loads(PARENT_DATA_FILE.read_text())
+        except Exception:
+            pass
+    return {"stats": {}, "vocabulary": {}, "settings": {}}
 
-    except ImportError:
-        # speech_recognition 未安装，尝试使用 whisper
-        try:
-            import subprocess
-            import tempfile
-            import os
+def _save_parent_data(data: dict):
+    PARENT_DATA_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2))
 
-            audio_file = request.files.get('audio')
-            if not audio_file:
-                return jsonify({"success": False, "error": "没有音频文件"})
+@app.route('/api/parent/check')
+def parent_check():
+    return jsonify({"authenticated": bool(session.get('parent_auth'))})
 
-            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp:
-                # 转换格式
-                audio_file.save(tmp.name)
-                tmp_path = tmp.name
+@app.route('/api/parent/login', methods=['POST'])
+def parent_login():
+    ip = request.remote_addr or 'unknown'
+    ok, retry = _login_rate_limit_ok(ip)
+    if not ok:
+        return jsonify({"success": False, "error": f"尝试次数过多, 请 {retry} 秒后再试"}), 429
 
-            try:
-                # 使用 whisper CLI
-                result = subprocess.run(
-                    ['whisper', tmp_path, '--language', 'en', '--output_format', 'json'],
-                    capture_output=True, text=True, timeout=30
-                )
-                # 解析 whisper 输出
-                import json as json_lib
-                try:
-                    data = json_lib.loads(result.stdout)
-                    text = data.get('text', '').strip()
-                    if text:
-                        return jsonify({"success": True, "text": text})
-                except Exception as e:
-                    print(f'Whisper识别出错: {e}')
-                    pass
-                return jsonify({"success": False, "error": "Whisper 识别失败"})
-            finally:
-                os.unlink(tmp_path)
-        except Exception as e:
-            return jsonify({"success": False, "error": f"Whisper 也不可用: {str(e)}"})
-    except sr.UnknownValueError:
-        return jsonify({"success": False, "error": "无法识别语音内容"})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
+    data = request.json or {}
+    pin = str(data.get('pin', '')).strip()
+    if not (pin.isdigit() and len(pin) == 4):
+        _login_record_failure(ip)
+        return jsonify({"success": False, "error": "PIN 必须是 4 位数字"}), 400
+    if not _check_pin(pin):
+        _login_record_failure(ip)
+        return jsonify({"success": False, "error": "PIN 错误"}), 401
+    _login_clear(ip)
+    session['parent_auth'] = True
+    session.permanent = True
+    return jsonify({"success": True})
+
+@app.route('/api/parent/logout', methods=['POST'])
+@require_parent_auth
+def parent_logout():
+    session.pop('parent_auth', None)
+    return jsonify({"success": True})
+
+@app.route('/api/parent/change-pin', methods=['POST'])
+@require_parent_auth
+def parent_change_pin():
+    data = request.json or {}
+    current = str(data.get('current', '')).strip()
+    new = str(data.get('new', '')).strip()
+    if not _check_pin(current):
+        return jsonify({"success": False, "error": "当前 PIN 错误"}), 401
+    if not (new.isdigit() and len(new) == 4):
+        return jsonify({"success": False, "error": "新 PIN 必须是 4 位数字"}), 400
+    PIN_FILE.write_text(_hash_pin(new))
+    return jsonify({"success": True})
+
+@app.route('/api/parent/data', methods=['GET'])
+@require_parent_auth
+def parent_get_data():
+    return jsonify({"success": True, "data": _load_parent_data()})
+
+@app.route('/api/parent/data', methods=['POST'])
+def parent_post_data():
+    """孩子端 anon 上报 stats/vocab/settings, 不需要鉴权
+    (合并写入, 不会覆盖整个文件)"""
+    payload = request.json or {}
+    current = _load_parent_data()
+    for section in ('stats', 'vocabulary', 'settings'):
+        if section in payload and isinstance(payload[section], dict):
+            current.setdefault(section, {}).update(payload[section])
+    _save_parent_data(current)
+    return jsonify({"success": True})
+
+@app.route('/api/parent/reset', methods=['POST'])
+@require_parent_auth
+def parent_reset():
+    _save_parent_data({"stats": {}, "vocabulary": {}, "settings": {}})
+    return jsonify({"success": True})
+
+@app.route('/api/parent/export')
+@require_parent_auth
+def parent_export():
+    from flask import Response
+    payload = json.dumps(_load_parent_data(), ensure_ascii=False, indent=2)
+    return Response(
+        payload,
+        mimetype='application/json',
+        headers={'Content-Disposition': 'attachment; filename=shadow_learning_data.json'}
+    )
 
 @app.route('/audio/<path:filename>')
 def serve_audio(filename):
@@ -794,12 +944,24 @@ if __name__ == '__main__':
 
     lan_ip = get_lan_ip()
 
+    # HTTPS 自签名证书（iOS Safari getUserMedia 需要 secure context）
+    cert_path = Path(__file__).parent / 'certs' / 'server.crt'
+    key_path = Path(__file__).parent / 'certs' / 'server.key'
+    ssl_ctx = None
+    if cert_path.exists() and key_path.exists():
+        ssl_ctx = (str(cert_path), str(key_path))
+        print("🔐 HTTPS 模式（自签名证书）")
+    else:
+        print("⚠️  HTTP 模式 — 麦克风在 iOS Safari 上不可用")
+        print("   生成证书: bash scripts/gen_https_cert.sh")
+
     print("🦊 Shadow Learning - 原版阅读社团版")
     print("=" * 50)
-    print(f"🌐 本机访问: http://localhost:5002")
-    print(f"📱 局域网访问: http://{lan_ip}:5002")
+    scheme = 'https' if ssl_ctx else 'http'
+    print(f"🌐 本机访问: {scheme}://localhost:5002")
+    print(f"📱 局域网访问: {scheme}://{lan_ip}:5002")
     print()
     print("让小朋友在浏览器打开上面的局域网地址")
     print()
 
-    app.run(host='0.0.0.0', port=5002, debug=False)
+    app.run(host='0.0.0.0', port=5002, debug=False, ssl_context=ssl_ctx)

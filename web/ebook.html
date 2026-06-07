@@ -2,6 +2,8 @@
 <html lang="zh-CN">
 <head>
 <script src="/theme.js"></script>
+<script src="/sync.js"></script>
+    <script src="/a11y.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1930,10 +1932,16 @@
         let currentSentenceIndex = 0;
         let sentences = [];
         let audioElement = null;
+        let currentAudioUrl = null;  // 当前 audioElement 的 blob URL, 用于 revoke
         let isPlaying = false;
+        let ttsRequestSeq = 0;  // 单调递增, 丢弃过期响应, 防止双击叠音
         let currentWord = null;
         let vocabulary = JSON.parse(localStorage.getItem('vocabulary') || '[]');
         let lookedWords = JSON.parse(localStorage.getItem('lookedWords') || '{}');
+
+        // XSS 防御: 字典 API / 翻译 API / 生词本 等所有外部数据用这个转义后再 innerHTML
+        const _escMap = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+        const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => _escMap[c]);
 
         // TTS音色设置
         let currentVoice = localStorage.getItem('ttsVoice') || 'en-US-AriaNeural';
@@ -2401,6 +2409,7 @@
                 element.classList.remove('looked');
                 delete lookedWords[cleanWord];
                 localStorage.setItem('lookedWords', JSON.stringify(lookedWords));
+                shadowReport({ vocabulary: { lookedWords } });
                 return;
             }
 
@@ -2408,6 +2417,7 @@
             element.classList.add('looked');
             lookedWords[cleanWord] = true;
             localStorage.setItem('lookedWords', JSON.stringify(lookedWords));
+            shadowReport({ vocabulary: { lookedWords } });
 
             const modal = document.getElementById('word-modal');
             document.getElementById('modal-word').textContent = cleanWord;
@@ -2449,10 +2459,10 @@
                         meanings.forEach((m, i) => {
                             html += `
                                 <div class="word-meaning-item">
-                                    <div class="word-meaning-part">${m.part}</div>
-                                    <div class="word-meaning-def">${m.def}</div>
-                                    ${cnDefs[i] ? `<div class="word-meaning-cn">${cnDefs[i]}</div>` : ''}
-                                    ${m.example ? `<div class="word-meaning-example">"${m.example}"</div>` : ''}
+                                    <div class="word-meaning-part">${escapeHtml(m.part)}</div>
+                                    <div class="word-meaning-def">${escapeHtml(m.def)}</div>
+                                    ${cnDefs[i] ? `<div class="word-meaning-cn">${escapeHtml(cnDefs[i])}</div>` : ''}
+                                    ${m.example ? `<div class="word-meaning-example">"${escapeHtml(m.example)}"</div>` : ''}
                                 </div>
                             `;
                         });
@@ -2522,6 +2532,7 @@
             });
 
             localStorage.setItem('vocabulary', JSON.stringify(vocabulary));
+            shadowReport({ vocabulary: { newWords: vocabulary } });
             updateVocabCount();
             renderVocabList();
             updateReviewReminder();
@@ -2542,12 +2553,14 @@
                 list.innerHTML = '<div class="vocab-empty">点击单词加入生词本</div>';
                 return;
             }
-            list.innerHTML = vocabulary.slice(-10).reverse().map(v => `
+            list.innerHTML = vocabulary.slice(-10).reverse().map(v => {
+                const m = escapeHtml((v.meaning || '').substring(0, 50)) + (v.meaning && v.meaning.length > 50 ? '...' : '');
+                return `
                 <div class="vocab-item">
-                    <div class="vocab-word">${v.word}</div>
-                    <div class="vocab-meaning">${v.meaning.substring(0, 50)}${v.meaning.length > 50 ? '...' : ''}</div>
+                    <div class="vocab-word">${escapeHtml(v.word)}</div>
+                    <div class="vocab-meaning">${m}</div>
                 </div>
-            `).join('');
+            `;}).join('');
         }
 
         // ========== 艾宾浩斯复习系统 ==========
@@ -2606,8 +2619,8 @@
             const content = document.getElementById('review-content');
             content.innerHTML = `
                 <div class="review-progress">${currentReviewIndex + 1} / ${reviewQueue.length}</div>
-                <div class="review-word">${word.word}</div>
-                <div class="review-meaning">${word.meaning}</div>
+                <div class="review-word">${escapeHtml(word.word)}</div>
+                <div class="review-meaning">${escapeHtml(word.meaning)}</div>
                 <div class="review-buttons">
                     <button class="review-btn wrong" onclick="reviewAnswer(false)">不认识</button>
                     <button class="review-btn correct" onclick="reviewAnswer(true)">认识 ✓</button>
@@ -2639,6 +2652,7 @@
 
             // 保存到 localStorage
             localStorage.setItem('vocabulary', JSON.stringify(vocabulary));
+            shadowReport({ vocabulary: { newWords: vocabulary } });
 
             currentReviewIndex++;
             setTimeout(showReviewCard, 300);
@@ -2752,11 +2766,17 @@
             const btn = document.getElementById('btn-play');
             const status = document.getElementById('status-playing');
 
+            // 防双击叠音: 每次调用都生成一个 token, await 后只接受最新的
+            const myToken = ++ttsRequestSeq;
+
             // 1. 优先从缓存读取
             const cachedAudio = await audioCache.getAudio(currentBookId, currentSentenceIndex, text);
+            if (myToken !== ttsRequestSeq) return;  // 已被新调用覆盖, 丢弃
             if (cachedAudio) {
                 if (audioElement) audioElement.pause();
-                audioElement = new Audio(URL.createObjectURL(cachedAudio));
+                if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
+                currentAudioUrl = URL.createObjectURL(cachedAudio);
+                audioElement = new Audio(currentAudioUrl);
                 isPlaying = true;
 
                 audioElement.onended = () => {
@@ -3302,6 +3322,7 @@
             stats.lastStudyDate = today;
 
             localStorage.setItem('shadowStats', JSON.stringify(stats));
+            shadowReport({ stats });
         }
 
         // ========== 阅读理解题 ==========

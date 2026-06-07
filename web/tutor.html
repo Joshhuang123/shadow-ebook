@@ -2,6 +2,8 @@
 <html lang="zh-CN">
 <head>
 <script src="/theme.js"></script>
+<script src="/sync.js"></script>
+    <script src="/a11y.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>🦊 英语跟读辅导 - 新概念2A</title>
@@ -1052,6 +1054,11 @@
 
         // 处理录音
         function processRecording() {
+            // 释放上一次录音的 blob URL（防止长时间使用 OOM）
+            if (currentAudio) {
+                URL.revokeObjectURL(currentAudio);
+            }
+
             const blob = new Blob(audioChunks, { type: 'audio/webm' });
             const url = URL.createObjectURL(blob);
             currentAudio = url;
@@ -1387,6 +1394,7 @@
             stats.lastStudyDate = today;
 
             localStorage.setItem('shadowStats', JSON.stringify(stats));
+            shadowReport({ stats });
         }
 
         // PWA 注册

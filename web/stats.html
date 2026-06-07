@@ -2,6 +2,8 @@
 <html lang="zh-CN">
 <head>
 <script src="/theme.js"></script>
+<script src="/sync.js"></script>
+    <script src="/a11y.js"></script>
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -692,6 +694,9 @@
             return { interest: 'adventure', lexile: 600 }; // 默认值
         }
 
+        const _escMap = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+        const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => _escMap[c]);
+
         let allBooks = [];       // 所有书籍缓存
         let currentInterest = 'all';  // 当前兴趣筛选
         let currentLevel = null; // 当前词汇等级
@@ -757,10 +762,10 @@
                     <div class="book-rec-item" onclick="window.location.href='/ebook'">
                         <div class="book-rec-icon">📖</div>
                         <div class="book-rec-info">
-                            <div class="book-rec-title">${book.title.replace(/_/g, ' ')}</div>
-                            <div class="book-rec-meta">${book.chapters}章节 · ${book.sentences}句子</div>
+                            <div class="book-rec-title">${escapeHtml(book.title.replace(/_/g, ' '))}</div>
+                            <div class="book-rec-meta">${Number(book.chapters) || 0}章节 · ${Number(book.sentences) || 0}句子</div>
                         </div>
-                        <span class="book-rec-level-tag">${book.lexile}L · ${diff} · ${tag}</span>
+                        <span class="book-rec-level-tag">${Number(book.lexile) || 0}L · ${escapeHtml(diff)} · ${escapeHtml(tag)}</span>
                     </div>`;
                 }).join('');
         }
@@ -832,6 +837,7 @@
         // 保存统计数据
         function saveStats(stats) {
             localStorage.setItem('shadowStats', JSON.stringify(stats));
+            shadowReport({ stats });
         }
 
         // 更新连续天数
