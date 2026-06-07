@@ -52,6 +52,10 @@ data/words/*.json
 data/words/*.txt
 data/grammar/*.json
 
+# 家长数据 + PIN hash (sensitive, NEVER commit)
+data/parent/*
+!data/parent/.gitkeep
+
 # Logs
 *.log
 
