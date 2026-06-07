@@ -2998,9 +2998,11 @@
 
             const words = sent.split(/(\s+)/);
             const processedWords = words.map(w => {
-                if (/^[a-zA-Z]+$/.test(w)) {
-                    const isLooked = lookedWords[w.toLowerCase()];
-                    return `<span class="word-inline ${isLooked ? 'looked' : ''}" onclick="lookupWord('${w}', this, event)">${w}</span>`;
+                if (/^[a-zA-Z][a-zA-Z'\-.,!?;:"']*$/.test(w)) {
+                    const cleanW = w.replace(/[^a-zA-Z]/g, '').toLowerCase();
+                    const isLooked = lookedWords[cleanW];
+                    const safeW = w.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                    return `<span class="word-inline ${isLooked ? 'looked' : ''}" onclick="lookupWord('${safeW}', this, event)">${w}</span>`;
                 }
                 return w;
             }).join('');
