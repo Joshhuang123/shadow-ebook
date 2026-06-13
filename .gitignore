@@ -65,6 +65,11 @@ data/.parent_migrated
 data/books.migrated-*/
 data/parent.migrated-*/
 
+# Round 1: Flask session 秘钥 (持久, 不入库) + 日志轮转产物
+data/.secret
+data/shadow.log
+data/shadow.log.*
+
 # Logs
 *.log
 
