@@ -97,6 +97,7 @@ def _is_chapter_heading(text: str) -> bool:
 _CONTAINER_ROOTFILE = re.compile(r'<rootfile[^>]+full-path=["\']([^"\']+)["\']')
 _OPF_ITEMREF = re.compile(r'<itemref[^>]+idref=["\']([^"\']+)["\']')
 _OPF_ITEM = re.compile(r'<item[^>]+id=["\']([^"\']+)["\'][^>]+href=["\']([^"\']+)["\']')
+_OPF_COVER_META = re.compile(r'<meta[^>]+name=["\']cover["\'][^>]+content=["\']([^"\']+)["\']', re.I)
 
 
 def _find_content_opf_path(zf) -> str:
@@ -123,6 +124,52 @@ def _parse_spine_order(zf, opf_path: str) -> list:
     # opf_path 可能带子目录 (如 OEBPS/content.opf), href 是相对路径
     opf_dir = opf_path.rsplit('/', 1)[0] + '/' if '/' in opf_path else ''
     return [opf_dir + id_to_file[sid] for sid in spine_ids if sid in id_to_file]
+
+
+def _find_cover_via_opf(zf, opf_path: str) -> str:
+    """走 EPUB spec 找封面: <meta name="cover" content="item_id"> → manifest id → href。
+    找不到返回 ''。比文件名猜更准 (尤其对不按 cover.jpg 命名的书)。"""
+    if not opf_path:
+        return ''
+    try:
+        opf = zf.read(opf_path).decode('utf-8', errors='ignore')
+    except KeyError:
+        return ''
+    m = _OPF_COVER_META.search(opf)
+    if not m:
+        return ''
+    cover_id = m.group(1)
+    # 找 manifest 里 id == cover_id 的 item
+    for item_id, href in _OPF_ITEM.findall(opf):
+        if item_id == cover_id:
+            # href 是相对 opf_dir 的路径
+            opf_dir = opf_path.rsplit('/', 1)[0] + '/' if '/' in opf_path else ''
+            return opf_dir + href
+    return ''
+
+
+def _save_cover(zf, book_title: str, arcname: str) -> str:
+    """从 zipfile 里把 arcname 对应的图片写到 covers 目录, 返回 web path (/data/covers/xxx)。
+    失败 (图片不存在 / 太小 / 写盘出错) 返回 ''。"""
+    try:
+        img_data = zf.read(arcname)
+    except KeyError:
+        return ''
+    if len(img_data) < 1000:
+        return ''
+    try:
+        COVERS_DIR.mkdir(parents=True, exist_ok=True)
+        book_id_for_cover = re.sub(r'[^a-zA-Z0-9_-]', '_', book_title.lower())
+        ext = arcname.rsplit('.', 1)[-1].lower()
+        cover_filename = f'{book_id_for_cover}.{ext}'
+        cover_path_full = COVERS_DIR / cover_filename
+        with open(cover_path_full, 'wb') as f:
+            f.write(img_data)
+        logger.info(f'封面已提取: {cover_filename}')
+        return f'/data/covers/{cover_filename}'
+    except OSError as e:
+        logger.warning(f'写封面失败 {arcname}: {e}')
+        return ''
 
 
 def calc_lexile(book_data):
@@ -273,29 +320,23 @@ def register_routes(app):
 
                 html_files = [n for n in zf.namelist() if n.endswith(('.html', '.xhtml', '.htm')) and 'image' not in n.lower()]
 
-                # 提取封面
-                try:
-                    cover_patterns = ['cover.jpeg', 'cover.jpg', 'cover.png', 'cover1.jpeg', 'cover1.jpg',
-                                      'images/cover.jpg', 'images/cover.jpeg', 'OEBPS/images/cover.jpg']
-                    for pattern in cover_patterns:
-                        try:
-                            img_data = zf.read(pattern)
-                            if len(img_data) > 1000:
-                                COVERS_DIR.mkdir(parents=True, exist_ok=True)
-                                book_id_for_cover = re.sub(r'[^a-zA-Z0-9_-]', '_', book_title.lower())
-                                ext = pattern.split('.')[-1].lower()
-                                cover_filename = f'{book_id_for_cover}.{ext}'
-                                cover_path_full = COVERS_DIR / cover_filename
-                                with open(cover_path_full, 'wb') as f:
-                                    f.write(img_data)
-                                cover_path = f'/data/covers/{cover_filename}'
-                                logger.info(f'封面已提取: {cover_filename}')
-                                break
-                        except Exception as e:
-                            logger.warning(f'尝试封面图案失败: {e}')
-                            continue
-                except Exception as e:
-                    logger.warning(f'提取封面出错: {e}')
+                # 提取封面: 先走 OPF spec 找, 找不到再按常见文件名猜
+                # 1) OPF 路径 (EPUB 2/3 通用, 准确率 ~99%)
+                opf_cover_arcname = _find_cover_via_opf(zf, opf_path)
+                if opf_cover_arcname:
+                    cover_path = _save_cover(zf, book_title, opf_cover_arcname)
+                # 2) 常见文件名 fallback (老 EPUB 经常没 meta cover)
+                if not cover_path:
+                    for pattern in ('cover.jpeg', 'cover.jpg', 'cover.png',
+                                    'cover1.jpeg', 'cover1.jpg',
+                                    'images/cover.jpg', 'images/cover.jpeg',
+                                    'OEBPS/images/cover.jpg'):
+                        path = _save_cover(zf, book_title, pattern)
+                        if path:
+                            cover_path = path
+                            break
+                if not cover_path:
+                    logger.info('未找到封面 (OPF meta 和常见文件名都没命中)')
 
                 # spine 顺序 (走 spec, 不再硬编码 OEBPS/content.opf)
                 spine_items = _parse_spine_order(zf, opf_path)

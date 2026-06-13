@@ -15,6 +15,7 @@ from extensions.books import (
     _split_sentences,
     _is_chapter_heading,
     _find_content_opf_path,
+    _find_cover_via_opf,
 )
 
 
@@ -144,3 +145,58 @@ def test_find_opf_malformed_returns_empty():
     """container.xml 存在但内容残缺, 不该 crash"""
     zf = _make_epub({'META-INF/container.xml': b'<garbage'})
     assert _find_content_opf_path(zf) == ''
+
+
+# === _find_cover_via_opf (Round 6: 走 spec 找封面) ===
+
+_OPF_WITH_COVER = b'''<?xml version="1.0"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0">
+  <metadata>
+    <meta name="cover" content="cover-img"/>
+    <dc:title>Test</dc:title>
+  </metadata>
+  <manifest>
+    <item id="cover-img" href="images/cover.jpg" media-type="image/jpeg"/>
+    <item id="ch1" href="ch1.xhtml" media-type="application/xhtml+xml"/>
+  </manifest>
+  <spine><itemref idref="ch1"/></spine>
+</package>'''
+
+
+def test_find_cover_via_opf_basic():
+    """标准 EPUB 3: <meta name="cover" content="cover-img"> → manifest href"""
+    zf = _make_epub({
+        'META-INF/container.xml': b'<container><rootfiles><rootfile full-path="content.opf"/></rootfiles></container>',
+        'content.opf': _OPF_WITH_COVER,
+    })
+    assert _find_cover_via_opf(zf, 'content.opf') == 'images/cover.jpg'
+
+
+def test_find_cover_via_opf_nested_opf():
+    """opf 在子目录时, href 需拼接 opf_dir 才是正确 arcname"""
+    zf = _make_epub({
+        'META-INF/container.xml': b'<container><rootfiles><rootfile full-path="OEBPS/content.opf"/></rootfiles></container>',
+        'OEBPS/content.opf': _OPF_WITH_COVER.replace(b'images/cover.jpg', b'cover.jpg'),
+    })
+    assert _find_cover_via_opf(zf, 'OEBPS/content.opf') == 'OEBPS/cover.jpg'
+
+
+def test_find_cover_via_opf_no_meta_returns_empty():
+    """没有 <meta name="cover"> → 降级给 import_book 走文件名 fallback"""
+    zf = _make_epub({
+        'content.opf': b'<?xml version="1.0"?><package><manifest><item id="x" href="x.jpg"/></manifest></package>',
+    })
+    assert _find_cover_via_opf(zf, 'content.opf') == ''
+
+
+def test_find_cover_via_opf_id_mismatch_returns_empty():
+    """meta 指向 manifest 里不存在的 id (EPUB 制作 bug) → 返空, 不 crash"""
+    zf = _make_epub({
+        'content.opf': b'<?xml version="1.0"?><package><metadata><meta name="cover" content="ghost"/></metadata><manifest><item id="real" href="real.jpg"/></manifest></package>',
+    })
+    assert _find_cover_via_opf(zf, 'content.opf') == ''
+
+
+def test_find_cover_via_opf_empty_path_returns_empty():
+    """opf_path 为空 → 返空 (调用方会走文件名 fallback)"""
+    assert _find_cover_via_opf(_make_epub({}), '') == ''
