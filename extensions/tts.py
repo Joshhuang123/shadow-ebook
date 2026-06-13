@@ -59,13 +59,15 @@ def _evict_tts_cache(audio_dir: Path):
         # 按 atime 升序排 (最旧访问在前)
         entries.sort(key=lambda e: e[1])
 
-        for f, _, sz in entries:
-            if total_bytes <= TTS_CACHE_MAX_BYTES and len(entries) <= TTS_CACHE_MAX_FILES:
+        # 关键: 迭代 entries 副本, remaining_count 跟着删, 避免边迭代边 mutate 跳项
+        remaining_count = len(entries)
+        for f, _, sz in list(entries):
+            if total_bytes <= TTS_CACHE_MAX_BYTES and remaining_count <= TTS_CACHE_MAX_FILES:
                 break
             try:
                 f.unlink()
                 total_bytes -= sz
-                entries.remove((f, _, sz))
+                remaining_count -= 1
                 evicted_count += 1
             except OSError:
                 pass
