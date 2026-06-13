@@ -69,6 +69,37 @@ app.config['SECRET_KEY'] = _load_or_create_secret()
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB 上传上限
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+# SESSION_COOKIE_SECURE 在 __main__ 里根据是否启用 HTTPS 自适应设置
+
+
+# === Round 3: Security headers ===
+# CSP 用 lenient 版 (允许 inline script/style),因为前端 5 个 HTML 大量用 onclick + <style>。
+# 严格 CSP 需要前端重构 (move-to-external + addEventListener),留给以后单独项目做。
+# 即便如此, 'self' 限制下外部脚本注入仍被挡。
+# HSTS 故意不加: 自签名 HTTPS + HSTS = 浏览器锁住该 origin 1 年, LAN 切回 HTTP 会失败。
+# 真上 Let's Encrypt 反代后再加。
+_CSP = '; '.join([
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self'",
+    "connect-src 'self'",
+    "media-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+])
+
+
+@app.after_request
+def _add_security_headers(resp):
+    resp.headers.setdefault('Content-Security-Policy', _CSP)
+    resp.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    resp.headers.setdefault('X-Frame-Options', 'DENY')
+    resp.headers.setdefault('Referrer-Policy', 'same-origin')
+    return resp
 
 
 # === HTML 页面路由 (壳页面,无业务逻辑) ===
@@ -136,7 +167,8 @@ if __name__ == '__main__':
     ssl_ctx = None
     if cert_path.exists() and key_path.exists():
         ssl_ctx = (str(cert_path), str(key_path))
-        print("🔐 HTTPS 模式(自签名证书)")
+        app.config['SESSION_COOKIE_SECURE'] = True  # HTTPS 才发 cookie
+        print("🔐 HTTPS 模式(自签名证书),session cookie 标记 Secure")
     else:
         print("⚠️  HTTP 模式 — 麦克风在 iOS Safari 上不可用")
         print("   生成证书: bash scripts/gen_https_cert.sh")
