@@ -61,7 +61,9 @@ data/shadow.db
 data/shadow.db-shm
 data/shadow.db-wal
 data/.migration_marker
+data/.parent_migrated
 data/books.migrated-*/
+data/parent.migrated-*/
 
 # Logs
 *.log

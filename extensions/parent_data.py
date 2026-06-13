@@ -2,40 +2,49 @@
 Owns: parent PIN storage + verification, parent data CRUD (stats/vocab/settings),
 anon child sync endpoint, parent session check, parent data export.
 Does NOT own: login rate limit helpers / require_parent_auth (auth.py — imported).
+
+Phase 3b: parent_data / parent_pin 改走 SQLite (data/shadow.db),
+        原 data/parent/{data.json,pin.hash} 在首次启动时自动迁入,
+        备份在 data/parent.migrated-<ts>/ 留 30 天。
 """
 import hashlib
 import json
 import logging
-import sys
-from pathlib import Path
+import time
 from flask import jsonify, request, session, Response
 
 from extensions.auth import (
     require_parent_auth, _login_rate_limit_ok, _login_record_failure,
     _login_clear, _api_rate_limit_ok,
 )
-from extensions.db import _safe_write_json
+from extensions.db import get_db
 
 
 logger = logging.getLogger(__name__)
-
-
-PARENT_DATA_DIR = Path(__file__).resolve().parent.parent / 'data' / 'parent'
-PARENT_DATA_DIR.mkdir(parents=True, exist_ok=True)
-PIN_FILE = PARENT_DATA_DIR / 'pin.hash'
-PARENT_DATA_FILE = PARENT_DATA_DIR / 'data.json'
 
 
 def _hash_pin(pin: str) -> str:
     return hashlib.sha256(pin.encode('utf-8')).hexdigest()
 
 
+def _save_pin(pin_hash: str):
+    """写 PIN 哈希到 SQLite (id=1 单行表)"""
+    conn = get_db()
+    now = int(time.time() * 1000)
+    conn.execute(
+        'INSERT OR REPLACE INTO parent_pin (id, pin_hash, updated_at) VALUES (1, ?, ?)',
+        (pin_hash, now)
+    )
+
+
 def _load_pin_hash() -> str:
-    """读取 PIN 哈希, 首次运行写入默认 0000"""
-    if PIN_FILE.exists():
-        return PIN_FILE.read_text().strip()
+    """读取 PIN 哈希, 首次运行 (没迁过 pin.hash 也没改过 PIN) 写入默认 0000"""
+    conn = get_db()
+    row = conn.execute('SELECT pin_hash FROM parent_pin WHERE id = 1').fetchone()
+    if row:
+        return row['pin_hash']
     default = _hash_pin('0000')
-    PIN_FILE.write_text(default)
+    _save_pin(default)
     logger.warning('家长 PIN 首次初始化: 默认 0000, 请尽快修改')
     return default
 
@@ -45,16 +54,23 @@ def _check_pin(pin: str) -> bool:
 
 
 def _load_parent_data() -> dict:
-    if PARENT_DATA_FILE.exists():
+    conn = get_db()
+    row = conn.execute('SELECT data_json FROM parent_data WHERE id = 1').fetchone()
+    if row:
         try:
-            return json.loads(PARENT_DATA_FILE.read_text())
-        except Exception:
-            pass
+            return json.loads(row['data_json'])
+        except Exception as e:
+            logger.warning(f'parent_data 解析失败, 返回空: {e}')
     return {"stats": {}, "vocabulary": {}, "settings": {}}
 
 
 def _save_parent_data(data: dict):
-    _safe_write_json(PARENT_DATA_FILE, data)
+    conn = get_db()
+    now = int(time.time() * 1000)
+    conn.execute(
+        'INSERT OR REPLACE INTO parent_data (id, data_json, updated_at) VALUES (1, ?, ?)',
+        (json.dumps(data, ensure_ascii=False), now)
+    )
 
 
 def register_routes(app):
@@ -98,7 +114,7 @@ def register_routes(app):
             return jsonify({"success": False, "error": "当前 PIN 错误"}), 401
         if not (new.isdigit() and len(new) == 4):
             return jsonify({"success": False, "error": "新 PIN 必须是 4 位数字"}), 400
-        PIN_FILE.write_text(_hash_pin(new))
+        _save_pin(_hash_pin(new))
         return jsonify({"success": True})
 
     @app.route('/api/parent/data', methods=['GET'])
@@ -109,7 +125,7 @@ def register_routes(app):
     @app.route('/api/parent/data', methods=['POST'])
     def parent_post_data():
         """孩子端 anon 上报 stats/vocab/settings, 不需要鉴权
-        (合并写入, 不会覆盖整个文件)"""
+        (合并写入, 不会覆盖整张表)"""
         ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'sync')
         if not ok:
             return jsonify({"success": False, "error": f"上报过快, {retry} 秒后再试"}), 429

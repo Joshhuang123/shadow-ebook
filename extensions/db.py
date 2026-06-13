@@ -2,14 +2,12 @@
 Owns: SQLite connection + schema + init + first-startup migration + raw query helpers.
 Does NOT own: domain logic (books.py owns books CRUD, parent_data.py owns parent data).
 
-Phase 3a status:
-- books 表迁完,parent_data / parent_pin 还在 JSON (后续 phase 迁)
-- `_safe_write_json` 留作 parent_data 写 JSON 用
+Phase 3b 完成: books / parent_data / parent_pin 全部走 SQLite。
+首启自动把 data/books/*.json + data/parent/{data.json,pin.hash} 迁进 DB,
+原文件备份到 data/{books,parent}.migrated-<ts>/ 留 30 天。
 """
 import json
 import logging
-import os
-import secrets
 import shutil
 import sqlite3
 import threading
@@ -25,9 +23,9 @@ DB_PATH = DATA_DIR / 'shadow.db'
 BOOKS_JSON_DIR = DATA_DIR / 'books'
 
 
-# === SQLite schema (books 表 — Phase 3a) ===
-# 只存 data_json 一个内容字段,保留原 JSON 全部字段 (book/author/description/chapters/cover)
-# 不单独列 title/chapters_json 是为了: 1) 保留 author/description 2) 简化 schema 3) 8 本书的体量不值得拆列
+# === SQLite schema ===
+# books (Phase 3a): 单内容列 data_json 保留 book/author/description/chapters/cover 全部字段
+# parent_data / parent_pin (Phase 3b): 单行表 (id=1),parent_data 存完整 stats/vocab/settings JSON
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS books (
   id TEXT PRIMARY KEY,
@@ -36,6 +34,17 @@ CREATE TABLE IF NOT EXISTS books (
   updated_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_books_updated ON books(updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS parent_data (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  data_json TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS parent_pin (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  pin_hash TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
 """
 
 
@@ -54,42 +63,31 @@ def get_db():
     return _local.conn
 
 
-# === 共享文件 utility (parent_data.py 还用,Phase 3b 删) ===
-def _safe_write_json(path: Path, data):
-    """原子写 JSON: 写 .tmp + fsync + rename, 防止并发写半截 / 崩溃残留。"""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(path.suffix + f'.tmp.{os.getpid()}.{secrets.token_hex(4)}')
-    try:
-        with open(tmp_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-            f.flush()
-            os.fsync(f.fileno())
-        os.replace(tmp_path, path)
-    except Exception:
-        try: tmp_path.unlink()
-        except OSError: pass
-        raise
-
-
-# === 首次启动:建表 + 一次性 JSON→SQLite 迁移 ===
+# === 首次启动:建表 + 一次性 JSON→SQLite 迁移 (per-domain marker) ===
 def init_db():
-    """幂等。首次启动建表 + 扫 data/books/*.json 灌进 SQLite,后续调用无副作用。"""
+    """幂等。每个域独立检查自己的 migration marker,任何域没迁就迁,跑过就跳过。"""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    is_fresh = not DB_PATH.exists()
     conn = sqlite3.connect(str(DB_PATH))
     try:
         conn.executescript(SCHEMA)
     finally:
         conn.close()
 
-    if is_fresh:
-        marker = DATA_DIR / '.migration_marker'
-        if not marker.exists():
-            _migrate_books_from_json()
-            marker.write_text(
-                f'books migrated at {time.strftime("%Y-%m-%dT%H:%M:%S")}\n'
-                f'原 JSON 备份在 data/books.migrated-<ts>/ (留 30 天,后手动 rm)\n'
-            )
+    # Books migration (Phase 3a)
+    if not (DATA_DIR / '.migration_marker').exists():
+        _migrate_books_from_json()
+        (DATA_DIR / '.migration_marker').write_text(
+            f'books migrated at {time.strftime("%Y-%m-%dT%H:%M:%S")}\n'
+            f'原 JSON 备份在 data/books.migrated-<ts>/ (留 30 天,后手动 rm)\n'
+        )
+
+    # Parent migration (Phase 3b)
+    if not (DATA_DIR / '.parent_migrated').exists():
+        _migrate_parent_from_json()
+        (DATA_DIR / '.parent_migrated').write_text(
+            f'parent data/pin migrated at {time.strftime("%Y-%m-%dT%H:%M:%S")}\n'
+            f'原文件备份在 data/parent.migrated-<ts>/ (留 30 天,后手动 rm)\n'
+        )
 
 
 def _migrate_books_from_json():
@@ -125,6 +123,48 @@ def _migrate_books_from_json():
             failed += 1
 
     logger.info(f'books 迁移完成: {migrated} 成功, {failed} 失败, 备份在 {backup_dir.name}/')
+
+
+def _migrate_parent_from_json():
+    """首次启动:把 data/parent/data.json + pin.hash 灌进 SQLite,原文件备份到 .migrated-<ts>/。"""
+    parent_dir = DATA_DIR / 'parent'
+    if not parent_dir.exists():
+        return
+
+    data_file = parent_dir / 'data.json'
+    pin_file = parent_dir / 'pin.hash'
+    if not data_file.exists() and not pin_file.exists():
+        return
+
+    backup_dir = DATA_DIR / f'parent.migrated-{int(time.time())}'
+    backup_dir.mkdir(exist_ok=True)
+
+    conn = get_db()
+    now = int(time.time() * 1000)
+
+    if data_file.exists():
+        try:
+            data = json.loads(data_file.read_text())
+            conn.execute(
+                'INSERT OR REPLACE INTO parent_data (id, data_json, updated_at) VALUES (1, ?, ?)',
+                (json.dumps(data, ensure_ascii=False), now)
+            )
+            shutil.move(str(data_file), str(backup_dir / 'data.json'))
+            logger.info(f'parent_data 迁移完成, 备份在 {backup_dir.name}/')
+        except Exception as e:
+            logger.warning(f'parent_data 迁移失败: {e}')
+
+    if pin_file.exists():
+        try:
+            pin_hash = pin_file.read_text().strip()
+            conn.execute(
+                'INSERT OR REPLACE INTO parent_pin (id, pin_hash, updated_at) VALUES (1, ?, ?)',
+                (pin_hash, now)
+            )
+            shutil.move(str(pin_file), str(backup_dir / 'pin.hash'))
+            logger.info(f'parent_pin 迁移完成, 备份在 {backup_dir.name}/')
+        except Exception as e:
+            logger.warning(f'parent_pin 迁移失败: {e}')
 
 
 def register_routes(app):
