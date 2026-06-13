@@ -15,7 +15,7 @@ from flask import jsonify, request, session, Response
 
 from extensions.auth import (
     require_parent_auth, _login_rate_limit_ok, _login_record_failure,
-    _login_clear, _api_rate_limit_ok,
+    _login_clear, _login_remaining, _api_rate_limit_ok,
 )
 from extensions.db import get_db
 
@@ -83,16 +83,28 @@ def register_routes(app):
         ip = request.remote_addr or 'unknown'
         ok, retry = _login_rate_limit_ok(ip)
         if not ok:
-            return jsonify({"success": False, "error": f"尝试次数过多, 请 {retry} 秒后再试"}), 429
+            return jsonify({
+                "success": False,
+                "error": f"尝试次数过多, 请 {retry} 秒后再试",
+                "remaining": 0,
+            }), 429
 
         data = request.json or {}
         pin = str(data.get('pin', '')).strip()
         if not (pin.isdigit() and len(pin) == 4):
             _login_record_failure(ip)
-            return jsonify({"success": False, "error": "PIN 必须是 4 位数字"}), 400
+            return jsonify({
+                "success": False,
+                "error": "PIN 必须是 4 位数字",
+                "remaining": _login_remaining(ip),
+            }), 400
         if not _check_pin(pin):
             _login_record_failure(ip)
-            return jsonify({"success": False, "error": "PIN 错误"}), 401
+            return jsonify({
+                "success": False,
+                "error": "PIN 错误",
+                "remaining": _login_remaining(ip),
+            }), 401
         _login_clear(ip)
         session['parent_auth'] = True
         session.permanent = True
@@ -114,6 +126,10 @@ def register_routes(app):
             return jsonify({"success": False, "error": "当前 PIN 错误"}), 401
         if not (new.isdigit() and len(new) == 4):
             return jsonify({"success": False, "error": "新 PIN 必须是 4 位数字"}), 400
+        if new == current:
+            # 拒同值: 防止前端 bug 把当前 PIN 重复提交, 浪费一次"修改"操作
+            # 也防止用 change-pin 误清 _LOGIN_WINDOW (虽然 _login_clear 在登录成功时已调, 这里也兜个底)
+            return jsonify({"success": False, "error": "新 PIN 不能与当前 PIN 相同"}), 400
         _save_pin(_hash_pin(new))
         return jsonify({"success": True})
 

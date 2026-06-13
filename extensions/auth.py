@@ -43,6 +43,14 @@ def _login_clear(ip):
         _LOGIN_WINDOW.pop(ip, None)
 
 
+def _login_remaining(ip):
+    """返回该 IP 还能试几次 (0 = 已锁定)。前端可显示 "还剩 N 次"。"""
+    with _AUTH_LOCK:
+        now = time.time()
+        arr = [t for t in _LOGIN_WINDOW.get(ip, []) if now - t < LOCKOUT_SEC]
+        return max(MAX_ATTEMPTS - len(arr), 0)
+
+
 # === 通用 API 限流: per-IP 滑动窗口 ===
 _API_RATE = {}  # (ip, bucket) -> [timestamp, ...]
 _API_LIMITS = {
