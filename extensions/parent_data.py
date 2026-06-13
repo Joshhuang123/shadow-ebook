@@ -5,6 +5,7 @@ Does NOT own: login rate limit helpers / require_parent_auth (auth.py — import
 """
 import hashlib
 import json
+import logging
 import sys
 from pathlib import Path
 from flask import jsonify, request, session, Response
@@ -14,6 +15,9 @@ from extensions.auth import (
     _login_clear, _api_rate_limit_ok,
 )
 from extensions.db import _safe_write_json
+
+
+logger = logging.getLogger(__name__)
 
 
 PARENT_DATA_DIR = Path(__file__).resolve().parent.parent / 'data' / 'parent'
@@ -32,7 +36,7 @@ def _load_pin_hash() -> str:
         return PIN_FILE.read_text().strip()
     default = _hash_pin('0000')
     PIN_FILE.write_text(default)
-    print('🔐 家长 PIN 首次初始化: 默认 0000, 请尽快修改', file=sys.stderr)
+    logger.warning('家长 PIN 首次初始化: 默认 0000, 请尽快修改')
     return default
 
 

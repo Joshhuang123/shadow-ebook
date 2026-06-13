@@ -6,6 +6,7 @@ Shadow Learning - 英语跟读辅导系统
 App 入口。每个域在 extensions/*.py,通过 register_routes(app) 挂路由。
 HTML 页面路由(无业务逻辑的"壳"页面)直接在本文件定义。
 """
+import logging
 import os
 import secrets
 import socket
@@ -17,6 +18,19 @@ from extensions import pwa, courses, tts, books, parent_data, db
 
 
 WEB_DIR = Path(__file__).parent / 'web'
+DATA_DIR = Path(__file__).parent / 'data'
+LOG_FILE = DATA_DIR / 'shadow.log'
+
+
+# === Phase 2 加 logging: stdout + 文件 双输出 ===
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s %(name)s %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(str(LOG_FILE)),
+    ],
+)
 
 
 def _send_html(filename):

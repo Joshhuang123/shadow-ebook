@@ -5,17 +5,22 @@ Does NOT own: TTS for book sentences (tts.py), parent stats (parent_data.py).
 """
 import io
 import json
+import logging
 import os
 import re
 import html
+import threading
 import zipfile
 import traceback
 from pathlib import Path
 from flask import jsonify, request, send_from_directory
 from werkzeug.utils import secure_filename
 
-from extensions.auth import require_parent_auth
+from extensions.auth import require_parent_auth, _api_rate_limit_ok
 from extensions.db import _safe_write_json
+
+
+logger = logging.getLogger(__name__)
 
 
 # === 路径穿越防御: book_id 只能含字母数字下划线连字符 ===
@@ -41,6 +46,7 @@ def safe_book_path(book_id):
 
 # === list_books 缓存: mtime-based, books 目录或任一 book JSON 变更时自动失效 ===
 _BOOKS_CACHE = {"key": None, "result": None}
+_BOOKS_CACHE_LOCK = threading.Lock()  # Phase 2 加锁
 
 
 def _books_cache_key(books_dir: Path):
@@ -138,37 +144,38 @@ def register_routes(app):
     @app.route('/api/books')
     def list_books():
         """列出所有已导入的书籍 (有 mtime 缓存)"""
-        books_dir = BOOKS_DIR
-        books_dir.mkdir(parents=True, exist_ok=True)
+        with _BOOKS_CACHE_LOCK:
+            books_dir = BOOKS_DIR
+            books_dir.mkdir(parents=True, exist_ok=True)
 
-        # 缓存命中:目录和文件 mtime 没变就复用
-        key = _books_cache_key(books_dir)
-        if key is not None and key == _BOOKS_CACHE["key"]:
-            return jsonify({"success": True, "books": _BOOKS_CACHE["result"]})
+            # 缓存命中:目录和文件 mtime 没变就复用
+            key = _books_cache_key(books_dir)
+            if key is not None and key == _BOOKS_CACHE["key"]:
+                return jsonify({"success": True, "books": _BOOKS_CACHE["result"]})
 
-        books = []
-        for f in books_dir.glob('*.json'):
-            try:
-                data = json.loads(f.read_text())
-                total_sentences = sum(len(ch.get('sentences', [])) for ch in data.get('chapters', []))
-                lexile = calc_lexile(data)
-                books.append({
-                    "id": f.stem,
-                    "title": data.get('book', data.get('title', f.stem)),
-                    "chapters": len(data.get('chapters', [])),
-                    "sentences": total_sentences,
-                    "lexile": lexile,
-                    "cover": data.get('cover')
-                })
-            except Exception as e:
-                print(f"⚠️ 加载书籍失败 {f.stem}: {e}")
+            books = []
+            for f in books_dir.glob('*.json'):
+                try:
+                    data = json.loads(f.read_text())
+                    total_sentences = sum(len(ch.get('sentences', [])) for ch in data.get('chapters', []))
+                    lexile = calc_lexile(data)
+                    books.append({
+                        "id": f.stem,
+                        "title": data.get('book', data.get('title', f.stem)),
+                        "chapters": len(data.get('chapters', [])),
+                        "sentences": total_sentences,
+                        "lexile": lexile,
+                        "cover": data.get('cover')
+                    })
+                except Exception as e:
+                    logger.warning(f"加载书籍失败 {f.stem}: {e}")
 
-        # 写入缓存
-        if key is not None:
-            _BOOKS_CACHE["key"] = key
-            _BOOKS_CACHE["result"] = books
+            # 写入缓存
+            if key is not None:
+                _BOOKS_CACHE["key"] = key
+                _BOOKS_CACHE["result"] = books
 
-        return jsonify({"success": True, "books": books})
+            return jsonify({"success": True, "books": books})
 
     @app.route('/api/book/<book_id>', methods=['DELETE'])
     @require_parent_auth
@@ -186,6 +193,11 @@ def register_routes(app):
     @require_parent_auth
     def import_book():
         """导入 EPUB 电子书 (需家长鉴权)"""
+        # Phase 2 新增: import 限流 (10/h/IP),防 100MB 上传被滥用
+        ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'import')
+        if not ok:
+            return jsonify({"success": False, "error": f"导入过于频繁, {retry} 秒后再试"}), 429
+
         if 'epub' not in request.files:
             return jsonify({"success": False, "error": "没有上传文件"})
 
@@ -225,13 +237,13 @@ def register_routes(app):
                                 with open(cover_path, 'wb') as f:
                                     f.write(img_data)
                                 cover_path = f'/data/covers/{cover_filename}'
-                                print(f'封面已提取: {cover_filename}')
+                                logger.info(f'封面已提取: {cover_filename}')
                                 break
                         except Exception as e:
-                            print(f'尝试封面图案失败: {e}')
+                            logger.warning(f'尝试封面图案失败: {e}')
                             continue
                 except Exception as e:
-                    print(f'提取封面出错: {e}')
+                    logger.warning(f'提取封面出错: {e}')
 
                 # 尝试从 content.opf 读取 spine 顺序
                 spine_items = []
@@ -244,7 +256,7 @@ def register_routes(app):
                     id_to_file = dict(re.findall(r'<item[^>]+id=["\']([^"\']+)["\'][^>]+href=["\']([^"\']+)["\']', content_opf))
                     spine_items = [id_to_file.get(sid, '') for sid in spine_ids if sid in id_to_file]
                 except Exception as e:
-                    print(f'解析spine顺序失败: {e}')
+                    logger.warning(f'解析spine顺序失败: {e}')
 
                 # 按 spine 顺序处理文件, 没有 spine 则按文件名排序
                 ordered_files = spine_items if spine_items else sorted(html_files)
@@ -263,22 +275,21 @@ def register_routes(app):
                     """将文本拆分成句子
                     智能分句: 避开称谓缩写 (Mr./Dr./Mrs.) / 国家缩写 (U.S.A.) / 数字小数点 / 省略号
 
-                    ⚠️ Phase 1 已知 bug: _re.sub 应该是 re.sub。当前保留以维持 Phase 1 行为一致性,
-                    Phase 2 的"修真 bug"环节会一并修复。
+                    Phase 2 修: 原代码用 `_re.sub` (NameError at runtime),改为 `re.sub`。
                     """
                     # 1. 先保护"非句末"的点 - 用占位符替换, 分完句再还原
                     PLACEHOLDER = '\x00'
                     # 称谓: Mr. Dr. Mrs. Ms. Prof. Sr. Jr. St. Mt. vs. etc.
-                    text = _re.sub(r'\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|Mt|vs|etc)\.', r'\1' + PLACEHOLDER, text)
+                    text = re.sub(r'\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|Mt|vs|etc)\.', r'\1' + PLACEHOLDER, text)
                     # 单字母缩写序列: U.S.A. / U.K. / U.S.
-                    text = _re.sub(r'\b([A-Z])\.', r'\1' + PLACEHOLDER, text)
+                    text = re.sub(r'\b([A-Z])\.', r'\1' + PLACEHOLDER, text)
                     # 数字小数点: 1.5  2.0  3.14
-                    text = _re.sub(r'(\d)\.(\d)', r'\1' + PLACEHOLDER + r'\2', text)
+                    text = re.sub(r'(\d)\.(\d)', r'\1' + PLACEHOLDER + r'\2', text)
                     # 省略号: ...
                     text = text.replace('...', PLACEHOLDER * 3)
 
                     # 2. 按真正的句末标点切分 (句末 + 空白 + 大写/引号/左括号 = 新句开始)
-                    parts = _re.split(r'(?<=[.!?])\s+(?=[A-Z"\'(])', text)
+                    parts = re.split(r'(?<=[.!?])\s+(?=[A-Z"\'(])', text)
 
                     # 3. 还原占位符 + 去引号
                     sentences = []
@@ -348,7 +359,7 @@ def register_routes(app):
                                 chapters.append({"name": f"Part {len(chapters)+1}", "sentences": current_sentences[:50]})
                                 current_sentences = current_sentences[50:]
                         except Exception as e:
-                            print(f'解析HTML章节失败: {e}')
+                            logger.warning(f'解析HTML章节失败: {e}')
                             continue
                     if current_sentences:
                         chapters.append({"name": f"Part {len(chapters)+1}", "sentences": current_sentences})
