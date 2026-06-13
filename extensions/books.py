@@ -98,6 +98,16 @@ _CONTAINER_ROOTFILE = re.compile(r'<rootfile[^>]+full-path=["\']([^"\']+)["\']')
 _OPF_ITEMREF = re.compile(r'<itemref[^>]+idref=["\']([^"\']+)["\']')
 _OPF_ITEM = re.compile(r'<item[^>]+id=["\']([^"\']+)["\'][^>]+href=["\']([^"\']+)["\']')
 _OPF_COVER_META = re.compile(r'<meta[^>]+name=["\']cover["\'][^>]+content=["\']([^"\']+)["\']', re.I)
+# OPF metadata 提取 (dc:* 命名空间元素, 包在 <metadata>...</metadata> 里)
+_DC_TITLE = re.compile(r'<dc:title[^>]*>([^<]*)</dc:title>', re.I)
+_DC_CREATOR = re.compile(r'<dc:creator[^>]*>([^<]*)</dc:creator>', re.I)
+_DC_PUBLISHER = re.compile(r'<dc:publisher[^>]*>([^<]*)</dc:publisher>', re.I)
+_DC_DATE = re.compile(r'<dc:date[^>]*>([^<]*)</dc:date>', re.I)
+_DC_LANGUAGE = re.compile(r'<dc:language[^>]*>([^<]*)</dc:language>', re.I)
+_DC_DESCRIPTION = re.compile(r'<dc:description[^>]*>([^<]*)</dc:description>', re.I)
+_DC_IDENTIFIER = re.compile(r'<dc:identifier[^>]*>([^<]*)</dc:identifier>', re.I)
+_DC_SUBJECT = re.compile(r'<dc:subject[^>]*>([^<]*)</dc:subject>', re.I)
+_DC_RIGHTS = re.compile(r'<dc:rights[^>]*>([^<]*)</dc:rights>', re.I)
 
 
 def _find_content_opf_path(zf) -> str:
@@ -172,6 +182,146 @@ def _save_cover(zf, book_title: str, arcname: str) -> str:
         return ''
 
 
+def _parse_opf_metadata(zf, opf_path: str) -> dict:
+    """从 content.opf 解析 Dublin Core metadata。
+    返回 {title, creator, publisher, date, language, description, identifier, subjects[], rights}。
+    字段缺失时为 None (subjects 为 []) — 调用方用 .get() 安全。"""
+    if not opf_path:
+        return {}
+    try:
+        opf = zf.read(opf_path).decode('utf-8', errors='ignore')
+    except KeyError:
+        return {}
+    # 只在 <metadata>...</metadata> 范围内搜, 避免误中 <meta name="cover">
+    m = re.search(r'<metadata[^>]*>(.*?)</metadata>', opf, re.S | re.I)
+    if not m:
+        return {}
+    md = m.group(1)
+
+    def _first(pattern):
+        mm = pattern.search(md)
+        return mm.group(1).strip() if mm else None
+
+    date_str = _first(_DC_DATE)
+    # date 可能是 '2020-09-15T00:00:00Z' 或 '2020' 或 'September 2020', 简化取前 4 位年份
+    year = None
+    if date_str:
+        ym = re.match(r'(\d{4})', date_str)
+        if ym:
+            year = int(ym.group(1))
+
+    return {
+        'title': _first(_DC_TITLE),
+        'creator': _first(_DC_CREATOR),
+        'publisher': _first(_DC_PUBLISHER),
+        'date': date_str,
+        'year': year,
+        'language': _first(_DC_LANGUAGE),
+        'description': _first(_DC_DESCRIPTION),
+        'identifier': _first(_DC_IDENTIFIER),
+        'subjects': [s.strip() for s in _DC_SUBJECT.findall(md) if s.strip()],
+        'rights': _first(_DC_RIGHTS),
+    }
+
+
+# === TOC 解析: NCX (EPUB 2) + nav (EPUB 3) ===
+_NCX_MEDIA = 'application/x-dtbncx+xml'
+_NAV_EPUB_TYPE = re.compile(r'<nav[^>]+epub:type=["\']toc["\']', re.I)
+_NCX_NAVPOINT = re.compile(
+    r'<navPoint[^>]+id=["\']([^"\']+)["\'][^>]+playOrder=["\']([^"\']+)["\']',
+    re.I,
+)
+_NCX_NAVLABEL_TEXT = re.compile(r'<navLabel[^>]*>.*?<text[^>]*>([^<]*)</text>', re.S | re.I)
+_NCX_CONTENT_SRC = re.compile(r'<content[^>]+src=["\']([^"\']+)["\']', re.I)
+# nav 格式: <li><a href="ch1.xhtml">Title</a></li>
+_NAV_LI = re.compile(r'<li[^>]*>\s*<a[^>]+href=["\']([^"\']+)["\'][^>]*>([^<]+)</a>', re.I)
+
+
+def _parse_toc(zf, opf_path: str) -> list:
+    """从 content.opf 找 NCX / nav, 解析真 TOC。
+
+    返回 [{title, href, level}] 按阅读顺序, level 0 = 顶级章节 (nav 暂都返 0, 不深嵌)。
+    找不到 NCX 和 nav 都返 [], 调用方降级到正则猜章节。
+    """
+    if not opf_path:
+        return []
+    try:
+        opf = zf.read(opf_path).decode('utf-8', errors='ignore')
+    except KeyError:
+        return []
+
+    opf_dir = opf_path.rsplit('/', 1)[0] + '/' if '/' in opf_path else ''
+
+    # 1) EPUB 2 NCX: 在 manifest 里找 media-type='application/x-dtbncx+xml' 的 item
+    ncx_href = None
+    for item_id, href in _OPF_ITEM.findall(opf):
+        # 找 item 标签中含 ncx media-type
+        item_match = re.search(
+            r'<item[^>]+id=["\']' + re.escape(item_id) + r'["\'][^>]*media-type=["\']' + re.escape(_NCX_MEDIA) + r'["\']',
+            opf, re.I,
+        )
+        if item_match:
+            ncx_href = href
+            break
+        # 反过来, href 在前
+        item_match = re.search(
+            r'<item[^>]+media-type=["\']' + re.escape(_NCX_MEDIA) + r'["\'][^>]+id=["\']' + re.escape(item_id) + r'["\']',
+            opf, re.I,
+        )
+        if item_match:
+            ncx_href = href
+            break
+    # 也看 spine 的 toc 属性 (EPUB 2 通常显式声明)
+    if not ncx_href:
+        spine_toc = re.search(r'<spine[^>]+toc=["\']([^"\']+)["\']', opf, re.I)
+        if spine_toc:
+            toc_id = spine_toc.group(1)
+            for item_id, href in _OPF_ITEM.findall(opf):
+                if item_id == toc_id:
+                    ncx_href = href
+                    break
+
+    if ncx_href:
+        ncx_arcname = opf_dir + ncx_href
+        try:
+            ncx = zf.read(ncx_arcname).decode('utf-8', errors='ignore')
+        except KeyError:
+            ncx = ''
+        if ncx:
+            # 找 navMap 块, 逐个 navPoint
+            navmap = re.search(r'<navMap[^>]*>(.*?)</navMap>', ncx, re.S | re.I)
+            if navmap:
+                entries = []
+                for np_match in re.finditer(r'<navPoint\b.*?</navPoint>', navmap.group(1), re.S | re.I):
+                    block = np_match.group(0)
+                    label_m = _NCX_NAVLABEL_TEXT.search(block)
+                    src_m = _NCX_CONTENT_SRC.search(block)
+                    if label_m and src_m:
+                        entries.append({
+                            'title': re.sub(r'\s+', ' ', label_m.group(1)).strip(),
+                            'href': src_m.group(1).split('#')[0],  # 去掉 #anchor
+                            'level': 0,  # 简化: 不算嵌套
+                        })
+                if entries:
+                    return entries
+
+    # 2) EPUB 3 nav: 在 content.opf 同目录找 nav.xhtml / toc.xhtml 等
+    for candidate in ('nav.xhtml', 'toc.xhtml', 'nav.html'):
+        try:
+            nav = zf.read(opf_dir + candidate).decode('utf-8', errors='ignore')
+        except KeyError:
+            continue
+        if _NAV_EPUB_TYPE.search(nav):
+            entries = []
+            for href, title in _NAV_LI.findall(nav):
+                t = re.sub(r'\s+', ' ', title).strip()
+                if t:
+                    entries.append({'title': t, 'href': href.split('#')[0], 'level': 0})
+            if entries:
+                return entries
+    return []
+
+
 def calc_lexile(book_data):
     """根据书名估算蓝思值 (因为句子数据不完整)"""
     title = book_data.get('book', '').lower()
@@ -242,7 +392,7 @@ def calc_lexile(book_data):
 def register_routes(app):
     @app.route('/api/book/<book_id>')
     def get_book(book_id):
-        """获取书籍内容"""
+        """获取书籍内容 (R9: 顶层多返 toc, 旧书无 toc 字段时为 [])"""
         if not is_valid_book_id(book_id):
             return jsonify({"success": False, "error": "非法书籍ID"}), 400
         conn = get_db()
@@ -251,11 +401,13 @@ def register_routes(app):
             return jsonify({"success": False, "error": "书籍不存在"}), 404
         book = json.loads(row['data_json'])
         book['id'] = book_id  # 防御性:确保 id 字段存在
+        if 'toc' not in book:
+            book['toc'] = []
         return jsonify({"success": True, "book": book})
 
     @app.route('/api/books')
     def list_books():
-        """列出所有已导入的书籍 (Phase 3a: 直查 DB, 无缓存 — WAL 模式下 mtime 不可靠)"""
+        """列出所有已导入的书籍 (R9: 多返 author/year/publisher 让书列表显示作者)"""
         conn = get_db()
         books = []
         for row in conn.execute('SELECT id, data_json FROM books ORDER BY updated_at DESC').fetchall():
@@ -266,10 +418,13 @@ def register_routes(app):
             books.append({
                 "id": book_id,
                 "title": data.get('book', data.get('title', book_id)),
+                "author": data.get('creator'),         # R9: 旧书无该字段 → None
+                "year": data.get('year'),
+                "publisher": data.get('publisher'),
                 "chapters": len(chapters),
                 "sentences": total_sentences,
                 "lexile": calc_lexile(data),
-                "cover": data.get('cover')
+                "cover": data.get('cover'),
             })
         return jsonify({"success": True, "books": books})
 
@@ -317,6 +472,17 @@ def register_routes(app):
                 opf_path = _find_content_opf_path(zf)
                 if not opf_path:
                     return jsonify({"success": False, "error": "不是有效的 EPUB 文件 (缺 META-INF/container.xml)"})
+
+                # === R9: 解析 OPF metadata (title/author/publisher/date/...) + 真 TOC ===
+                opf_meta = _parse_opf_metadata(zf, opf_path)
+                toc_entries = _parse_toc(zf, opf_path)
+                # title 用 OPF 的 (e.g. "Harry Potter and the Philosopher's Stone"), fallback 到 filename
+                if opf_meta.get('title'):
+                    book_title = opf_meta['title']
+                if toc_entries:
+                    logger.info(f'解析真 TOC: {len(toc_entries)} 章节')
+                else:
+                    logger.info('未找到真 TOC, 降级到正则猜章节')
 
                 html_files = [n for n in zf.namelist() if n.endswith(('.html', '.xhtml', '.htm')) and 'image' not in n.lower()]
 
@@ -410,6 +576,17 @@ def register_routes(app):
                 "id": book_id,
                 "chapters": merged_chapters,
                 "cover": cover_path,
+                # R9: 顶层 OPF metadata 字段 (老 book 导入时无这些字段 → API 端用 .get 返 None)
+                "creator": opf_meta.get('creator'),
+                "publisher": opf_meta.get('publisher'),
+                "date": opf_meta.get('date'),
+                "year": opf_meta.get('year'),
+                "language": opf_meta.get('language'),
+                "description": opf_meta.get('description'),
+                "identifier": opf_meta.get('identifier'),
+                "subjects": opf_meta.get('subjects') or [],
+                "rights": opf_meta.get('rights'),
+                "toc": toc_entries,  # 真 TOC, 无则 []
             }
             conn = get_db()
             # === Round 4: 重复 import 警告 (避免静默覆盖) ===
@@ -422,26 +599,15 @@ def register_routes(app):
                 'VALUES (?, ?, ?, ?)',
                 (book_id, json.dumps(book_data, ensure_ascii=False), now, now)
             )
-            book_data = {
-                "book": book_title,
-                "id": book_id,
-                "chapters": merged_chapters,
-                "cover": cover_path,
-            }
-            conn = get_db()
-            now = int(time.time() * 1000)
-            conn.execute(
-                'INSERT OR REPLACE INTO books (id, data_json, imported_at, updated_at) '
-                'VALUES (?, ?, ?, ?)',
-                (book_id, json.dumps(book_data, ensure_ascii=False), now, now)
-            )
             return jsonify({
                 "success": True,
                 "book_id": book_id,
                 "book_title": book_title,
+                "author": opf_meta.get('creator'),
                 "total_chapters": len(merged_chapters),
                 "total_sentences": total_sentences,
-                "has_cover": cover_path is not None
+                "has_cover": cover_path is not None,
+                "has_toc": bool(toc_entries),
             })
 
         except Exception as e:

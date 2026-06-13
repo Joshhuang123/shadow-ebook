@@ -16,6 +16,8 @@ from extensions.books import (
     _is_chapter_heading,
     _find_content_opf_path,
     _find_cover_via_opf,
+    _parse_opf_metadata,
+    _parse_toc,
 )
 
 
@@ -200,3 +202,168 @@ def test_find_cover_via_opf_id_mismatch_returns_empty():
 def test_find_cover_via_opf_empty_path_returns_empty():
     """opf_path 为空 → 返空 (调用方会走文件名 fallback)"""
     assert _find_cover_via_opf(_make_epub({}), '') == ''
+
+
+# === _parse_opf_metadata (R9: 提取出版信息) ===
+
+_FULL_OPF = b'''<?xml version="1.0"?>
+<package xmlns="http://www.idpf.org/2007/opf" xmlns:dc="http://purl.org/dc/elements/1.1/" version="2.0">
+  <metadata>
+    <dc:title>Harry Potter and the Philosopher's Stone</dc:title>
+    <dc:creator id="creator">J.K. Rowling</dc:creator>
+    <dc:publisher>Scholastic</dc:publisher>
+    <dc:date>1997-06-26</dc:date>
+    <dc:language>en</dc:language>
+    <dc:description>A young wizard discovers his heritage.</dc:description>
+    <dc:identifier id="isbn">urn:isbn:9780439362139</dc:identifier>
+    <dc:subject>Fantasy</dc:subject>
+    <dc:subject>Children</dc:subject>
+    <dc:rights>Copyright J.K. Rowling</dc:rights>
+    <meta name="cover" content="cover-img"/>
+  </metadata>
+  <manifest>
+    <item id="ch1" href="ch1.xhtml" media-type="application/xhtml+xml"/>
+  </manifest>
+  <spine><itemref idref="ch1"/></spine>
+</package>'''
+
+
+def test_parse_opf_metadata_full():
+    """全字段 OPF 一次性提全: title/creator/publisher/year/language/description/identifier/subjects[]/rights"""
+    zf = _make_epub({'content.opf': _FULL_OPF})
+    meta = _parse_opf_metadata(zf, 'content.opf')
+    assert meta['title'] == "Harry Potter and the Philosopher's Stone"
+    assert meta['creator'] == 'J.K. Rowling'
+    assert meta['publisher'] == 'Scholastic'
+    assert meta['date'] == '1997-06-26'
+    assert meta['year'] == 1997
+    assert meta['language'] == 'en'
+    assert meta['description'].startswith('A young wizard')
+    assert meta['identifier'] == 'urn:isbn:9780439362139'
+    assert meta['subjects'] == ['Fantasy', 'Children']
+    assert meta['rights'] == 'Copyright J.K. Rowling'
+
+
+def test_parse_opf_metadata_year_only_date():
+    """有些 EPUB date 只写 '1997' 或 '1997-00-00', 都能解出 year=1997"""
+    zf = _make_epub({'content.opf': b'<package><metadata><dc:date>1997</dc:date></metadata></package>'})
+    meta = _parse_opf_metadata(zf, 'content.opf')
+    assert meta['date'] == '1997'
+    assert meta['year'] == 1997
+
+
+def test_parse_opf_metadata_missing_fields():
+    """缺字段时返 None / [], 不该 crash"""
+    zf = _make_epub({'content.opf': b'<package><metadata><dc:title>Only Title</dc:title></metadata></package>'})
+    meta = _parse_opf_metadata(zf, 'content.opf')
+    assert meta['title'] == 'Only Title'
+    assert meta['creator'] is None
+    assert meta['subjects'] == []
+    assert meta['year'] is None
+
+
+def test_parse_opf_metadata_no_metadata_block():
+    """没 <metadata> 块 → 返空 dict, 不该 crash"""
+    zf = _make_epub({'content.opf': b'<package><manifest/></package>'})
+    assert _parse_opf_metadata(zf, 'content.opf') == {}
+
+
+def test_parse_opf_metadata_no_opf_path():
+    """opf_path 为空 → 返空 dict"""
+    assert _parse_opf_metadata(_make_epub({}), '') == {}
+
+
+# === _parse_toc (R9: 真 TOC 解析, NCX 优先, nav 兜底) ===
+
+_NCX = b'''<?xml version="1.0"?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+  <head><meta name="dtb:uid" content="urn:uuid:abc"/></head>
+  <docTitle><text>Book</text></docTitle>
+  <navMap>
+    <navPoint id="ch1" playOrder="1">
+      <navLabel><text>Chapter 1: The Boy Who Lived</text></navLabel>
+      <content src="ch1.xhtml"/>
+    </navPoint>
+    <navPoint id="ch2" playOrder="2">
+      <navLabel><text>Chapter 2: The Vanishing Glass</text></navLabel>
+      <content src="ch2.xhtml#anchor"/>
+    </navPoint>
+    <navPoint id="ch3" playOrder="3">
+      <navLabel><text>Chapter 3: The Letters from No One</text></navLabel>
+      <content src="ch3.xhtml"/>
+    </navPoint>
+  </navMap>
+</ncx>'''
+
+
+def test_parse_toc_ncx_basic():
+    """NCX 格式 (EPUB 2): <navPoint><navLabel><text>TITLE</text></navLabel><content src="href"/></navPoint>"""
+    zf = _make_epub({
+        'content.opf': (
+            b'<?xml version="1.0"?><package><manifest>'
+            b'<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>'
+            b'</manifest><spine toc="ncx"/></package>'
+        ),
+        'toc.ncx': _NCX,
+    })
+    toc = _parse_toc(zf, 'content.opf')
+    assert len(toc) == 3
+    assert toc[0]['title'] == 'Chapter 1: The Boy Who Lived'
+    assert toc[0]['href'] == 'ch1.xhtml'
+    assert toc[1]['title'] == 'Chapter 2: The Vanishing Glass'
+    # anchor 被剥掉 (我们用整页匹配, 不要 anchor 干扰)
+    assert toc[1]['href'] == 'ch2.xhtml'
+    assert toc[2]['title'] == 'Chapter 3: The Letters from No One'
+
+
+def test_parse_toc_ncx_in_subdir():
+    """NCX 在子目录 (OEBPS/toc.ncx) 时, manifest 的 href 需拼接 opf_dir"""
+    zf = _make_epub({
+        'META-INF/container.xml': b'<container><rootfiles><rootfile full-path="OEBPS/content.opf"/></rootfiles></container>',
+        'OEBPS/content.opf': (
+            b'<?xml version="1.0"?><package><manifest>'
+            b'<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>'
+            b'</manifest><spine toc="ncx"/></package>'
+        ),
+        'OEBPS/toc.ncx': _NCX,
+    })
+    toc = _parse_toc(zf, 'OEBPS/content.opf')
+    assert len(toc) == 3
+    assert toc[0]['href'] == 'ch1.xhtml'
+
+
+def test_parse_toc_nav_epub3():
+    """EPUB 3 nav: <nav epub:type="toc"><ol><li><a href="x">Title</a></li></ol></nav>"""
+    nav_html = b'''<?xml version="1.0"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+  <body>
+    <nav epub:type="toc">
+      <h1>Table of Contents</h1>
+      <ol>
+        <li><a href="ch1.xhtml">Chapter 1: Beginnings</a></li>
+        <li><a href="ch2.xhtml">Chapter 2: Journeys</a></li>
+      </ol>
+    </nav>
+  </body>
+</html>'''
+    zf = _make_epub({
+        'content.opf': b'<?xml version="1.0"?><package><manifest/></package>',
+        'nav.xhtml': nav_html,
+    })
+    toc = _parse_toc(zf, 'content.opf')
+    assert len(toc) == 2
+    assert toc[0] == {'title': 'Chapter 1: Beginnings', 'href': 'ch1.xhtml', 'level': 0}
+    assert toc[1]['title'] == 'Chapter 2: Journeys'
+
+
+def test_parse_toc_no_toc_returns_empty():
+    """既没 NCX 也没 nav → 返 [], 调用方降级到正则猜"""
+    zf = _make_epub({
+        'content.opf': b'<?xml version="1.0"?><package><manifest/></package>',
+    })
+    assert _parse_toc(zf, 'content.opf') == []
+
+
+def test_parse_toc_no_opf_path():
+    """opf_path 为空 → 返 []"""
+    assert _parse_toc(_make_epub({}), '') == []

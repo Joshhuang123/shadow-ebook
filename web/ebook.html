@@ -623,18 +623,159 @@
 
         /* 阅读器主体 */
         .reader-main {
-            display: flex;
+            display: grid;
+            grid-template-columns: 240px 1fr 300px;
             gap: 0;
             height: calc(100vh - 80px);
             position: relative;
         }
 
-        .text-panel {
+        /* 左侧 TOC 侧边栏 (R9) */
+        .toc-sidebar {
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .toc-sidebar-header {
+            padding: 16px 20px 12px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85em;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            flex-shrink: 0;
+        }
+        .toc-list {
+            padding: 8px 0;
             flex: 1;
+        }
+        .toc-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 10px 20px;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: 0.9em;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            transition: all 0.15s;
+            line-height: 1.4;
+        }
+        .toc-item:hover {
+            background: var(--bg-dark);
+            border-left-color: var(--primary-light);
+        }
+        .toc-item.active {
+            background: var(--bg-dark);
+            border-left-color: var(--primary);
+            color: var(--primary);
+            font-weight: 600;
+        }
+        .toc-item-meta {
+            font-size: 0.75em;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+        .toc-empty {
+            padding: 24px 20px;
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        /* 中间内容 (书信息 + 章节内容) */
+        .text-panel {
             overflow-y: auto;
             padding: 24px;
             height: 100%;
         }
+
+        /* 书信息卡 (R9) */
+        .book-info-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        .book-info-cover {
+            width: 96px;
+            height: 132px;
+            border-radius: 8px;
+            background: var(--bg-dark);
+            object-fit: cover;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .book-info-cover-fallback {
+            width: 96px;
+            height: 132px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 0.85em;
+            font-weight: 600;
+            padding: 8px;
+            flex-shrink: 0;
+        }
+        .book-info-body {
+            flex: 1;
+            min-width: 0;
+        }
+        .book-info-title {
+            font-size: 1.4em;
+            font-weight: 700;
+            margin: 0 0 6px 0;
+            color: var(--text-primary);
+            line-height: 1.3;
+        }
+        .book-info-meta {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        .book-info-meta span + span::before {
+            content: " · ";
+            margin: 0 4px;
+        }
+        .book-info-description {
+            font-size: 0.9em;
+            line-height: 1.6;
+            color: var(--text-primary);
+            max-height: 4.8em;
+            overflow: hidden;
+            position: relative;
+        }
+        .book-info-description.collapsed {
+            max-height: 4.8em;
+        }
+        .book-info-description.expanded {
+            max-height: none;
+        }
+        .book-info-toggle {
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-size: 0.85em;
+            cursor: pointer;
+            padding: 4px 0;
+            margin-top: 4px;
+        }
+        .book-info-toggle:hover { text-decoration: underline; }
 
         /* 右侧控制面板固定 */
         .sidebar {
@@ -650,9 +791,12 @@
             gap: 16px;
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 1023px) {
             .reader-main {
-                flex-direction: column;
+                grid-template-columns: 1fr;
+            }
+            .toc-sidebar {
+                display: none;
             }
             .sidebar {
                 width: 100%;
@@ -666,22 +810,26 @@
             }
         }
 
-        /* iPad 横屏：左侧滚动，右侧固定 */
+        /* iPad 横屏：左侧 TOC 滚动, 中间内容, 右侧固定 */
         @media (min-width: 1024px) and (orientation: landscape) {
             .reader-main {
-                flex-direction: row;
+                grid-template-columns: 240px 1fr 320px;
             }
 
             .text-panel {
                 padding: 32px;
             }
 
-            .sidebar {
-                width: 320px;
+            .toc-sidebar {
                 position: sticky;
                 top: 0;
                 height: 100vh;
-                overflow-y: auto;
+            }
+
+            .sidebar {
+                position: sticky;
+                top: 0;
+                height: 100vh;
             }
 
             .sentence-display {
@@ -1705,9 +1853,23 @@
             </div>
 
             <div class="reader-main">
+                <!-- R9: 左侧 TOC 侧边栏 (替代顶部 chapter tabs) -->
+                <aside class="toc-sidebar">
+                    <div class="toc-sidebar-header">📑 目录</div>
+                    <div class="toc-list" id="toc-list"></div>
+                </aside>
+
                 <div class="text-panel">
-                    <!-- 章节标签 -->
-                    <div class="chapter-tabs" id="chapter-tabs"></div>
+                    <!-- R9: 书信息卡 (封面/作者/简介) -->
+                    <div class="book-info-card" id="book-info-card" style="display:none;">
+                        <div id="book-info-cover-slot"></div>
+                        <div class="book-info-body">
+                            <h1 class="book-info-title" id="book-info-title"></h1>
+                            <div class="book-info-meta" id="book-info-meta"></div>
+                            <div class="book-info-description collapsed" id="book-info-description"></div>
+                            <button class="book-info-toggle" id="book-info-toggle" style="display:none;">展开 ↓</button>
+                        </div>
+                    </div>
 
                     <!-- 进度条 -->
                     <div class="reading-progress">
@@ -2155,8 +2317,12 @@
                             const hasLocalCover = !!b.cover;
                             const fallbackColor = ['#B86A4E-#9A5238', '#5C7A4A-#3D5A2E', '#C8985F-#A07A45', '#7A3A40-#5A2A30', '#4A6B3A-#2D4A20', '#8B4A2C-#5C2E18', '#A04B47-#7A3530'][i % 7];
 
+                            // R9: 作者显示 — fallback 文本下加一行; tooltip 也带作者
+                            const authorLine = b.author ? `<div class="book-cover-author">${b.author}</div>` : '';
+                            const tooltip = b.author ? `${b.title} — ${b.author}` : b.title;
+
                             html += `
-                                <div class="book-spine" onclick="loadBook('${b.id}')" title="${b.title}">
+                                <div class="book-spine" onclick="loadBook('${b.id}')" title="${tooltip.replace(/"/g, '&quot;')}">
                                     <span class="lexile-badge ${levelClass}">${b.lexile > 0 ? b.lexile + 'L' : '?'}</span>
                                     <span class="cache-badge" id="cache-badge-${b.id}" style="display:none;"></span>
                                     <button class="book-delete-btn" onclick="event.stopPropagation(); deleteBook('${b.id}', '${b.title.replace(/'/g, "\\'")}')" title="删除">×</button>
@@ -2166,7 +2332,7 @@
                                              style="width:100%;height:100%;object-fit:cover;border-radius:6px;opacity:0;"
                                              onload="this.style.opacity='1';this.nextElementSibling.style.opacity='0';"
                                              onerror="this.style.display='none';">
-                                        <span class="book-cover-fallback" style="position:absolute;color:white;font-size:0.75em;font-weight:600;text-align:center;line-height:1.3;padding:8px;text-shadow:1px 1px 2px rgba(0,0,0,0.5);">${b.title}</span>
+                                        <span class="book-cover-fallback" style="position:absolute;color:white;font-size:0.75em;font-weight:600;text-align:center;line-height:1.3;padding:8px;text-shadow:1px 1px 2px rgba(0,0,0,0.5);">${b.title}${authorLine}</span>
                                     </div>
                                     <div class="book-spine-base"></div>
                                 </div>
@@ -2297,16 +2463,15 @@
                     currentBookId = bookId;
                     document.getElementById('reader-title').textContent = bookData.book;
 
-                    // 渲染章节标签
-                    const tabsContainer = document.getElementById('chapter-tabs');
-                    tabsContainer.innerHTML = '';
-                    bookData.chapters.forEach((ch, i) => {
-                        const tab = document.createElement('button');
-                        tab.className = 'chapter-tab' + (i === 0 ? ' active' : '');
-                        tab.textContent = ch.name || `第${i + 1}章`;
-                        tab.onclick = () => selectChapter(i);
-                        tabsContainer.appendChild(tab);
-                    });
+                    // R9: 渲染顶部"关于此书"卡
+                    renderBookInfoCard(bookData);
+
+                    // R9: 渲染左侧真 TOC 侧边栏 (用真 toc 优先, 降级到 chapter 列表)
+                    renderTocSidebar(bookData);
+
+                    // 兼容旧版: 顶部 chapter-tabs 容器已删除, 移除旧渲染
+                    const legacyTabs = document.getElementById('chapter-tabs');
+                    if (legacyTabs) legacyTabs.innerHTML = '';
 
                     selectChapter(0);
                     showReader();
@@ -2317,15 +2482,101 @@
             }
         }
 
+        // R9: 渲染左侧 TOC 侧边栏 — 用真 toc, 没有时降级到 chapter 列表
+        function renderTocSidebar(book) {
+            const list = document.getElementById('toc-list');
+            list.innerHTML = '';
+            const toc = book.toc || [];
+            const chapters = book.chapters || [];
+
+            // 优先用真 toc
+            if (toc.length > 0) {
+                toc.forEach((entry, i) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'toc-item' + (i === 0 ? ' active' : '');
+                    btn.innerHTML = `<div>${entry.title}</div><div class="toc-item-meta">第 ${i + 1} 章</div>`;
+                    btn.onclick = () => {
+                        // 真 toc 的 href 跟 chapters 数组里没严格对应, 但顺序一般对得上
+                        // 找不到匹配的 chapter 时, fall back 到第 i 个
+                        const idx = Math.min(i, chapters.length - 1);
+                        selectChapter(idx);
+                    };
+                    list.appendChild(btn);
+                });
+            } else if (chapters.length > 0) {
+                // 降级: 用 chapter.name 当目录项
+                chapters.forEach((ch, i) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'toc-item' + (i === 0 ? ' active' : '');
+                    btn.textContent = ch.name || `第 ${i + 1} 章`;
+                    btn.onclick = () => selectChapter(i);
+                    list.appendChild(btn);
+                });
+            } else {
+                list.innerHTML = '<div class="toc-empty">无目录信息</div>';
+            }
+        }
+
+        // R9: 渲染顶部"关于此书"卡 — 封面 + 标题 + 作者/出版/年份 + 简介 (可展开)
+        function renderBookInfoCard(book) {
+            const card = document.getElementById('book-info-card');
+            card.style.display = 'flex';
+
+            // 封面 (有本地 cover 用本地, 没有显示 fallback 色块)
+            const coverSlot = document.getElementById('book-info-cover-slot');
+            if (book.cover) {
+                coverSlot.innerHTML = `<img class="book-info-cover" src="${book.cover}" alt="${(book.book || '').replace(/"/g, '&quot;')}" onerror="this.outerHTML='<div class=\\'book-info-cover-fallback\\'>${(book.book || '').replace(/'/g, "\\'")}</div>'">`;
+            } else {
+                coverSlot.innerHTML = `<div class="book-info-cover-fallback">${book.book || ''}</div>`;
+            }
+
+            // 标题
+            document.getElementById('book-info-title').textContent = book.book || '';
+
+            // meta 行: 作者 · 出版 · 年份 · 语言 · 标识符
+            const meta = document.getElementById('book-info-meta');
+            const parts = [];
+            if (book.creator) parts.push(`<span>👤 ${book.creator}</span>`);
+            if (book.publisher) parts.push(`<span>📚 ${book.publisher}</span>`);
+            if (book.year) parts.push(`<span>📅 ${book.year}</span>`);
+            if (book.language) parts.push(`<span>🌐 ${book.language}</span>`);
+            if (book.identifier) parts.push(`<span>🆔 ${book.identifier}</span>`);
+            meta.innerHTML = parts.join('') || '<span>无出版信息</span>';
+
+            // 简介 (有描述才显示)
+            const desc = document.getElementById('book-info-description');
+            const toggle = document.getElementById('book-info-toggle');
+            if (book.description) {
+                desc.textContent = book.description;
+                desc.classList.remove('expanded');
+                desc.classList.add('collapsed');
+                // 内容超 4.8em 时显示 "展开"
+                if (desc.scrollHeight > desc.clientHeight + 4) {
+                    toggle.style.display = 'inline';
+                    toggle.textContent = '展开 ↓';
+                    toggle.onclick = () => {
+                        const expanded = desc.classList.toggle('expanded');
+                        desc.classList.toggle('collapsed', !expanded);
+                        toggle.textContent = expanded ? '收起 ↑' : '展开 ↓';
+                    };
+                } else {
+                    toggle.style.display = 'none';
+                }
+            } else {
+                desc.textContent = '';
+                toggle.style.display = 'none';
+            }
+        }
+
         // 选择章节
         function selectChapter(index) {
             currentChapterIndex = parseInt(index);
             sentences = bookData.chapters[currentChapterIndex].sentences;
             currentSentenceIndex = 0;
 
-            // 更新章节标签高亮
-            document.querySelectorAll('.chapter-tab').forEach((tab, i) => {
-                tab.classList.toggle('active', i === currentChapterIndex);
+            // R9: 更新左侧 TOC 高亮 (替代旧的 chapter-tab 高亮)
+            document.querySelectorAll('.toc-item').forEach((item, i) => {
+                item.classList.toggle('active', i === currentChapterIndex);
             });
 
             // 更新章节导航按钮
