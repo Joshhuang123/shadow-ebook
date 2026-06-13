@@ -56,6 +56,13 @@ data/grammar/*.json
 data/parent/*
 !data/parent/.gitkeep
 
+# Phase 3: SQLite DB (runtime state, regenerated on first startup)
+data/shadow.db
+data/shadow.db-shm
+data/shadow.db-wal
+data/.migration_marker
+data/books.migrated-*/
+
 # Logs
 *.log
 

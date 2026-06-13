@@ -33,6 +33,10 @@ logging.basicConfig(
 )
 
 
+# === Phase 3: SQLite init (首次启动建表 + 一次性 JSON→SQLite 迁移) ===
+db.init_db()
+
+
 def _send_html(filename):
     """统一返回 HTML 文件,避免路径拼接问题"""
     return send_from_directory(str(WEB_DIR), filename)
