@@ -15,7 +15,7 @@ pip install flask edge-tts
 
 ### 运行
 ```bash
-python tutor_web.py
+python app.py
 ```
 打开浏览器访问：**http://localhost:5002**
 

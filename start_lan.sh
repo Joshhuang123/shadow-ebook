@@ -38,4 +38,4 @@ echo "   按 Ctrl+C 停止服务"
 echo ""
 
 # 启动服务（绑定 0.0.0.0 局域网可访问）
-python3 tutor_web.py
+python3 app.py

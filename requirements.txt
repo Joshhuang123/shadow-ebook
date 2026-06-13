@@ -1,3 +1,4 @@
 # Shadow Ebook - 电子书阅读与跟读学习
 flask>=2.0
 edge-tts>=6.0
+pytest>=7.0

@@ -98,7 +98,7 @@ pip install flask edge-tts
 
 ```bash
 source venv/bin/activate
-python3 tutor_web.py
+python3 app.py
 ```
 
 启动后显示：
@@ -229,7 +229,7 @@ python3 tutor_web.py
 **A:** 3.11+。edge-tts 6.x+ 兼容。
 
 ### Q: 必须用 edge-tts 吗？
-**A:** 不用。可以在 `tutor_web.py` 顶部的 `TTS_VOICE` 变量改其它引擎。但当前所有功能（缓存在 `audio/tts/`）都按 edge-tts 写。
+**A:** 不用。可以在 `extensions/tts.py` 顶部的 `VOICES` 列表改其它引擎/嗓音。但当前所有功能（缓存在 `audio/tts/`）都按 edge-tts 写。
 
 ### Q: 平板需要装什么？
 **A:** 浏览器即可。推荐 Safari（iOS）或 Chrome（Android）。
@@ -240,29 +240,40 @@ python3 tutor_web.py
 
 ```
 shadow-learning/
-├── tutor_web.py          # Flask 服务器 (入口)
+├── app.py                  # Flask 入口 (HTML 页面路由 + extensions 注册)
+├── extensions/             # 按域拆分的业务模块
+│   ├── auth.py             # 家长 PIN 鉴权 + 登录/接口限流
+│   ├── books.py            # 书籍 CRUD + EPUB 解析 + 路径穿越防御
+│   ├── courses.py          # 课程内容 + 理解题
+│   ├── db.py               # SQLite 连接 + schema + 首启 JSON→DB 迁移
+│   ├── parent_data.py      # 家长统计/词汇/设置 CRUD + PIN 改密 + 导出
+│   ├── pwa.py              # PWA 壳 (theme.js / sync.js / manifest / SW)
+│   └── tts.py              # edge-tts 朗读 + LRU 缓存 + 预生成后台线程
 ├── web/
-│   ├── ebook.html        # 电子书阅读器
-│   ├── tutor.html        # 跟读辅导界面
-│   ├── grammar.html      # 语法学习
-│   ├── stats.html        # 学习统计
-│   ├── parent.html       # 家长仪表盘
-│   ├── theme.js          # 日/夜主题 token
-│   ├── sync.js           # 数据上报
-│   ├── a11y.js           # 模态框焦点陷阱
-│   ├── manifest.json     # PWA 配置
-│   ├── service-worker.js # 离线缓存
-│   └── kid-touch.css     # 触摸优化样式
-├── android/              # Capacitor Android 壳工程（npm run sync 后可编译 APK）
-├── capacitor.config.json # Capacitor 配置（webDir=web）
-├── package.json          # npm 依赖（@capacitor/core/cli/android）
+│   ├── ebook.html          # 电子书阅读器
+│   ├── tutor.html          # 跟读辅导界面
+│   ├── grammar.html        # 语法学习
+│   ├── stats.html          # 学习统计
+│   ├── parent.html         # 家长仪表盘
+│   ├── theme.js            # 日/夜主题 token
+│   ├── sync.js             # 数据上报
+│   ├── a11y.js             # 模态框焦点陷阱
+│   ├── manifest.json       # PWA 配置
+│   ├── service-worker.js   # 离线缓存
+│   └── kid-touch.css       # 触摸优化样式
+├── android/                # Capacitor Android 壳工程（npm run sync 后可编译 APK）
+├── capacitor.config.json   # Capacitor 配置（webDir=web）
+├── package.json            # npm 依赖（@capacitor/core/cli/android）
 ├── scripts/
-│   └── gen_https_cert.sh # 自签名 HTTPS 证书生成
-├── certs/                # HTTPS 证书（已 gitignore）
+│   └── gen_https_cert.sh   # 自签名 HTTPS 证书生成
+├── certs/                  # HTTPS 证书（已 gitignore）
+├── tests/                  # 3 个 guard test (safe_book_path / check_pin / evict_tts)
 ├── data/
-│   └── books/            # 电子书 JSON 文件
+│   ├── shadow.db           # SQLite (books / parent_data / parent_pin),首启生成
+│   ├── shadow.log          # INFO 日志(gitignore)
+│   └── covers/             # 书籍封面图
 └── audio/
-    └── tts/              # TTS 缓存音频（LRU 自动清理）
+    └── tts/                # TTS 缓存音频（LRU 自动清理)
 ```
 
 ---

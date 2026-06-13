@@ -34,4 +34,4 @@ echo "   局域网访问: https://$LOCAL_IP:5002"
 echo "   按 Ctrl+C 停止服务"
 echo ""
 
-python3 tutor_web.py
+python3 app.py

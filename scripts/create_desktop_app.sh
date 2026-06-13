@@ -31,7 +31,7 @@ fi
 # Create terminal window and run
 osascript << APPLESCRIPT
 tell application "Terminal"
-    do script "cd $HOME/shadow-learning && source venv/bin/activate && python3 main.py"
+    do script "cd $HOME/shadow-learning && source venv/bin/activate && python3 app.py"
     set current settings of first window to settings set "Pro"
     activate
 end tell
