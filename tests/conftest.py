@@ -48,3 +48,16 @@ def clear_login_state():
     yield
     with auth._AUTH_LOCK:
         auth._LOGIN_WINDOW.clear()
+
+
+@pytest.fixture
+def clear_api_rate():
+    """跑前/跑后都清 _API_RATE (TTS/sync/import/global 限流),免得测试间相互污染。
+
+    不清的话: 上一组 TTS 限流测试跑满 30/min, 下一组立刻 429。
+    """
+    with auth._API_LOCK:
+        auth._API_RATE.clear()
+    yield
+    with auth._API_LOCK:
+        auth._API_RATE.clear()

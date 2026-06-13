@@ -157,20 +157,33 @@ def start_tts_pregeneration():
     t.start()
 
 
+TTS_TIMEOUT_SEC = 15  # edge-tts 卡死时 worker 也不能无限等
+
+
 def register_routes(app):
     @app.route('/api/tts', methods=['POST'])
     def text_to_speech():
         """TTS 语音合成 - 使用 edge-tts, 缓存到本地"""
         ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'tts')
         if not ok:
-            return jsonify({"success": False, "error": f"请求过快, {retry} 秒后再试"}), 429
+            return jsonify({
+                "success": False,
+                "error": f"请求过快, {retry} 秒后再试",
+                "retryable": True,
+                "retry_after": retry,
+            }), 429
 
         data = request.get_json()
         text = data.get('text', '')
         voice = data.get('voice', 'en-US-AriaNeural')  # 默认 Aria
 
         if not text:
-            return jsonify({"success": False, "error": "文本为空"})
+            return jsonify({
+                "success": False,
+                "error": "文本为空",
+                "retryable": False,  # 用户输入问题, 重试也没用
+                "retry_after": 0,
+            })
         # 生成唯一文件名 (包含音色的 hash)
         text_hash = hashlib.md5((text + voice).encode()).hexdigest()[:12]
         TTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -184,23 +197,44 @@ def register_routes(app):
         import edge_tts
 
         async def generate():
-            try:
-                await edge_tts.Communicate(text, voice=voice).save(str(audio_path))
-                return True
-            except Exception as e:
-                logger.warning(f"TTS error: {e}")
-                return False
+            # 加 15s 超时: 网络抖动时 edge-tts 可能挂 30s+, 拖死整个 worker
+            await asyncio.wait_for(
+                edge_tts.Communicate(text, voice=voice).save(str(audio_path)),
+                timeout=TTS_TIMEOUT_SEC,
+            )
 
         try:
             asyncio.run(generate())
+        except asyncio.TimeoutError:
+            logger.warning(f'TTS 超时 ({TTS_TIMEOUT_SEC}s): text={text[:30]!r}')
+            return jsonify({
+                "success": False,
+                "error": "语音合成超时, 请稍后再试",
+                "retryable": True,
+                "retry_after": 5,
+            }), 504
         except Exception as e:
-            return jsonify({"success": False, "error": f"TTS生成失败: {str(e)}"})
+            # 原始异常进日志, 不暴露给前端 (可能含 token / path)
+            logger.warning(f'TTS error: {type(e).__name__}: {e}')
+            return jsonify({
+                "success": False,
+                "error": "语音合成失败, 请稍后再试",
+                "retryable": True,
+                "retry_after": 3,
+            }), 502
 
         if audio_path.exists():
             # 异步触发 LRU 淘汰 (不阻塞响应)
             threading.Thread(target=_evict_tts_cache, args=(TTS_DIR,), daemon=True).start()
             return jsonify({"success": True, "audio_url": f"/audio/tts/{text_hash}.mp3"})
-        return jsonify({"success": False, "error": "TTS生成失败"})
+        # edge-tts 没抛异常但也没写出文件 — 服务端静默失败
+        logger.warning(f'TTS 无音频: text={text[:30]!r}')
+        return jsonify({
+            "success": False,
+            "error": "语音服务未返回音频, 请稍后再试",
+            "retryable": True,
+            "retry_after": 3,
+        }), 502
 
     @app.route('/api/tts/pregenerate', methods=['POST'])
     def pregenerate_status():
