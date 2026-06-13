@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 # === 登录限流: 防 LAN 上暴力破解 4 位 PIN ===
 _LOGIN_WINDOW = {}  # ip -> [timestamp, ...]
 MAX_ATTEMPTS = 5
-WINDOW_SEC = 300    # 5 分钟窗口
 LOCKOUT_SEC = 900   # 锁定 15 分钟
 _AUTH_LOCK = threading.Lock()  # 保护 _LOGIN_WINDOW (Phase 2 加锁)
 

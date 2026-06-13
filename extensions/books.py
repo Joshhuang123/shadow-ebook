@@ -11,10 +11,8 @@ import json
 import logging
 import re
 import html
-import threading
 import time
 import zipfile
-import traceback
 from pathlib import Path
 from flask import jsonify, request, send_from_directory
 from werkzeug.utils import secure_filename
@@ -33,12 +31,6 @@ COVERS_DIR = Path(__file__).resolve().parent.parent / 'data' / 'covers'
 
 def is_valid_book_id(book_id):
     return bool(book_id and BOOK_ID_PATTERN.match(book_id))
-
-
-# === list_books: 简化为直查 DB (WAL 模式下 mtime 不可靠,缓存收益不抵复杂度) ===
-# 8 本书的体量下,SELECT + 解析 chapters_json 仍在毫秒级,不需要缓存。
-# 真要再加回: cache key 用 (count, max(updated_at)) 而不是 DB_PATH mtime。
-_BOOKS_CACHE_LOCK = threading.Lock()  # 保留锁,防止未来加缓存时无锁
 
 
 def calc_lexile(book_data):
@@ -125,23 +117,22 @@ def register_routes(app):
     @app.route('/api/books')
     def list_books():
         """列出所有已导入的书籍 (Phase 3a: 直查 DB, 无缓存 — WAL 模式下 mtime 不可靠)"""
-        with _BOOKS_CACHE_LOCK:
-            conn = get_db()
-            books = []
-            for row in conn.execute('SELECT id, data_json FROM books ORDER BY updated_at DESC').fetchall():
-                book_id, data_json = row['id'], row['data_json']
-                data = json.loads(data_json)
-                chapters = data.get('chapters', [])
-                total_sentences = sum(len(ch.get('sentences', [])) for ch in chapters)
-                books.append({
-                    "id": book_id,
-                    "title": data.get('book', data.get('title', book_id)),
-                    "chapters": len(chapters),
-                    "sentences": total_sentences,
-                    "lexile": calc_lexile(data),
-                    "cover": data.get('cover')
-                })
-            return jsonify({"success": True, "books": books})
+        conn = get_db()
+        books = []
+        for row in conn.execute('SELECT id, data_json FROM books ORDER BY updated_at DESC').fetchall():
+            book_id, data_json = row['id'], row['data_json']
+            data = json.loads(data_json)
+            chapters = data.get('chapters', [])
+            total_sentences = sum(len(ch.get('sentences', [])) for ch in chapters)
+            books.append({
+                "id": book_id,
+                "title": data.get('book', data.get('title', book_id)),
+                "chapters": len(chapters),
+                "sentences": total_sentences,
+                "lexile": calc_lexile(data),
+                "cover": data.get('cover')
+            })
+        return jsonify({"success": True, "books": books})
 
     @app.route('/api/book/<book_id>', methods=['DELETE'])
     @require_parent_auth
@@ -273,6 +264,7 @@ def register_routes(app):
                                     current_chapter = chapter_title or book_title
                                 current_sentences.extend(sents)
                     except Exception as e:
+                        logger.warning(f'解析 EPUB 章节 {html_file} 失败: {e}')
                         continue
 
                 if current_chapter and current_sentences:
@@ -328,7 +320,7 @@ def register_routes(app):
             })
 
         except Exception as e:
-            traceback.print_exc()
+            logger.exception('EPUB 导入失败')
             return jsonify({"success": False, "error": "导入失败: " + type(e).__name__})
 
     @app.route('/data/covers/<path:filename>')
