@@ -36,9 +36,21 @@ def is_valid_book_id(book_id):
 # === EPUB 解析 helper (Round 4: 从 import_book 抽出来好测试) ===
 
 def _clean_text(raw_html: str) -> str:
-    """HTML → 纯文本: 解 entity, 删 tag, 折叠空白"""
-    text = html.unescape(raw_html)
+    """HTML → 纯文本。
+
+    处理顺序 (顺序很重要):
+      1) 删 <head>/<style>/<script>...</...> 整块 (含内容) — 否则 CSS @page 规则、
+         <script> 源码、<title> 等会污染正文 (e.g. '@page { margin-top: 5pt }' 出现在句子流)
+      2) 删 HTML 注释 <!-- ... -->
+      3) 删剩余 tag (保留内容) — 应对 <p>/<span>/<h1> 等正常标签
+      4) 解 entity
+      5) 折叠空白
+    """
+    text = raw_html
+    text = re.sub(r'<(head|style|script|noscript)[^>]*>.*?</\1>', ' ', text, flags=re.S | re.I)
+    text = re.sub(r'<!--.*?-->', ' ', text, flags=re.S)
     text = re.sub(r'<[^>]+>', ' ', text)
+    text = html.unescape(text)
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 

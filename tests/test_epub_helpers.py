@@ -59,6 +59,70 @@ def test_split_drops_too_short():
     assert any("real sentence" in s for s in sents)
 
 
+# === _clean_text: 防 CSS / script / head 污染正文 (R9 bug 修复) ===
+
+from extensions.books import _clean_text
+
+
+def test_clean_text_strips_style_block():
+    """<style>...</style> 内容 (含 CSS @page 规则) 不该出现在正文。
+    用户现场证据: 一本扫描版 EPUB 章节 HTML 里 <style>@page { margin: 5pt }</style>
+    之前 _clean_text 只剥 tag 留内容 → '@page { margin-top: 5.000000pt; }' 进了句子流
+    """
+    html = '''<html><head><style>@page { margin-bottom: 5.000000pt; margin-top: 5.000000pt; }
+    body { font-family: serif; }</style></head><body><p>This is real text in the chapter body.</p></body></html>'''
+    out = _clean_text(html)
+    assert '@page' not in out
+    assert 'font-family' not in out
+    assert '5.000000pt' not in out
+    assert 'real text' in out
+
+
+def test_clean_text_strips_script_block():
+    """<script>...</script> 里的 JS 源码不该进正文"""
+    html = '<html><body><script>alert("xss");</script><p>Real body text here.</p></body></html>'
+    out = _clean_text(html)
+    assert 'alert' not in out
+    assert 'xss' not in out
+    assert 'Real body text' in out
+
+
+def test_clean_text_strips_head_block():
+    """<head> 整块 (含 <title>, <meta> 等) 不该进正文"""
+    html = '<html><head><title>Some Book Title</title><meta charset="utf-8"></head><body><p>Body content.</p></body></html>'
+    out = _clean_text(html)
+    assert 'Some Book Title' not in out
+    assert 'utf-8' not in out
+    assert 'Body content' in out
+
+
+def test_clean_text_strips_html_comments():
+    """<!-- ... --> 注释不该进正文"""
+    html = '<html><body><!-- TODO: fix this later --><p>Visible text only.</p></body></html>'
+    out = _clean_text(html)
+    assert 'TODO' not in out
+    assert 'fix this' not in out
+    assert 'Visible text' in out
+
+
+def test_clean_text_preserves_real_body():
+    """正常 <p>/<h1>/<span> 的内容该保留"""
+    html = '<p>First sentence here.</p><h1>Chapter 1</h1><p>Second <span>sentence</span> here.</p>'
+    out = _clean_text(html)
+    assert 'First sentence' in out
+    assert 'Chapter 1' in out
+    assert 'Second sentence' in out
+
+
+def test_clean_text_unescapes_entities():
+    """&amp; &lt; &quot; 等该解 entity"""
+    html = '<p>Tom &amp; Jerry &lt;3 &quot;cheese&quot;</p>'
+    out = _clean_text(html)
+    assert 'Tom & Jerry' in out
+    assert '<3' in out
+    assert '"cheese"' in out
+
+
 # === _is_chapter_heading ===
 
 def test_heading_chapter_one():
