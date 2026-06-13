@@ -163,6 +163,14 @@ def register_routes(app):
     @app.route('/api/parent/export')
     @require_parent_auth
     def parent_export():
+        ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'export')
+        if not ok:
+            return jsonify({
+                "success": False,
+                "error": f"导出请求过快, {retry} 秒后再试",
+                "retryable": True,
+                "retry_after": retry,
+            }), 429
         payload = json.dumps(_load_parent_data(), ensure_ascii=False, indent=2)
         return Response(
             payload,

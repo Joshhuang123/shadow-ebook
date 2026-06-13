@@ -54,10 +54,12 @@ def _login_remaining(ip):
 # === 通用 API 限流: per-IP 滑动窗口 ===
 _API_RATE = {}  # (ip, bucket) -> [timestamp, ...]
 _API_LIMITS = {
-    'tts':    {'max': 30,  'window': 60},     # 防 TTS 缓存爆
-    'sync':   {'max': 60,  'window': 60},     # 防 anon 上报刷数据
-    'import': {'max': 10,  'window': 3600},   # 防 100MB EPUB 上传被滥用 (Phase 2 新增)
-    'global': {'max': 600, 'window': 60},     # 兜底:任何端点都受这个限制
+    'tts':         {'max': 30,  'window': 60},     # 防 TTS 缓存爆
+    'sync':        {'max': 60,  'window': 60},     # 防 anon 上报刷数据
+    'import':      {'max': 10,  'window': 3600},   # 防 100MB EPUB 上传被滥用
+    'pregenerate': {'max': 10,  'window': 60},     # 防 anon 反复打 status (R8: 扫 100k 文件慢)
+    'export':      {'max': 10,  'window': 60},     # 防已登录家长按错键 1 分钟 60 次 1MB JSON (R8)
+    'global':      {'max': 600, 'window': 60},     # 兜底:任何端点都受这个限制
 }
 _API_LOCK = threading.Lock()  # 保护 _API_RATE (Phase 2 加锁)
 

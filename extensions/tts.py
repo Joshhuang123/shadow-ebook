@@ -153,7 +153,7 @@ def pregenerate_all_tts():
 
 def start_tts_pregeneration():
     """由 app.py 在 __main__ 块显式调用,而非 import 时启动。"""
-    t = threading.Thread(target=pregenerate_all_tts, daemon=True)
+    t = threading.Thread(target=pregenerate_all_tts, name='tts-pregenerate', daemon=True)
     t.start()
 
 
@@ -225,7 +225,7 @@ def register_routes(app):
 
         if audio_path.exists():
             # 异步触发 LRU 淘汰 (不阻塞响应)
-            threading.Thread(target=_evict_tts_cache, args=(TTS_DIR,), daemon=True).start()
+            threading.Thread(target=_evict_tts_cache, args=(TTS_DIR,), name='tts-evict', daemon=True).start()
             return jsonify({"success": True, "audio_url": f"/audio/tts/{text_hash}.mp3"})
         # edge-tts 没抛异常但也没写出文件 — 服务端静默失败
         logger.warning(f'TTS 无音频: text={text[:30]!r}')
@@ -241,7 +241,17 @@ def register_routes(app):
         """前端调,返回当前 TTS 缓存状态 (满足 tutor.html:967 的契约)。
 
         实际预生成由后台线程在启动时跑;此 endpoint 主要返回状态。
+
+        限流 (R8): anon POST + 扫 100k 文件 glob 慢, 10/min 够家长按钮连点, 不够打 DoS。
         """
+        ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'pregenerate')
+        if not ok:
+            return jsonify({
+                "success": False,
+                "error": f"请求过快, {retry} 秒后再试",
+                "retryable": True,
+                "retry_after": retry,
+            }), 429
         count = sum(1 for _ in TTS_DIR.glob('*.mp3')) if TTS_DIR.exists() else 0
         return jsonify({"success": True, "status": "ok", "audio_files": count})
 
