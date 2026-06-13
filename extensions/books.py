@@ -33,6 +33,98 @@ def is_valid_book_id(book_id):
     return bool(book_id and BOOK_ID_PATTERN.match(book_id))
 
 
+# === EPUB 解析 helper (Round 4: 从 import_book 抽出来好测试) ===
+
+def _clean_text(raw_html: str) -> str:
+    """HTML → 纯文本: 解 entity, 删 tag, 折叠空白"""
+    text = html.unescape(raw_html)
+    text = re.sub(r'<[^>]+>', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+
+_SENT_ABBREV = re.compile(r'\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|Mt|vs|etc)\.')
+_SENT_INITIAL = re.compile(r'\b([A-Z])\.')
+_SENT_DECIMAL = re.compile(r'(\d)\.(\d)')
+_SENT_SPLIT = re.compile(r'(?<=[.!?])\s+(?=[A-Z"\'(])')
+
+
+def _split_sentences(text: str) -> list:
+    """智能分句: 避开称谓缩写 / 国家缩写 / 数字小数点 / 省略号。返回 ≥10 字符且 ≥3 词的句子。"""
+    PLACEHOLDER = '\x00'
+    text = _SENT_ABBREV.sub(r'\1' + PLACEHOLDER, text)
+    text = _SENT_INITIAL.sub(r'\1' + PLACEHOLDER, text)
+    text = _SENT_DECIMAL.sub(r'\1' + PLACEHOLDER + r'\2', text)
+    text = text.replace('...', PLACEHOLDER * 3)
+    parts = _SENT_SPLIT.split(text)
+    sentences = []
+    for p in parts:
+        p = p.strip().replace(PLACEHOLDER, '.').strip('"\' ')
+        if len(p) > 10 and len(p.split()) >= 3:
+            sentences.append(p)
+    return sentences
+
+
+_HEADING_PATTERN = re.compile(
+    r'^(chapter|part|prologue|epilogue|book|act|scene)\s+(\d+|[ivxlcdm]+)\b',
+    re.I,
+)
+
+
+def _is_chapter_heading(text: str) -> bool:
+    """判断 text 是否像章节标题。
+
+    Round 4 收紧: 原来只看 "短 + 词少", 会把 'He sat down.' 误判成标题。
+    新规则:
+      - 太长 (>80 字符 / >8 词): 不是
+      - 以句号结尾 + 不是 'Chapter N.' 句式: 不是 (普通句子)
+      - 匹配 'Chapter N' / 'Part N' / 'Prologue' / 'Epilogue' 等: 是
+      - 短 (≤5 词) + 无句末标点: 是 (类似 'The Beginning')
+    """
+    t = text.strip()
+    if not t or len(t) > 80:
+        return False
+    word_count = len(t.split())
+    if word_count > 8:
+        return False
+    if _HEADING_PATTERN.match(t):
+        return True
+    if word_count <= 5 and not t.endswith(('.', '!', '?')):
+        return True
+    return False
+
+
+_CONTAINER_ROOTFILE = re.compile(r'<rootfile[^>]+full-path=["\']([^"\']+)["\']')
+_OPF_ITEMREF = re.compile(r'<itemref[^>]+idref=["\']([^"\']+)["\']')
+_OPF_ITEM = re.compile(r'<item[^>]+id=["\']([^"\']+)["\'][^>]+href=["\']([^"\']+)["\']')
+
+
+def _find_content_opf_path(zf) -> str:
+    """按 EPUB spec 走: META-INF/container.xml → rootfile full-path → 真正的 content.opf。
+    找不到返回 '' (调用方降级到 sorted(html_files))。"""
+    try:
+        container = zf.read('META-INF/container.xml').decode('utf-8', errors='ignore')
+    except KeyError:
+        return ''
+    m = _CONTAINER_ROOTFILE.search(container)
+    return m.group(1) if m else ''
+
+
+def _parse_spine_order(zf, opf_path: str) -> list:
+    """从 content.opf 提取 spine 顺序 (chapter href 数组)。失败返回 []。"""
+    if not opf_path:
+        return []
+    try:
+        opf = zf.read(opf_path).decode('utf-8', errors='ignore')
+    except KeyError:
+        return []
+    spine_ids = _OPF_ITEMREF.findall(opf)
+    id_to_file = dict(_OPF_ITEM.findall(opf))
+    # opf_path 可能带子目录 (如 OEBPS/content.opf), href 是相对路径
+    opf_dir = opf_path.rsplit('/', 1)[0] + '/' if '/' in opf_path else ''
+    return [opf_dir + id_to_file[sid] for sid in spine_ids if sid in id_to_file]
+
+
 def calc_lexile(book_data):
     """根据书名估算蓝思值 (因为句子数据不完整)"""
     title = book_data.get('book', '').lower()
@@ -168,11 +260,17 @@ def register_routes(app):
 
         try:
             epub_data = io.BytesIO(file.read())
-            book_title = filename.replace('.epub', '')
+            # .epub 后缀剥除 (用切片避免 'foo.epub.backup' 被误处理)
+            book_title = filename[:-5] if filename.endswith('.epub') else filename
             chapters = []
             cover_path = None
 
             with zipfile.ZipFile(epub_data, 'r') as zf:
+                # === EPUB 合法性校验: 必须是真 EPUB (有 META-INF/container.xml) ===
+                opf_path = _find_content_opf_path(zf)
+                if not opf_path:
+                    return jsonify({"success": False, "error": "不是有效的 EPUB 文件 (缺 META-INF/container.xml)"})
+
                 html_files = [n for n in zf.namelist() if n.endswith(('.html', '.xhtml', '.htm')) and 'image' not in n.lower()]
 
                 # 提取封面
@@ -184,7 +282,7 @@ def register_routes(app):
                             img_data = zf.read(pattern)
                             if len(img_data) > 1000:
                                 COVERS_DIR.mkdir(parents=True, exist_ok=True)
-                                book_id_for_cover = re.sub(r'[^a-zA-Z0-9_-]', '_', filename.replace('.epub', '').lower())
+                                book_id_for_cover = re.sub(r'[^a-zA-Z0-9_-]', '_', book_title.lower())
                                 ext = pattern.split('.')[-1].lower()
                                 cover_filename = f'{book_id_for_cover}.{ext}'
                                 cover_path_full = COVERS_DIR / cover_filename
@@ -199,52 +297,21 @@ def register_routes(app):
                 except Exception as e:
                     logger.warning(f'提取封面出错: {e}')
 
-                # spine 顺序
-                spine_items = []
-                try:
-                    content_opf = zf.read('OEBPS/content.opf').decode('utf-8')
-                    spine_ids = re.findall(r'<itemref[^>]+idref=["\']([^"\']+)["\']', content_opf)
-                    id_to_file = dict(re.findall(r'<item[^>]+id=["\']([^"\']+)["\'][^>]+href=["\']([^"\']+)["\']', content_opf))
-                    spine_items = [id_to_file.get(sid, '') for sid in spine_ids if sid in id_to_file]
-                except Exception as e:
-                    logger.warning(f'解析spine顺序失败: {e}')
+                # spine 顺序 (走 spec, 不再硬编码 OEBPS/content.opf)
+                spine_items = _parse_spine_order(zf, opf_path)
+                if not spine_items:
+                    logger.warning('解析 spine 失败, 降级到 sorted(html_files)')
 
                 ordered_files = spine_items if spine_items else sorted(html_files)
                 current_chapter = None
                 current_sentences = []
-
-                def clean_text(text):
-                    text = html.unescape(text)
-                    text = re.sub(r'<[^>]+>', ' ', text)
-                    text = re.sub(r'\s+', ' ', text).strip()
-                    return text
-
-                def split_sentences(text):
-                    """智能分句,避开称谓缩写 / 国家缩写 / 数字小数点 / 省略号"""
-                    PLACEHOLDER = '\x00'
-                    text = re.sub(r'\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|Mt|vs|etc)\.', r'\1' + PLACEHOLDER, text)
-                    text = re.sub(r'\b([A-Z])\.', r'\1' + PLACEHOLDER, text)
-                    text = re.sub(r'(\d)\.(\d)', r'\1' + PLACEHOLDER + r'\2', text)
-                    text = text.replace('...', PLACEHOLDER * 3)
-                    parts = re.split(r'(?<=[.!?])\s+(?=[A-Z"\'(])', text)
-                    sentences = []
-                    for p in parts:
-                        p = p.strip().replace(PLACEHOLDER, '.').strip('"\' ')
-                        if len(p) > 10 and len(p.split()) >= 3:
-                            sentences.append(p)
-                    return sentences
-
-                def is_chapter_heading(text):
-                    if len(text) < 60 and len(text.split()) < 5:
-                        return True
-                    return False
 
                 for html_file in ordered_files:
                     if not html_file:
                         continue
                     try:
                         content = zf.read(html_file).decode('utf-8', errors='ignore')
-                        text = clean_text(content)
+                        text = _clean_text(content)
                         if not text or len(text) < 20:
                             continue
 
@@ -252,13 +319,13 @@ def register_routes(app):
                         heading_match = re.search(r'<h[1-6][^>]*>([^<]+)</h[1-6]>', content, re.I)
                         chapter_title = heading_match.group(1) if heading_match else (title_match.group(1) if title_match else '')
 
-                        if is_chapter_heading(text) and len(text.split()) < 10:
+                        if _is_chapter_heading(text) and len(text.split()) < 10:
                             if current_chapter and current_sentences:
                                 chapters.append({"name": current_chapter, "sentences": current_sentences})
                             current_chapter = text if text else (chapter_title or f'Chapter {len(chapters)+1}')
                             current_sentences = []
                         else:
-                            sents = split_sentences(text)
+                            sents = _split_sentences(text)
                             if sents:
                                 if not current_chapter:
                                     current_chapter = chapter_title or book_title
@@ -279,8 +346,8 @@ def register_routes(app):
                             continue
                         try:
                             content = zf.read(html_file).decode('utf-8', errors='ignore')
-                            text = clean_text(content)
-                            sents = split_sentences(text)
+                            text = _clean_text(content)
+                            sents = _split_sentences(text)
                             current_sentences.extend(sents)
                             if len(current_sentences) >= 50:
                                 chapters.append({"name": f"Part {len(chapters)+1}", "sentences": current_sentences[:50]})
@@ -296,7 +363,24 @@ def register_routes(app):
                 total_sentences = sum(len(ch['sentences']) for ch in merged_chapters)
 
             # === Phase 3a: 写入 SQLite (不再写 JSON) ===
-            book_id = re.sub(r'[^a-zA-Z0-9_-]', '_', filename.replace('.epub', '').lower())
+            book_id = re.sub(r'[^a-zA-Z0-9_-]', '_', book_title.lower())
+            book_data = {
+                "book": book_title,
+                "id": book_id,
+                "chapters": merged_chapters,
+                "cover": cover_path,
+            }
+            conn = get_db()
+            # === Round 4: 重复 import 警告 (避免静默覆盖) ===
+            existing = conn.execute('SELECT 1 FROM books WHERE id = ?', (book_id,)).fetchone()
+            if existing:
+                logger.warning(f'book_id {book_id!r} 已存在, 此次 import 将覆盖 (filename={filename!r})')
+            now = int(time.time() * 1000)
+            conn.execute(
+                'INSERT OR REPLACE INTO books (id, data_json, imported_at, updated_at) '
+                'VALUES (?, ?, ?, ?)',
+                (book_id, json.dumps(book_data, ensure_ascii=False), now, now)
+            )
             book_data = {
                 "book": book_title,
                 "id": book_id,
