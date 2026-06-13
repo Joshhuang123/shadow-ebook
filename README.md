@@ -74,7 +74,7 @@ cd shadow-learning
 # 创建虚拟环境并安装依赖
 python3 -m venv venv
 source venv/bin/activate
-pip install flask edge-tts
+pip install -r requirements.txt   # flask / edge-tts / pytest
 ```
 
 #### Windows
@@ -82,7 +82,7 @@ pip install flask edge-tts
 ```powershell
 py -m venv venv
 venv\Scripts\activate
-pip install flask edge-tts
+pip install -r requirements.txt
 ```
 
 ### 启动服务
@@ -226,10 +226,10 @@ python3 app.py
 **A:** 数据保存在浏览器 `localStorage`，清浏览器缓存会丢。家长可在 `/parent` 页面查看统计；老师建议每学期让学生截图保存或导出。
 
 ### Q: 需要 Python 几？
-**A:** 3.11+。edge-tts 6.x+ 兼容。
+**A:** 3.12+。edge-tts 6.x+ 兼容 (CI 在 macos-latest + Python 3.12 跑全 test)。
 
 ### Q: 必须用 edge-tts 吗？
-**A:** 不用。可以在 `extensions/tts.py` 顶部的 `VOICES` 列表改其它引擎/嗓音。但当前所有功能（缓存在 `audio/tts/`）都按 edge-tts 写。
+**A:** 不用。可以在 `extensions/tts.py` 顶部的 `VOICES` 列表改其它引擎/嗓音。但当前所有功能（缓存在 `audio/tts/`、LRU 按 atime 跟踪）都按 edge-tts 写。
 
 ### Q: 平板需要装什么？
 **A:** 浏览器即可。推荐 Safari（iOS）或 Chrome（Android）。
@@ -267,7 +267,7 @@ shadow-learning/
 ├── scripts/
 │   └── gen_https_cert.sh   # 自签名 HTTPS 证书生成
 ├── certs/                  # HTTPS 证书（已 gitignore）
-├── tests/                  # 3 个 guard test (safe_book_path / check_pin / evict_tts)
+├── tests/                  # 67 个 guard test (见下方"测试与 CI")
 ├── data/
 │   ├── shadow.db           # SQLite (books / parent_data / parent_pin),首启生成
 │   ├── shadow.log          # INFO 日志(gitignore)
@@ -327,14 +327,38 @@ cd android && ./gradlew assembleDebug
 
 - **家长监控** (`/parent`) 用 PIN 码保护，PIN 以 SHA-256 哈希存储，不存明文
 - **会话 Cookie** 标记 `HttpOnly + SameSite=Lax`，不可被前端 JS 读取
-- **登录限流**：5 次错误后锁定 60 秒
+- **登录限流**：5 次错误后锁定 15 分钟（`extensions/auth.py:LOCKOUT_SEC`）
 - **路径遍历防护**：所有 EPUB 导入、书籍读取都校验 book_id 格式
 - **录音/跟读** 仅在用户主动点击时请求麦克风权限
+- **会话密钥** 自动持久化到 `data/.secret`（mode 0600），重启不丢
+- **4 层 security header**（CSP / X-Frame-Options / nosniff / Referrer-Policy）由 `app.py:_add_security_headers` 全局注入
+- **TTS 失败** 统一返回 `retryable + retry_after` 字段，前端可自动重试；15s 超时防止 worker 挂死
 
 ⚠️ **本服务默认监听 `0.0.0.0:5002`（局域网可访问）**。如需在公网部署，请务必：
 1. 改成 HTTPS（`./start_https.sh` 或反向代理 nginx + Let's Encrypt）
-2. 改 `app.secret_key`（现在是 dev 默认值，**生产必改**）
+2. 重新生成 `data/.secret`（`rm data/.secret && python3 app.py` 会自动生成 64 位 hex + 0600 权限）
 3. 加防火墙白名单
+
+---
+
+## 🧪 测试与 CI
+
+```bash
+# 跑全 guard test (~0.2s)
+source venv/bin/activate
+python -m pytest -v
+```
+
+**67 个 test, 8 个文件**,覆盖：
+
+- 路径遍历防御（合法 / 非法 book_id 矩阵）
+- 家长 PIN（默认 0000 / 错 PIN / 5 次锁 15 分钟 / 改 PIN 后旧 PIN 失效 / 同值拒绝 / 剩余次数）
+- TTS LRU 缓存淘汰（最旧 atime / 0 字节优先 / 容量触发）
+- TTS 失败模式（空文本 / 限流 / edge-tts 异常 / 超时 / 静默失败）
+- EPUB 解析（分句缩写 / 数字小数 / 标题误判 / container.xml 三种情况 / 封面 meta）
+- Security header（CSP / XFO / nosniff / Referrer-Policy，HTML 路由也走）
+
+**CI**：`.github/workflows/test.yml` 在 push / PR 时跑全 test（macos-latest + Python 3.12）。改 `auth.py` / `tts.py` / `books.py` 漏掉测试会被 CI 拦住。
 
 ---
 
