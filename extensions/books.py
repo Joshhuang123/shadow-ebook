@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 # === 路径穿越防御: book_id 只能含字母数字下划线连字符 ===
-BOOK_ID_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{1,64}$')
+BOOK_ID_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{1,64}$')  # 防御 + URL/路径友好的硬上限
 COVERS_DIR = Path(__file__).resolve().parent.parent / 'data' / 'covers'
 
 
@@ -58,6 +58,55 @@ def _clean_text(raw_html: str) -> str:
 _SENT_ABBREV = re.compile(r'\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|Mt|vs|etc)\.')
 _SENT_INITIAL = re.compile(r'\b([A-Z])\.')
 _SENT_DECIMAL = re.compile(r'(\d)\.(\d)')
+
+
+# === 解析质量审计 (R9 fixup 后, 用来发现尚未修掉的脏数据) ===
+# 这些 pattern 都基于 _clean_text 之后的纯文本, 用来扫历史 import 残留
+_AUDIT_CSS = re.compile(
+    r'@page|@font-face|font-family|margin\s*:|padding\s*:|'
+    r'background\s*:|color\s*:|[\.\#][a-zA-Z][\w-]*\s*\{|'
+    r'<!\[CDATA|\}\s*\.\s*[a-z]'
+)
+_AUDIT_PAGENUM = re.compile(r'(?:\b\d{1,4}\b[\s,.-]*){3,}')
+_AUDIT_SHORT_CHARS = 10  # < 10 字符的句子算"短到可疑"
+
+
+def _audit_chapter(chapter: dict) -> dict:
+    """对单章做解析质量审计, 返回 issue 计数和样本。"""
+    sentences = chapter.get('sentences', []) or []
+    text_list = [s if isinstance(s, str) else (s.get('text', '') if isinstance(s, dict) else '') for s in sentences]
+
+    short_sents = [t for t in text_list if 0 < len(t.strip()) < _AUDIT_SHORT_CHARS]
+    css_sents = [t for t in text_list if _AUDIT_CSS.search(t)]
+    pagenum_sents = [t for t in text_list if _AUDIT_PAGENUM.search(t)]
+
+    # 连续 2 句以上完全相同 (页眉页脚特征)
+    repeated_groups = []
+    i = 0
+    while i < len(text_list):
+        t = text_list[i].strip()
+        if not t:
+            i += 1
+            continue
+        j = i + 1
+        while j < len(text_list) and text_list[j].strip() == t:
+            j += 1
+        if j - i >= 2 and len(t) > 5:
+            repeated_groups.append({"text": t[:120], "occurrences": j - i})
+        i = j
+
+    return {
+        "title": chapter.get('name', chapter.get('title', '')),
+        "sentence_count": len(sentences),
+        "short_sentence_count": len(short_sents),
+        "short_sentence_samples": [s[:100] for s in short_sents[:3]],
+        "css_residue_count": len(css_sents),
+        "css_residue_samples": [s[:120] for s in css_sents[:3]],
+        "pagenum_candidate_count": len(pagenum_sents),
+        "pagenum_candidate_samples": [s[:120] for s in pagenum_sents[:3]],
+        "repeated_count": len(repeated_groups),
+        "repeated_samples": repeated_groups[:3],
+    }
 _SENT_SPLIT = re.compile(r'(?<=[.!?])\s+(?=[A-Z"\'(])')
 
 
@@ -415,6 +464,9 @@ def register_routes(app):
         book['id'] = book_id  # 防御性:确保 id 字段存在
         if 'toc' not in book:
             book['toc'] = []
+        # 兼容前端: 顶层多返一个 title 字段 (数据存的是 'book' 键, 但前端部分代码读 .title)
+        if 'title' not in book or not book['title']:
+            book['title'] = book.get('book', book_id)
         return jsonify({"success": True, "book": book})
 
     @app.route('/api/books')
@@ -439,6 +491,62 @@ def register_routes(app):
                 "cover": data.get('cover'),
             })
         return jsonify({"success": True, "books": books})
+
+    @app.route('/api/debug/book/<book_id>/audit')
+    def audit_book(book_id):
+        """审计书籍解析质量 (R9 fixup 后, 用来发现历史 import 残留问题)。
+
+        扫四类可疑: 短句 (<10字符) / CSS 残留 / 页码候选 (3+连续数字) / 重复内容 (页眉页脚特征)。
+        不需鉴权 (debug 用途), 走 tts bucket 限流 (30/min 够家长偶尔调)。
+        """
+        if not is_valid_book_id(book_id):
+            return jsonify({"success": False, "error": "非法书籍ID"}), 400
+
+        ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'tts')
+        if not ok:
+            return jsonify({
+                "success": False,
+                "error": f"请求过快, {retry} 秒后再试",
+                "retryable": True,
+                "retry_after": retry,
+            }), 429
+
+        conn = get_db()
+        row = conn.execute('SELECT data_json FROM books WHERE id = ?', (book_id,)).fetchone()
+        if not row:
+            return jsonify({"success": False, "error": "书籍不存在"}), 404
+
+        book = json.loads(row['data_json'])
+        chapters = book.get('chapters', [])
+        issues_by_chapter = []
+        total_sentences = 0
+        total_chars = 0
+
+        for idx, ch in enumerate(chapters):
+            audit = _audit_chapter(ch)
+            audit['chapter'] = idx + 1
+            issues_by_chapter.append(audit)
+            total_sentences += audit['sentence_count']
+            for s in (ch.get('sentences') or []):
+                if isinstance(s, str):
+                    total_chars += len(s)
+
+        total_issues = sum(
+            i['short_sentence_count'] + i['css_residue_count'] +
+            i['pagenum_candidate_count'] + i['repeated_count']
+            for i in issues_by_chapter
+        )
+
+        return jsonify({
+            "success": True,
+            "book_id": book_id,
+            "title": book.get('book', book.get('title', book_id)),
+            "total_chapters": len(chapters),
+            "total_sentences": total_sentences,
+            "avg_sentence_length": round(total_chars / total_sentences, 1) if total_sentences else 0,
+            "total_issue_count": total_issues,
+            "issues_by_chapter": issues_by_chapter,
+        })
 
     @app.route('/api/book/<book_id>', methods=['DELETE'])
     @require_parent_auth
@@ -601,10 +709,18 @@ def register_routes(app):
                 "toc": toc_entries,  # 真 TOC, 无则 []
             }
             conn = get_db()
-            # === Round 4: 重复 import 警告 (避免静默覆盖) ===
+            # === R10: 重复 import 不再静默覆盖, 返 409 引导家长重命名 ===
+            # 历史: Round 4 只 log warning, 实际用 INSERT OR REPLACE 静默覆盖老书
+            # (用户 import 一本新书如果 title 跟老书算出的 book_id 一样, 老书数据被无提示替换)
             existing = conn.execute('SELECT 1 FROM books WHERE id = ?', (book_id,)).fetchone()
             if existing:
-                logger.warning(f'book_id {book_id!r} 已存在, 此次 import 将覆盖 (filename={filename!r})')
+                logger.warning(f'book_id {book_id!r} 已存在, 拒绝覆盖 (filename={filename!r})')
+                return jsonify({
+                    "success": False,
+                    "error": f'书籍 ID {book_id!r} 已存在, 请重命名文件后重试 (例: {book_id}_v2.epub)',
+                    "retryable": False,
+                    "book_id": book_id,
+                }), 409
             now = int(time.time() * 1000)
             conn.execute(
                 'INSERT OR REPLACE INTO books (id, data_json, imported_at, updated_at) '
@@ -624,7 +740,7 @@ def register_routes(app):
 
         except Exception as e:
             logger.exception('EPUB 导入失败')
-            return jsonify({"success": False, "error": "导入失败: " + type(e).__name__})
+            return jsonify({"success": False, "error": "导入失败: " + type(e).__name__}), 500
 
     @app.route('/data/covers/<path:filename>')
     def serve_covers(filename):

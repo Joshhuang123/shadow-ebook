@@ -349,7 +349,7 @@ source venv/bin/activate
 python -m pytest -v
 ```
 
-**67 个 test, 8 个文件**,覆盖：
+**87 个 test, 8 个文件**(R8/R9 加了 rate_limit + epub_helpers 套件),覆盖：
 
 - 路径遍历防御（合法 / 非法 book_id 矩阵）
 - 家长 PIN（默认 0000 / 错 PIN / 5 次锁 15 分钟 / 改 PIN 后旧 PIN 失效 / 同值拒绝 / 剩余次数）
