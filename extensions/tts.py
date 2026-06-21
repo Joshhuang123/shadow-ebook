@@ -1,6 +1,6 @@
 """
 Owns: TTS endpoint, TTS cache eviction policy (LRU via atime), TTS pregeneration background task,
-audio file serving, /api/tts/pregenerate status endpoint.
+audio file serving, /api/tts/status endpoint.
 Does NOT own: course content (courses.py), book content (books.py), auth/rate-limit helpers (auth.py).
 """
 import asyncio
@@ -10,6 +10,7 @@ import logging
 import os
 import threading
 from pathlib import Path
+import edge_tts
 from flask import jsonify, request, send_from_directory
 
 from extensions.auth import _api_rate_limit_ok
@@ -22,6 +23,8 @@ TTS_CACHE_MAX_BYTES = 2 * 1024 * 1024 * 1024  # 2GB
 TTS_CACHE_MAX_FILES = 100_000
 AUDIO_ROOT = Path(__file__).resolve().parent.parent / 'audio'
 TTS_DIR = AUDIO_ROOT / 'tts'
+DEFAULT_VOICE = 'en-US-AriaNeural'
+TTS_TIMEOUT_SEC = 15  # edge-tts 卡死时 worker 也不能无限等
 
 
 # === TTS 缓存淘汰 (真正的 LRU: 基于 atime, mtime 不可靠) ===
@@ -87,77 +90,97 @@ def _touch_atime(audio_path: Path):
 
 
 # === 启动时预生成 TTS 音频 ===
+# 预生成过程统计: pregenerate_all_tts 写, /api/tts/status 读
+_pregen_state = {'running': False, 'attempted': 0, 'succeeded': 0, 'failed': 0, 'last_error': None}
+
+
 def pregenerate_all_tts():
-    """预生成所有电子书和语法音频 (仅默认音色,避免启动时磁盘爆)"""
-    import edge_tts
+    """预生成所有电子书和语法音频 (仅默认音色,避免启动时磁盘爆)。
 
-    VOICES = ['en-US-AriaNeural']
-
-    GRAMMAR_EXPLAINATIONS = [
-        "Present Progressive: Subject plus am, is, are, plus verb-ing.",
-        "This tense describes an action happening right now.",
-        "Simple Present: Subject plus verb s or es.",
-        "This tense describes habits and regular actions.",
-        "Simple Past: Subject plus verb-ed.",
-        "This tense describes actions that happened in the past.",
-        "be going to: Subject plus am, is, are, going to plus verb.",
-        "This expresses future plans.",
-    ]
-
+    失败可见: _pregen_state.failed / last_error 由 /api/tts/status 暴露, 日志也写 warning。
+    之前 except Exception: pass 静默, 预生成全挂也察觉不到。
+    """
     async def generate():
-        TTS_DIR.mkdir(parents=True, exist_ok=True)
-        books_dir = Path(__file__).resolve().parent.parent / 'data' / 'books'
+        _pregen_state.update({'running': True, 'attempted': 0, 'succeeded': 0, 'failed': 0, 'last_error': None})
+        try:
+            TTS_DIR.mkdir(parents=True, exist_ok=True)
+            books_dir = Path(__file__).resolve().parent.parent / 'data' / 'books'
 
-        # 1. 遍历所有电子书
-        logger.info("正在预生成电子书音频...")
-        for book_file in books_dir.glob('*.json'):
-            try:
-                book_data = json.loads(book_file.read_text())
-                sentences_count = 0
-                for chapter in book_data.get("chapters", []):
-                    for sent in chapter.get("sentences", []):
-                        text = sent["text"] if isinstance(sent, dict) else sent
-                        if not text or len(text) > 500:
-                            continue
-                        sentences_count += 1
-                        for voice in VOICES:
-                            text_hash = hashlib.md5((text + voice).encode()).hexdigest()[:12]
-                            audio_path = TTS_DIR / f'{text_hash}.mp3'
-                            if not audio_path.exists():
-                                try:
-                                    await edge_tts.Communicate(text, voice=voice).save(str(audio_path))
-                                except Exception:
-                                    pass
-                logger.info(f"  {book_data.get('book', book_file.stem)[:40]}: {sentences_count}句")
-            except Exception as e:
-                logger.warning(f"  {book_file}: {e}")
+            # 1. 遍历所有电子书
+            logger.info("正在预生成电子书音频...")
+            for book_file in books_dir.glob('*.json'):
+                try:
+                    book_data = json.loads(book_file.read_text())
+                    sentences_count = 0
+                    for chapter in book_data.get("chapters", []):
+                        for sent in chapter.get("sentences", []):
+                            text = sent["text"] if isinstance(sent, dict) else sent
+                            if not text or len(text) > 500:
+                                continue
+                            sentences_count += 1
+                            await _pregen_synthesize(text)
+                    logger.info(f"  {book_data.get('book', book_file.stem)[:40]}: {sentences_count}句")
+                except Exception as e:
+                    logger.warning(f"  {book_file}: {e}")
 
-        # 2. 生成语法讲解音频
-        logger.info("正在预生成语法讲解音频...")
-        for grammar_text in GRAMMAR_EXPLAINATIONS:
-            for voice in VOICES:
-                text_hash = hashlib.md5((grammar_text + voice).encode()).hexdigest()[:12]
-                audio_path = TTS_DIR / f'{text_hash}.mp3'
-                if not audio_path.exists():
-                    try:
-                        await edge_tts.Communicate(grammar_text, voice=voice).save(str(audio_path))
-                    except Exception:
-                        pass
-        logger.info("所有TTS音频预生成完成")
+            # 2. 生成语法讲解音频
+            logger.info("正在预生成语法讲解音频...")
+            for grammar_text in GRAMMAR_EXPLANATIONS:
+                await _pregen_synthesize(grammar_text)
+        finally:
+            _pregen_state['running'] = False
+            logger.info(
+                f"TTS 预生成完成: {_pregen_state['succeeded']}/{_pregen_state['attempted']} 成功, "
+                f"{_pregen_state['failed']} 失败"
+            )
 
     try:
         asyncio.run(generate())
     except Exception as e:
-        logger.warning(f"Pre-generate error: {e}")
+        logger.warning(f'Pre-generate error: {e}')
+        _pregen_state['running'] = False
+
+
+async def _pregen_synthesize(text: str) -> bool:
+    """单条 TTS 合成 (预生成路径), 写 _pregen_state。
+
+    提到模块级便于测试直接调 — 之前是 pregenerate_all_tts 内部闭包, 测不到。
+    """
+    text_hash = hashlib.md5((text + DEFAULT_VOICE).encode()).hexdigest()[:12]
+    audio_path = TTS_DIR / f'{text_hash}.mp3'
+    if audio_path.exists():
+        _pregen_state['attempted'] += 1
+        _pregen_state['succeeded'] += 1
+        return True
+    try:
+        await edge_tts.Communicate(text, voice=DEFAULT_VOICE).save(str(audio_path))
+        _pregen_state['attempted'] += 1
+        _pregen_state['succeeded'] += 1
+        return True
+    except Exception as e:
+        _pregen_state['attempted'] += 1
+        _pregen_state['failed'] += 1
+        _pregen_state['last_error'] = f'{type(e).__name__}: {e}'[:200]
+        logger.warning(f'TTS 预生成失败: text={text[:30]!r} err={type(e).__name__}')
+        return False
+
+
+GRAMMAR_EXPLANATIONS = [
+    "Present Progressive: Subject plus am, is, are, plus verb-ing.",
+    "This tense describes an action happening right now.",
+    "Simple Present: Subject plus verb s or es.",
+    "This tense describes habits and regular actions.",
+    "Simple Past: Subject plus verb-ed.",
+    "This tense describes actions that happened in the past.",
+    "be going to: Subject plus am, is, are, going to plus verb.",
+    "This expresses future plans.",
+]
 
 
 def start_tts_pregeneration():
     """由 app.py 在 __main__ 块显式调用,而非 import 时启动。"""
     t = threading.Thread(target=pregenerate_all_tts, name='tts-pregenerate', daemon=True)
     t.start()
-
-
-TTS_TIMEOUT_SEC = 15  # edge-tts 卡死时 worker 也不能无限等
 
 
 def register_routes(app):
@@ -175,7 +198,7 @@ def register_routes(app):
 
         data = request.get_json()
         text = data.get('text', '')
-        voice = data.get('voice', 'en-US-AriaNeural')  # 默认 Aria
+        voice = data.get('voice', DEFAULT_VOICE)
 
         if not text:
             return jsonify({
@@ -193,8 +216,6 @@ def register_routes(app):
         if audio_path.exists():
             _touch_atime(audio_path)
             return jsonify({"success": True, "audio_url": f"/audio/tts/{text_hash}.mp3"})
-
-        import edge_tts
 
         async def generate():
             # 加 15s 超时: 网络抖动时 edge-tts 可能挂 30s+, 拖死整个 worker
@@ -236,13 +257,13 @@ def register_routes(app):
             "retry_after": 3,
         }), 502
 
-    @app.route('/api/tts/pregenerate', methods=['POST'])
-    def pregenerate_status():
-        """前端调,返回当前 TTS 缓存状态 (满足 tutor.html:967 的契约)。
+    @app.route('/api/tts/status', methods=['GET'])
+    def tts_status():
+        """返回 TTS 缓存 + 预生成状态。
 
-        实际预生成由后台线程在启动时跑;此 endpoint 主要返回状态。
-
-        限流 (R8): anon POST + 扫 100k 文件 glob 慢, 10/min 够家长按钮连点, 不够打 DoS。
+        前端轮询判断"系统是否准备好" (满足 tutor.html:967 的契约)。
+        改名 + 改 GET: 之前叫 pregenerate 但只返回状态, 实际预生成是后台线程跑。
+        限流 (R8): anon GET + 扫 100k 文件 glob 慢, 30/min 够家长按钮连点, 不够打 DoS。
         """
         ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'pregenerate')
         if not ok:
@@ -253,7 +274,12 @@ def register_routes(app):
                 "retry_after": retry,
             }), 429
         count = sum(1 for _ in TTS_DIR.glob('*.mp3')) if TTS_DIR.exists() else 0
-        return jsonify({"success": True, "status": "ok", "audio_files": count})
+        return jsonify({
+            "success": True,
+            "status": "ok",
+            "audio_files": count,
+            "pregenerate": dict(_pregen_state),
+        })
 
     @app.route('/audio/<path:filename>')
     def serve_audio(filename):

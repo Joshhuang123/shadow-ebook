@@ -9,40 +9,34 @@ from flask import send_from_directory
 WEB_DIR = Path(__file__).resolve().parent.parent / 'web'
 FONTS_DIR = WEB_DIR / 'fonts'
 
+# 根路径暴露的静态资源 (manifest/service-worker 引用 /theme.js 而非 /web/theme.js)
+# - key   = URL 路径
+# - value = (目录, 文件名 or None=透传)
+# icons / screenshot 单独处理因为 <int:size> 转换器
+_ROOT_STATIC = [
+    ('/theme.js',         WEB_DIR,  'theme.js'),
+    ('/sync.js',          WEB_DIR,  'sync.js'),
+    ('/a11y.js',          WEB_DIR,  'a11y.js'),
+    ('/kid-touch.css',    WEB_DIR,  'kid-touch.css'),
+    ('/fonts/fonts.css',  FONTS_DIR, 'fonts.css'),
+    ('/manifest.json',    WEB_DIR,  'manifest.json'),
+]
+
 
 def register_routes(app):
-    @app.route('/theme.js')
-    def theme_js():
-        return send_from_directory(str(WEB_DIR), 'theme.js')
-
-    @app.route('/sync.js')
-    def sync_js():
-        return send_from_directory(str(WEB_DIR), 'sync.js')
-
-    @app.route('/a11y.js')
-    def a11y_js():
-        return send_from_directory(str(WEB_DIR), 'a11y.js')
-
-    @app.route('/kid-touch.css')
-    def kid_touch_css():
-        return send_from_directory(str(WEB_DIR), 'kid-touch.css')
-
-    @app.route('/fonts/fonts.css')
-    def fonts_css():
-        return send_from_directory(str(FONTS_DIR), 'fonts.css')
+    for url, directory, filename in _ROOT_STATIC:
+        app.add_url_rule(
+            url, endpoint=f'pwa_{filename}',  # 唯一 endpoint 名
+            view_func=lambda d=directory, f=filename: send_from_directory(str(d), f),
+        )
 
     @app.route('/fonts/<path:filename>')
     def font_file(filename):
         return send_from_directory(str(FONTS_DIR), filename)
 
-    @app.route('/manifest.json')
-    def manifest():
-        """PWA manifest"""
-        return send_from_directory(str(WEB_DIR), 'manifest.json')
-
     @app.route('/service-worker.js')
     def service_worker():
-        """Service Worker"""
+        """Service Worker — 需 Service-Worker-Allowed: / 头让 SW 控制根域"""
         resp = send_from_directory(str(WEB_DIR), 'service-worker.js')
         resp.headers['Service-Worker-Allowed'] = '/'
         return resp

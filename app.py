@@ -84,7 +84,7 @@ _CSP = '; '.join([
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self'",
-    "connect-src 'self'",
+    "connect-src 'self' https://api.mymemory.translated.net https://api.dictionaryapi.dev",
     "media-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
@@ -144,7 +144,6 @@ courses.register_routes(app)
 tts.register_routes(app)
 books.register_routes(app)
 parent_data.register_routes(app)
-db.register_routes(app)
 
 
 # === 启动 ===

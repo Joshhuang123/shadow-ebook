@@ -3,7 +3,20 @@ Owns: built-in course content (新概念英语青少版 2A) + comprehension ques
 Does NOT own: TTS for course sentences (tts.py), student progress on courses (parent_data.py).
 """
 import random
-from flask import jsonify
+from flask import jsonify, request
+
+from extensions.auth import _api_rate_limit_ok
+
+
+def _rate_limited():
+    """所有课程端点走 global 限流 (兜底 600/min), 防 anon 在 LAN 上反复刷题。"""
+    ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'global')
+    if not ok:
+        return jsonify({
+            "success": False,
+            "error": f"请求过快, {retry} 秒后再试",
+        }), 429
+    return None
 
 
 # === 课程内容 (按单元组织的核心句子) ===
@@ -140,11 +153,13 @@ def register_routes(app):
     @app.route('/api/course')
     def get_course():
         """获取课程内容"""
+        if (resp := _rate_limited()): return resp
         return jsonify({"success": True, "course": COURSE_CONTENT})
 
     @app.route('/api/unit/<int:unit_id>')
     def get_unit(unit_id):
         """获取指定单元"""
+        if (resp := _rate_limited()): return resp
         if 0 <= unit_id < len(COURSE_CONTENT["units"]):
             return jsonify({"success": True, "unit": COURSE_CONTENT["units"][unit_id]})
         return jsonify({"success": False, "error": "单元不存在"})
@@ -152,6 +167,7 @@ def register_routes(app):
     @app.route('/api/sentences/<int:unit_id>')
     def get_sentences(unit_id):
         """获取单元句子"""
+        if (resp := _rate_limited()): return resp
         if 0 <= unit_id < len(COURSE_CONTENT["units"]):
             return jsonify({"success": True, "sentences": COURSE_CONTENT["units"][unit_id]["sentences"]})
         return jsonify({"success": False, "error": "单元不存在"})
@@ -159,6 +175,7 @@ def register_routes(app):
     @app.route('/api/question/<topic>')
     def get_question(topic):
         """获取理解题"""
+        if (resp := _rate_limited()): return resp
         questions = COMPREHENSION_QUESTIONS.get(topic, [])
         if questions:
             q = random.choice(questions)

@@ -87,8 +87,3 @@ def require_parent_auth(f):
             return jsonify({"success": False, "error": "未授权"}), 401
         return f(*args, **kwargs)
     return wrapper
-
-
-def register_routes(app):
-    """auth 模块本身没有路由,只有装饰器和限流 helper。被其他模块 import 使用。"""
-    pass

@@ -165,8 +165,3 @@ def _migrate_parent_from_json():
             logger.info(f'parent_pin 迁移完成, 备份在 {backup_dir.name}/')
         except Exception as e:
             logger.warning(f'parent_pin 迁移失败: {e}')
-
-
-def register_routes(app):
-    """db 模块没有 HTTP 路由,只被其他模块 import 使用。"""
-    pass

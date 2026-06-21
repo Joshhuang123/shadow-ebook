@@ -51,12 +51,43 @@ def test_login_clear_unblocks(tmp_db, clear_login_state):
 
 
 def test_pin_persists_across_loads(tmp_db):
-    """_save_pin → _load_pin_hash 必须读回同一 hash (确认走的是 SQLite 不是内存)"""
+    """_save_pin → _load_pin_hash 必须能 verify (走 SQLite 不是内存)。
+
+    scrypt 用随机 salt, 两次 _hash_pin 同输入会产生不同 hash, 所以这里 verify 而非 ==。
+    """
     parent_data._save_pin(parent_data._hash_pin('9999'))
     h1 = parent_data._load_pin_hash()
     h2 = parent_data._load_pin_hash()
     assert h1 == h2
-    assert h1 == parent_data._hash_pin('9999')
+    assert h1.startswith('scrypt$')
+    assert parent_data._check_pin('9999') is True
+    assert parent_data._check_pin('0000') is False
+
+
+def test_legacy_sha256_pin_auto_upgrades(tmp_db):
+    """旧 SHA-256 格式 PIN 首次 verify 成功 → 自动升级到 scrypt, 之后还是 verify 成功。"""
+    legacy_hash = hashlib_sha256('8888')
+    parent_data._save_pin(legacy_hash)
+    assert parent_data._check_pin('8888') is True  # 旧 hash verify 成功
+    # 升级到 scrypt 后, 应该能继续 verify
+    h_after = parent_data._load_pin_hash()
+    assert h_after.startswith('scrypt$'), f'PIN 未升级, 仍为 {h_after[:20]}'
+    assert parent_data._check_pin('8888') is True
+    assert parent_data._check_pin('8887') is False
+
+
+def test_pin_hash_uses_random_salt():
+    """_hash_pin 两次同输入产生不同输出 (scrypt + 随机 salt)"""
+    a = parent_data._hash_pin('0000')
+    b = parent_data._hash_pin('0000')
+    assert a != b, 'scrypt 应使用随机 salt, 两次输出必须不同'
+    assert a.startswith('scrypt$') and b.startswith('scrypt$')
+
+
+def hashlib_sha256(pin: str) -> str:
+    """测试 helper: 旧 SHA-256 hex 格式"""
+    import hashlib
+    return hashlib.sha256(pin.encode('utf-8')).hexdigest()
 
 
 def test_change_pin_rejects_same_value(tmp_db):

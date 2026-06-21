@@ -1,9 +1,9 @@
-"""Round 8 守护: 新加的 pregenerate / export 限流 bucket 真生效.
+"""Round 8 守护: 限流 bucket 真生效 (pregenerate status / export / courses)。
 
-不需要真发 30 次请求 (TTS 那个的教训), 直接 monkeypatch 限流字典假装已满。
+不需要真发 N 次请求 (TTS 那个的教训), 直接 monkeypatch 限流字典假装已满。
 """
 import importlib
-import sys
+
 import pytest
 
 from extensions import auth
@@ -22,27 +22,29 @@ def _fill_rate_limit(bucket, ip='127.0.0.1'):
         auth._API_RATE[(ip, bucket)] = [9999999999.0] * 1000
 
 
-# === pregenerate ===
+# === tts_status (R10 改名 + 改 GET) ===
 
-def test_pregenerate_rate_limited(client):
-    """pregenerate bucket 满 → 429 + retryable"""
+def test_tts_status_rate_limited(client):
+    """pregenerate bucket 满 → 429 + retryable (走的是 /api/tts/status GET)"""
     _fill_rate_limit('pregenerate')
-    r = client.post('/api/tts/pregenerate')
+    r = client.get('/api/tts/status')
     assert r.status_code == 429
     assert r.json['retryable'] is True
     assert r.json['retry_after'] >= 1
     assert '请求过快' in r.json['error']
 
 
-def test_pregenerate_under_limit_ok(client, tmp_path, monkeypatch):
-    """未超限 → 200 + audio_files 计数 (扫 tmp_path 下的 mp3)"""
+def test_tts_status_under_limit_ok(client, tmp_path, monkeypatch):
+    """未超限 → 200 + audio_files 计数 (扫 tmp_path 下的 mp3) + pregenerate 状态"""
     monkeypatch.setattr('extensions.tts.TTS_DIR', tmp_path)
-    # 放 2 个 mp3 看 count 对不对
     (tmp_path / 'a.mp3').write_bytes(b'x')
     (tmp_path / 'b.mp3').write_bytes(b'x')
-    r = client.post('/api/tts/pregenerate')
+    r = client.get('/api/tts/status')
     assert r.status_code == 200
     assert r.json['audio_files'] == 2
+    # 新加的 pregenerate 状态字段也在
+    assert 'pregenerate' in r.json
+    assert 'attempted' in r.json['pregenerate']
 
 
 # === export ===

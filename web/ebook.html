@@ -621,7 +621,7 @@
             font-weight: 600;
         }
 
-        /* 阅读器主体 */
+        /* 阅读器主体 (R10: 折叠时改 grid 模板, 让 1fr 真占满) */
         .reader-main {
             display: grid;
             grid-template-columns: 240px 1fr 300px;
@@ -629,8 +629,13 @@
             height: calc(100vh - 80px);
             position: relative;
         }
+        /* 折叠任一边时, 把对应列宽设为 0, 让 1fr 列扩到全屏
+           (改子元素 width: 0 不行, grid 仍按 240/300 分配, 1fr 不变) */
+        .reader-main.toc-collapsed { grid-template-columns: 0 1fr 300px; }
+        .reader-main.sidebar-collapsed { grid-template-columns: 240px 1fr 0; }
+        .reader-main.toc-collapsed.sidebar-collapsed { grid-template-columns: 0 1fr 0; }
 
-        /* 左侧 TOC 侧边栏 (R9) */
+        /* 左侧 TOC 侧边栏 (R9 + R10: 可折叠, 折叠后 width: 0, 浮按钮展开) */
         .toc-sidebar {
             background: var(--bg-card);
             border-right: 1px solid var(--border);
@@ -638,6 +643,18 @@
             height: 100%;
             display: flex;
             flex-direction: column;
+            transition: width 0.2s;
+            width: 240px;
+            flex-shrink: 0;
+        }
+        .toc-sidebar.collapsed {
+            width: 0;
+            border-right: none;
+            overflow: hidden;
+        }
+        .toc-sidebar.collapsed .toc-sidebar-header,
+        .toc-sidebar.collapsed .toc-list {
+            display: none;
         }
         .toc-sidebar-header {
             padding: 16px 20px 12px;
@@ -648,7 +665,21 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
             flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
+        .toc-toggle {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            border-radius: 4px;
+            padding: 2px 8px;
+            cursor: pointer;
+            font-size: 0.85em;
+            margin-left: auto;
+        }
+        .toc-toggle:hover { background: var(--bg-dark); }
         .toc-list {
             padding: 8px 0;
             flex: 1;
@@ -777,7 +808,38 @@
         }
         .book-info-toggle:hover { text-decoration: underline; }
 
-        /* 右侧控制面板固定 */
+        /* R10: 浮动控制条 (R10b: 改 fixed 钉死屏幕底部 — sticky 在没限高父容器里不贴底) */
+        .reader-controls-sticky {
+            position: fixed;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 0;
+            display: none;  /* R10b: 默认隐藏, showReader() 加 .visible 才显示 */
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            border-radius: 12px 12px 0 0;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+            z-index: 100;
+        }
+        .reader-controls-sticky.visible {
+            display: flex;
+        }
+        .reader-controls-sticky .page-info {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            min-width: 60px;
+            text-align: center;
+        }
+        .reader-controls-sticky .divider {
+            width: 1px;
+            height: 24px;
+            background: var(--border);
+            margin: 0 4px;
+        }
         .sidebar {
             width: 300px;
             flex-shrink: 0;
@@ -789,6 +851,49 @@
             display: flex;
             flex-direction: column;
             gap: 16px;
+            transition: width 0.2s, padding 0.2s;
+        }
+        .sidebar.collapsed {
+            width: 0;
+            padding: 0;
+            border-left: none;
+            overflow: hidden;
+        }
+        .sidebar.collapsed .sidebar-header,
+        .sidebar.collapsed .sidebar-card,
+        .sidebar.collapsed .pronunciation-card {
+            display: none;
+        }
+        /* R10: 浮动展开按钮 (浮在屏幕边缘, 不占 grid 空间) */
+        .toc-fab, .controls-fab {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 999;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+            transition: background 0.15s;
+        }
+        .toc-fab { left: 8px; }
+        .controls-fab { right: 8px; }
+        .toc-fab:hover, .controls-fab:hover { background: var(--bg-dark); }
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            font-size: 0.85em;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: -8px;
+        }
+        .sidebar.collapsed .sidebar-header-label {
+            display: none;
         }
 
         @media (max-width: 1023px) {
@@ -810,7 +915,7 @@
             }
         }
 
-        /* iPad 横屏：左侧 TOC 滚动, 中间内容, 右侧固定 */
+        /* iPad 横屏: 3 列布局 (TOC | 主内容 | 右侧控制) */
         @media (min-width: 1024px) and (orientation: landscape) {
             .reader-main {
                 grid-template-columns: 240px 1fr 320px;
@@ -1852,10 +1957,13 @@
                 <div style="width:80px;"></div>
             </div>
 
-            <div class="reader-main">
+            <div class="reader-main" id="reader-main">
                 <!-- R9: 左侧 TOC 侧边栏 (替代顶部 chapter tabs) -->
-                <aside class="toc-sidebar">
-                    <div class="toc-sidebar-header">📑 目录</div>
+                <aside class="toc-sidebar" id="toc-sidebar">
+                    <div class="toc-sidebar-header">
+                        <span class="toc-sidebar-text">📑 目录</span>
+                        <button class="toc-toggle" id="toc-toggle" onclick="toggleTocSidebar()" title="折叠/展开">◀</button>
+                    </div>
                     <div class="toc-list" id="toc-list"></div>
                 </aside>
 
@@ -1896,46 +2004,41 @@
                     <div id="single-page-view">
                         <div class="sentence-display" id="sentence-display"></div>
                     </div>
+
+                    <!-- R10: 浮动控制条 (sticky 吸底, 永远可见, 跟 sidebar 状态无关) -->
+                    <div class="reader-controls-sticky">
+                        <button class="page-btn" onclick="prevSentence()" title="上一句 (←)">◀</button>
+                        <button class="play-btn-large" id="btn-play" onclick="playCurrentSentence()" style="width:48px;height:48px;" title="播放/暂停 (Space)">
+                            <span id="play-icon">▶</span>
+                        </button>
+                        <button class="page-btn" onclick="nextSentence()" title="下一句 (→)">▶</button>
+                        <span class="page-info" id="page-info">1 / 10</span>
+                        <span class="divider"></span>
+                        <button class="page-btn" onclick="prevChapter()" title="上一章">⏮ 章</button>
+                        <button class="page-btn" onclick="nextChapter()" title="下一章">章 ⏭</button>
+                    </div>
                 </div>
 
-                <div class="sidebar">
-                    <!-- 播放导航控制 -->
-                    <div class="sidebar-card" style="text-align:center;">
-                        <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px;">
-                            <button class="page-btn" id="btn-prev" onclick="prevSentence()" style="padding:8px 12px;">
-                                <span class="page-btn-icon">◀</span>
-                            </button>
-                            <button class="play-btn-large" id="btn-play" onclick="playCurrentSentence()" style="width:56px;height:56px;">
-                                <span id="play-icon">▶</span>
-                            </button>
-                            <button class="page-btn" id="btn-next" onclick="nextSentence()" style="padding:8px 12px;">
-                                <span class="page-btn-icon">▶</span>
-                            </button>
-                        </div>
-                        <div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:0.85em;color:var(--text-secondary);margin-bottom:12px;">
-                            <span id="current-page">1</span>
-                            <span>/</span>
-                            <span id="total-pages">10</span>
-                        </div>
-                        <div style="display:flex;gap:8px;justify-content:center;">
-                            <button class="chapter-nav-btn" id="btn-chapter-prev" onclick="prevChapter()">
-                                <span>◀ 上一章</span>
-                            </button>
-                            <button class="chapter-nav-btn" id="btn-chapter-next" onclick="nextChapter()">
-                                <span>下一章 ▶</span>
-                            </button>
-                        </div>
-                        <button class="btn btn-secondary quiz-btn" id="btn-comp" onclick="showComprehensionModal()" style="width:100%;margin-top:12px;font-size:0.9em;">
-                            📖 章节测验
-                        </button>
-                        <!-- 字体大小调节 -->
-                        <div class="sidebar-card" style="padding:12px 16px;">
-                            <div class="sidebar-title" style="margin-bottom:8px;font-size:0.85em;">🔤 字体大小</div>
-                            <div style="display:flex;align-items:center;gap:8px;">
-                                <button class="page-btn" onclick="changeFontSize(-2)" style="padding:6px 12px;font-size:0.9em;">A-</button>
-                                <span id="font-size-display" style="flex:1;text-align:center;font-size:0.9em;">20px</span>
-                                <button class="page-btn" onclick="changeFontSize(2)" style="padding:6px 12px;font-size:0.9em;">A+</button>
-                            </div>
+                <div class="sidebar" id="sidebar">
+                    <!-- R10: 折叠 header -->
+                    <div class="sidebar-header">
+                        <span class="sidebar-header-label">🎛️ 控制</span>
+                        <button class="toc-toggle" id="sidebar-toggle" onclick="toggleSidebar()" title="折叠/展开">▶</button>
+                    </div>
+                    <!-- R10: 基础控制(翻页/章节)已抽到 text-panel 底部 sticky, 这里只剩高级功能 -->
+
+                    <!-- 章节测验 -->
+                    <button class="btn btn-secondary quiz-btn" id="btn-comp" onclick="showComprehensionModal()" style="width:100%;font-size:0.9em;">
+                        📖 章节测验
+                    </button>
+
+                    <!-- 字体大小调节 -->
+                    <div class="sidebar-card" style="padding:12px 16px;">
+                        <div class="sidebar-title" style="margin-bottom:8px;font-size:0.85em;">🔤 字体大小</div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <button class="page-btn" onclick="changeFontSize(-2)" style="padding:6px 12px;font-size:0.9em;">A-</button>
+                            <span id="font-size-display" style="flex:1;text-align:center;font-size:0.9em;">20px</span>
+                            <button class="page-btn" onclick="changeFontSize(2)" style="padding:6px 12px;font-size:0.9em;">A+</button>
                         </div>
                     </div>
                     <!-- 跟读评分 -->
@@ -2264,6 +2367,79 @@
             initFontSize();
             document.getElementById('book-list-page').classList.add('hidden');
             document.getElementById('reader-page').classList.add('active');
+            // R10b: 显示 sticky 控制条 (fixed 钉底部)
+            document.querySelector('.reader-controls-sticky')?.classList.add('visible');
+        }
+
+        // R10: 全局缓存家长登录状态, 让 import 卡片显示"需先登录"提示
+        let parentAuthed = false;
+        async function refreshParentAuth() {
+            try {
+                const r = await fetch('/api/parent/check');
+                const d = await r.json();
+                parentAuthed = d.authenticated === true;
+            } catch (e) {
+                parentAuthed = false;
+            }
+        }
+        // 页面加载时查一次, login/logout 之后再查
+        refreshParentAuth();
+
+        // R10: 左侧 TOC 侧边栏折叠 (改 grid 模板让 1fr 占满)
+        function toggleTocSidebar() {
+            const sidebar = document.getElementById('toc-sidebar');
+            const main = document.getElementById('reader-main');
+            const btn = document.getElementById('toc-toggle');
+            const fab = document.getElementById('toc-fab');
+            const collapsed = sidebar.classList.toggle('collapsed');
+            main.classList.toggle('toc-collapsed', collapsed);
+            btn.textContent = collapsed ? '▶' : '◀';
+            btn.title = collapsed ? '展开目录' : '折叠目录';
+            if (fab) fab.classList.toggle('hidden', !collapsed);
+            try { localStorage.setItem('toc-collapsed', collapsed ? '1' : '0'); } catch (e) {}
+        }
+        try {
+            if (localStorage.getItem('toc-collapsed') === '1') {
+                document.getElementById('toc-sidebar').classList.add('collapsed');
+                document.getElementById('reader-main').classList.add('toc-collapsed');
+                const b = document.getElementById('toc-toggle');
+                if (b) { b.textContent = '▶'; b.title = '展开目录'; }
+                const fab = document.getElementById('toc-fab');
+                if (fab) fab.classList.remove('hidden');
+            }
+        } catch (e) {}
+
+        // R10: 右侧控制栏折叠 (改 grid 模板让 1fr 占满)
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const main = document.getElementById('reader-main');
+            const btn = document.getElementById('sidebar-toggle');
+            const fab = document.getElementById('controls-fab');
+            const collapsed = sidebar.classList.toggle('collapsed');
+            main.classList.toggle('sidebar-collapsed', collapsed);
+            btn.textContent = collapsed ? '◀' : '▶';
+            btn.title = collapsed ? '展开控制' : '折叠控制';
+            if (fab) fab.classList.toggle('hidden', !collapsed);
+            try { localStorage.setItem('sidebar-collapsed', collapsed ? '1' : '0'); } catch (e) {}
+        }
+        try {
+            if (localStorage.getItem('sidebar-collapsed') === '1') {
+                document.getElementById('sidebar').classList.add('collapsed');
+                document.getElementById('reader-main').classList.add('sidebar-collapsed');
+                const b = document.getElementById('sidebar-toggle');
+                if (b) { b.textContent = '◀'; b.title = '展开控制'; }
+                const fab = document.getElementById('controls-fab');
+                if (fab) fab.classList.remove('hidden');
+            }
+        } catch (e) {}
+
+        // R10: 简易 toast (章节边界未识别等临时提示用)
+        function showToast(msg, ms) {
+            const t = document.createElement('div');
+            t.textContent = msg;
+            t.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.78);color:white;padding:10px 20px;border-radius:8px;z-index:9999;font-size:0.9em;';
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), ms || 2500);
         }
 
         // 加载书籍列表
@@ -2352,11 +2528,13 @@
                 }
 
                 // 添加导入卡片 (用 insertAdjacentHTML 避免 innerHTML+= 的 re-parse)
+                // R10: 提示家长"需先登录" 免得点了之后才发现要鉴权
+                const importHint = parentAuthed ? '支持 EPUB 格式' : '需先在 /parent 登录';
                 grid.insertAdjacentHTML('beforeend', `
                     <div class="import-card" onclick="document.getElementById('import-file').click()">
                         <div class="icon">➕</div>
                         <div class="text">导入新书</div>
-                        <div class="hint">支持 EPUB 格式</div>
+                        <div class="hint">${importHint}</div>
                     </div>
                 `);
             } catch (err) {
@@ -2499,10 +2677,21 @@
                         // 真 toc 的 href 跟 chapters 数组里没严格对应, 但顺序一般对得上
                         // 找不到匹配的 chapter 时, fall back 到第 i 个
                         const idx = Math.min(i, chapters.length - 1);
+                        // R10: toc 项数远大于 chapter 数(扫描版/无 h1 的书)时,
+                        // 所有点击都落到 chapter 0, 视觉上"没用"。给个提示告诉家长真相。
+                        if (toc.length > chapters.length * 2) {
+                            showToast('此书未识别章节边界,目录仅供参考');
+                            return;
+                        }
                         selectChapter(idx);
                     };
                     list.appendChild(btn);
                 });
+                // 章节边界未识别时, 在 list 底部再放一次提示
+                if (toc.length > chapters.length * 2) {
+                    list.insertAdjacentHTML('beforeend',
+                        '<div class="toc-empty" style="margin-top:8px">⚠️ 此书未识别章节边界,目录仅供参考</div>');
+                }
             } else if (chapters.length > 0) {
                 // 降级: 用 chapter.name 当目录项
                 chapters.forEach((ch, i) => {
@@ -2579,9 +2768,11 @@
                 item.classList.toggle('active', i === currentChapterIndex);
             });
 
-            // 更新章节导航按钮
-            document.getElementById('btn-chapter-prev').disabled = currentChapterIndex === 0;
-            document.getElementById('btn-chapter-next').disabled = currentChapterIndex >= bookData.chapters.length - 1;
+            // 更新章节导航按钮 (R10: 抽到 sticky bar 后, 这俩 ID 在隐藏 sidebar 里可能不存在 — 防御性判空)
+            const prevBtn = document.getElementById('btn-chapter-prev');
+            const nextBtn = document.getElementById('btn-chapter-next');
+            if (prevBtn) prevBtn.disabled = currentChapterIndex === 0;
+            if (nextBtn) nextBtn.disabled = currentChapterIndex >= bookData.chapters.length - 1;
 
             updateDisplay();
             clearTranslation();
@@ -2632,7 +2823,10 @@
         // 翻译句子
         async function translateSentence(sentence) {
             const el = document.getElementById('translation-content');
-            el.innerHTML = '<div class="translation-loading">翻译中...</div>';
+            if (el) el.innerHTML = '<div class="translation-loading">翻译中...</div>';
+
+            // R10: sidebar 折叠时用户看不到 translation-content, 同时弹 toast
+            showToast('翻译中...', 1500);
 
             try {
                 const res = await fetch(
@@ -2641,12 +2835,16 @@
                 const data = await res.json();
 
                 if (data.responseStatus === 200 && data.responseData?.translatedText) {
-                    el.innerHTML = `<div class="sentence-translation-text">${data.responseData.translatedText}</div>`;
+                    const text = data.responseData.translatedText;
+                    if (el) el.innerHTML = `<div class="sentence-translation-text">${text}</div>`;
+                    showToast(text, 5000);  // 弹 5s, 折叠 sidebar 也能看到
                 } else {
-                    el.innerHTML = '<div class="translation-content">翻译失败</div>';
+                    if (el) el.innerHTML = '<div class="translation-content">翻译失败</div>';
+                    showToast('翻译失败: API 未返回结果', 3000);
                 }
             } catch (err) {
-                el.innerHTML = '<div class="translation-content">翻译失败</div>';
+                if (el) el.innerHTML = '<div class="translation-content">翻译失败</div>';
+                showToast('翻译失败: 网络错误', 3000);
             }
         }
 
@@ -3222,12 +3420,21 @@
                 if (data.success) {
                     loadBookList();
                     alert(`导入成功！${data.book_title}`);
+                } else if (res.status === 401) {
+                    // R10: 之前 401 之后只 alert "未授权", 家长不知道去哪儿登录
+                    if (confirm('导入需要家长登录。\n\n是否现在跳转到登录页? (默认 PIN: 0000)')) {
+                        window.location.href = '/parent';
+                    }
+                    loadBookList();
+                } else if (res.status === 409) {
+                    alert('导入失败 (重复):\n\n' + data.error + '\n\n建议: 重命名文件后重试, 或先去 /parent 删除旧书');
+                    loadBookList();
                 } else {
-                    alert('导入失败: ' + data.error);
+                    alert('导入失败: ' + (data.error || `HTTP ${res.status}`));
                     loadBookList();
                 }
             } catch (err) {
-                alert('导入失败');
+                alert('导入失败 (网络错误)');
                 loadBookList();
             }
         }
@@ -3259,12 +3466,19 @@
             const percent = total > 0 ? Math.round((currentSentenceIndex / total) * 100) : 0;
             document.getElementById('progress-fill').style.width = percent + '%';
             document.getElementById('progress-text').textContent = `第 ${current} 页 / 共 ${total} 页`;
-            document.getElementById('current-page').textContent = current;
-            document.getElementById('total-pages').textContent = total;
+            const curPageEl = document.getElementById('current-page');
+            const totPageEl = document.getElementById('total-pages');
+            if (curPageEl) curPageEl.textContent = current;
+            if (totPageEl) totPageEl.textContent = total;
+            // R10: sticky bar 用 page-info 同步显示 (替代旧 #page-info 之外的 btn-prev/btn-next 钩子)
+            const pageInfo = document.getElementById('page-info');
+            if (pageInfo) pageInfo.textContent = `${current} / ${total}`;
 
-            // 更新按钮状态
-            document.getElementById('btn-prev').disabled = currentSentenceIndex === 0;
-            document.getElementById('btn-next').disabled = currentSentenceIndex >= sentences.length - 1;
+            // 更新按钮状态 (R10: 抽到 sticky bar 后, 这些 ID 可能不存在 — 防御性判空)
+            const prevBtn = document.getElementById('btn-prev');
+            const nextBtn = document.getElementById('btn-next');
+            if (prevBtn) prevBtn.disabled = currentSentenceIndex === 0;
+            if (nextBtn) nextBtn.disabled = currentSentenceIndex >= sentences.length - 1;
         }
 
         // 格式化句子
@@ -3716,5 +3930,9 @@
             document.body.classList.add('kid-mode');
         }
     </script>
+
+    <!-- R10: 折叠后浮动的展开按钮 (不占 grid 空间) -->
+    <button class="toc-fab hidden" id="toc-fab" onclick="toggleTocSidebar()" title="展开目录">📑</button>
+    <button class="controls-fab hidden" id="controls-fab" onclick="toggleSidebar()" title="展开控制">🎛️</button>
 </body>
 </html>

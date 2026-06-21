@@ -6,12 +6,13 @@
   - 静默失败 (没抛也没文件): 502 + retryable
 
 注意: 每次用唯一 text 避免命中上轮测试的 TTS 缓存 (md5(text+voice) 决定文件名)。
+R10: 改用 monkeypatch.setattr 注入 fake Communicate — 之前用 patch.dict(sys.modules)
+不再有效, 因为 tts.py 现在是模块顶部 import edge_tts (而不是函数内 import), 那时
+extensions.tts.edge_tts 已经绑死到原 module, 之后改 sys.modules 不影响。
 """
 import asyncio
 import importlib
-import sys
 import uuid
-from unittest.mock import patch, AsyncMock
 
 import pytest
 
@@ -38,6 +39,11 @@ def _post_tts(client, text=None):
         'text': text or f'unique-{uuid.uuid4()}',
         'voice': 'en-US-AriaNeural',
     })
+
+
+def _patch_communicate(monkeypatch, fake_cls):
+    """注入 fake Communicate 到 extensions.tts.edge_tts (已经是 top-level import, 绑定后不变)"""
+    monkeypatch.setattr('extensions.tts.edge_tts.Communicate', fake_cls)
 
 
 # === 基础错误: 用户输入 (不用 mock edge_tts) ===
@@ -67,7 +73,7 @@ def test_tts_rate_limit_returns_retryable(client):
 
 # === edge_tts 抛异常 ===
 
-def test_tts_exception_returns_502_with_retryable(client):
+def test_tts_exception_returns_502_with_retryable(client, monkeypatch):
     """edge_tts 抛任意异常: 502, 不泄露原始 exc 字符串, 但带 retryable"""
     class FakeCommunicate:
         def __init__(self, text, voice):
@@ -75,9 +81,8 @@ def test_tts_exception_returns_502_with_retryable(client):
         async def save(self, path):
             raise RuntimeError("internal: 192.168.1.1 refused connection /secret-token-xyz")
 
-    with patch.dict(sys.modules, {'edge_tts': type(sys)('edge_tts')}):
-        sys.modules['edge_tts'].Communicate = FakeCommunicate
-        r = _post_tts(client)
+    _patch_communicate(monkeypatch, FakeCommunicate)
+    r = _post_tts(client)
 
     assert r.status_code == 502
     assert r.json['success'] is False
@@ -92,7 +97,7 @@ def test_tts_exception_returns_502_with_retryable(client):
 
 # === edge_tts 超时 ===
 
-def test_tts_timeout_returns_504(client):
+def test_tts_timeout_returns_504(client, monkeypatch):
     """asyncio.TimeoutError → 504, retryable=True, 提示稍后再试"""
     class SlowCommunicate:
         def __init__(self, text, voice):
@@ -100,9 +105,8 @@ def test_tts_timeout_returns_504(client):
         async def save(self, path):
             raise asyncio.TimeoutError()
 
-    with patch.dict(sys.modules, {'edge_tts': type(sys)('edge_tts')}):
-        sys.modules['edge_tts'].Communicate = SlowCommunicate
-        r = _post_tts(client)
+    _patch_communicate(monkeypatch, SlowCommunicate)
+    r = _post_tts(client)
 
     assert r.status_code == 504
     assert r.json['retryable'] is True
@@ -112,7 +116,7 @@ def test_tts_timeout_returns_504(client):
 
 # === edge_tts 静默失败 (没抛也没文件) ===
 
-def test_tts_silent_no_file_returns_502(client):
+def test_tts_silent_no_file_returns_502(client, monkeypatch):
     """save() 正常 return 但没写出文件 (edge-tts 偶发的 bug) → 502, retryable"""
     class QuietCommunicate:
         def __init__(self, text, voice):
@@ -120,11 +124,11 @@ def test_tts_silent_no_file_returns_502(client):
         async def save(self, path):
             return  # 啥都不干, 假装成功
 
-    with patch.dict(sys.modules, {'edge_tts': type(sys)('edge_tts')}):
-        sys.modules['edge_tts'].Communicate = QuietCommunicate
-        r = _post_tts(client)
+    _patch_communicate(monkeypatch, QuietCommunicate)
+    r = _post_tts(client)
 
     assert r.status_code == 502
     assert r.json['retryable'] is True
     assert r.json['retry_after'] == 3
     assert '未返回' in r.json['error'] or '重试' in r.json['error']
+

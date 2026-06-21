@@ -504,6 +504,7 @@
             <span>家长监控</span>
         </div>
         <div class="nav-right">
+            <a class="btn btn-secondary" href="/ebook" style="text-decoration:none;margin-right:8px">📖 去看书</a>
             <button class="btn btn-secondary" onclick="logout()">退出</button>
         </div>
     </nav>
@@ -737,6 +738,12 @@
                 const j = await r.json();
                 if (j.success) {
                     el('pwdError').style.display = 'none';
+                    // R10: 如果 URL 带 ?next=/ebook, 登录后跳回去, 避免家长手动返回
+                    const next = new URLSearchParams(location.search).get('next');
+                    if (next && next.startsWith('/')) {
+                        window.location.href = next;
+                        return;
+                    }
                     showDashboard();
                 } else {
                     showPwdError(j.error || 'PIN 错误');
