@@ -89,6 +89,30 @@ def init_db():
             f'原文件备份在 data/parent.migrated-<ts>/ (留 30 天,后手动 rm)\n'
         )
 
+    # R11: 清理过期备份目录 (>30 天的 books.migrated-* / parent.migrated-*)
+    _cleanup_old_migrations(days=30)
+
+
+def _cleanup_old_migrations(days: int = 30):
+    """删 N 天前的 .migrated-* 备份目录。Init 末尾跑,不阻塞首启。"""
+    cutoff = time.time() - days * 86400
+    removed = 0
+    for pattern in ('books.migrated-*', 'parent.migrated-*'):
+        for d in DATA_DIR.glob(pattern):
+            if not d.is_dir():
+                continue
+            try:
+                # 目录名带 int(time.time()), 直接 parse
+                ts_str = d.name.split('.migrated-', 1)[-1]
+                ts = int(ts_str)
+                if ts < cutoff:
+                    shutil.rmtree(d)
+                    removed += 1
+            except (ValueError, OSError) as e:
+                logger.debug(f'跳过 {d}: {e}')
+    if removed:
+        logger.info(f'清理 {removed} 个过期迁移备份 (>{days} 天)')
+
 
 def _migrate_books_from_json():
     """首次启动:把 data/books/*.json 灌进 SQLite,原文件移到 .migrated-<ts>/ 留底。"""

@@ -149,13 +149,27 @@ parent_data.register_routes(app)
 # === 启动 ===
 if __name__ == '__main__':
     def get_lan_ip():
+        """获取本机 LAN IP。优先 UDP connect 取出口 IP (能反映真实路由),
+        失败再 fallback 到 hostname 解析 (隔离网络 / 容器场景)。
+        """
+        # 1) UDP connect 不真发包, 但能选到默认路由接口的 IP
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(("8.8.8.8", 80))
-            ip = s.getsockname()[0]
-            s.close()
-            return ip
-        except:
+            try:
+                s.connect(("8.8.8.8", 80))
+                ip = s.getsockname()[0]
+                if ip and not ip.startswith('0.'):
+                    return ip
+            except OSError:
+                pass
+            finally:
+                s.close()
+        except OSError:
+            pass
+        # 2) Fallback: hostname 解析 (在没有外网时也能拿到 LAN IP)
+        try:
+            return socket.gethostbyname(socket.gethostname())
+        except OSError:
             return "localhost"
 
     lan_ip = get_lan_ip()

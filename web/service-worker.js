@@ -1,4 +1,6 @@
-const CACHE_NAME = 'shadow-ebook-v16';
+const CACHE_NAME = 'shadow-ebook-v17';
+// R11: 字体从 install 预缓存里拿掉 (5 个 ttf ~ 1-2MB, 用户没开过页面也要下)
+// 改成 runtime cache, 第一次访问页面时才按需缓存
 const STATIC_ASSETS = [
   '/',
   '/tutor',
@@ -11,12 +13,6 @@ const STATIC_ASSETS = [
   '/a11y.js',
   '/kid-touch.css',
   '/fonts/fonts.css',
-  '/fonts/noto-serif-sc-400.ttf',
-  '/fonts/noto-serif-sc-600.ttf',
-  '/fonts/noto-serif-sc-700.ttf',
-  '/fonts/nunito-400.ttf',
-  '/fonts/nunito-600.ttf',
-  '/fonts/nunito-700.ttf',
   '/icon-48.png',
   '/icon-72.png',
   '/icon-96.png',
@@ -27,8 +23,6 @@ const STATIC_ASSETS = [
   '/icon-384.png',
   '/icon-512.png'
 ];
-
-const MAX_CACHE_SIZE = 50;
 
 // 安装 Service Worker
 self.addEventListener('install', (event) => {
@@ -70,17 +64,9 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// 清理过多缓存
-async function cleanupCache() {
-  const cache = await caches.open(CACHE_NAME);
-  const keys = await cache.keys();
-  if (keys.length > MAX_CACHE_SIZE) {
-    // 删除最老的缓存项
-    const deleteCount = keys.length - MAX_CACHE_SIZE;
-    for (let i = 0; i < deleteCount; i++) {
-      await cache.delete(keys[i]);
-    }
-  }
+// 字体运行时缓存: 第一次请求 .ttf 时 cache.put, 后续 cache-first
+function isFontRequest(url) {
+  return url.pathname.startsWith('/fonts/') && url.pathname.endsWith('.ttf');
 }
 
 // 请求拦截
@@ -136,6 +122,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // 字体: cache-first (R11: 第一次访问才下载, 不再 install 时全预缓存)
+  if (isFontRequest(url)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
   // 静态资源使用缓存优先策略
   event.respondWith(
     caches.match(request)
@@ -167,9 +170,6 @@ self.addEventListener('fetch', (event) => {
       })
       .catch(() => new Response('Offline', { status: 503, statusText: 'Offline' }))
   );
-  
-  // 定期清理缓存
-  cleanupCache();
 });
 
 // 处理消息

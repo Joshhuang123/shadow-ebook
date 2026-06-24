@@ -6,6 +6,7 @@ Does NOT own: TTS for book sentences (tts.py), parent stats (parent_data.py), DB
 Phase 3a: books 改走 SQLite (data/shadow.db),原 data/books/*.json 在首次启动时自动迁入,
         备份在 data/books.migrated-<ts>/ 留 30 天。
 """
+import hashlib
 import io
 import json
 import logging
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 # === 路径穿越防御: book_id 只能含字母数字下划线连字符 ===
 BOOK_ID_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{1,64}$')  # 防御 + URL/路径友好的硬上限
 COVERS_DIR = Path(__file__).resolve().parent.parent / 'data' / 'covers'
+COVER_URL_PREFIX = '/data/covers/'  # API 响应里 cover 字段的前缀, 反代改这里就能改
 
 
 def is_valid_book_id(book_id):
@@ -219,6 +221,33 @@ def _find_cover_via_opf(zf, opf_path: str) -> str:
     return ''
 
 
+def _sanitize_book_id(raw: str) -> str:
+    """sanitize 兜底: 全是非 ASCII / sanitize 后太短(<4)或全是下划线时,用 md5 短哈希代替。
+
+    历史 bug: 中文书名 sanitize 后变全下划线 + 数字 (e.g. `____2022____`),
+    现在 fallback 到 `book_<hash8>`, 既稳定又不依赖 sanitize 后字符集。
+    """
+    s = re.sub(r'[^a-zA-Z0-9_-]', '_', raw.lower()).strip('_')
+    if len(s) < 4 or s.replace('_', '') == '':
+        return f'book_{hashlib.md5(raw.encode()).hexdigest()[:8]}'
+    return s
+
+
+def _cover_url(cover_path: str | None) -> str | None:
+    """DB 里 cover 字段 → API 响应里给前端的完整 URL。
+
+    兼容两代格式:
+      - 新 (R11+): 'covers/xxx.jpeg' → '/data/covers/xxx.jpeg'
+      - 旧: '/data/covers/xxx.jpeg' → 原样返回
+    这样迁移期混存也没事, 反代改 COVER_URL_PREFIX 一处即可。
+    """
+    if not cover_path:
+        return None
+    if cover_path.startswith('/'):
+        return cover_path
+    return COVER_URL_PREFIX + cover_path
+
+
 def _save_cover(zf, book_title: str, arcname: str) -> str:
     """从 zipfile 里把 arcname 对应的图片写到 covers 目录, 返回 web path (/data/covers/xxx)。
     失败 (图片不存在 / 太小 / 写盘出错) 返回 ''。"""
@@ -230,14 +259,18 @@ def _save_cover(zf, book_title: str, arcname: str) -> str:
         return ''
     try:
         COVERS_DIR.mkdir(parents=True, exist_ok=True)
-        book_id_for_cover = re.sub(r'[^a-zA-Z0-9_-]', '_', book_title.lower())
+        book_id_for_cover = _sanitize_book_id(book_title)
         ext = arcname.rsplit('.', 1)[-1].lower()
+        # 仅允许已知图片后缀, 防 arcname='evil.html' 时被写成 .html 文件
+        if ext not in ('jpg', 'jpeg', 'png', 'gif', 'webp'):
+            return ''
         cover_filename = f'{book_id_for_cover}.{ext}'
         cover_path_full = COVERS_DIR / cover_filename
         with open(cover_path_full, 'wb') as f:
             f.write(img_data)
         logger.info(f'封面已提取: {cover_filename}')
-        return f'/data/covers/{cover_filename}'
+        # R11: 存相对路径 'covers/xxx', API 响应时拼前缀
+        return f'covers/{cover_filename}'
     except OSError as e:
         logger.warning(f'写封面失败 {arcname}: {e}')
         return ''
@@ -450,6 +483,19 @@ def calc_lexile(book_data):
         return 1000
 
 
+# === R11: list_books 缓存 ===
+# 每次家长打开 parent 页都触发, 旧逻辑要把每本书全 JSON parse + 算 lexile,
+# harry_potter 6.7MB + treasury 173KB 等加起来近 10MB 扫描。
+# 加个进程内缓存, import/delete 时失效。
+_BOOKS_LIST_CACHE = {'data': None, 'ts': 0.0}
+_BOOKS_LIST_CACHE_TTL = 30  # 秒, 兜底防 cache 不失效 (e.g. 直接 SQL 改库)
+
+
+def _invalidate_books_list_cache():
+    _BOOKS_LIST_CACHE['data'] = None
+    _BOOKS_LIST_CACHE['ts'] = 0.0
+
+
 def register_routes(app):
     @app.route('/api/book/<book_id>')
     def get_book(book_id):
@@ -467,11 +513,19 @@ def register_routes(app):
         # 兼容前端: 顶层多返一个 title 字段 (数据存的是 'book' 键, 但前端部分代码读 .title)
         if 'title' not in book or not book['title']:
             book['title'] = book.get('book', book_id)
+        if 'cover' in book:
+            book['cover'] = _cover_url(book['cover'])
         return jsonify({"success": True, "book": book})
 
     @app.route('/api/books')
     def list_books():
-        """列出所有已导入的书籍 (R9: 多返 author/year/publisher 让书列表显示作者)"""
+        """列出所有已导入的书籍 (R9: 多返 author/year/publisher 让书列表显示作者)
+        (R11: 加内存缓存, import/delete 时失效)"""
+        now = time.time()
+        cached = _BOOKS_LIST_CACHE['data']
+        if cached is not None and (now - _BOOKS_LIST_CACHE['ts']) < _BOOKS_LIST_CACHE_TTL:
+            return jsonify({"success": True, "books": cached})
+
         conn = get_db()
         books = []
         for row in conn.execute('SELECT id, data_json FROM books ORDER BY updated_at DESC').fetchall():
@@ -488,8 +542,10 @@ def register_routes(app):
                 "chapters": len(chapters),
                 "sentences": total_sentences,
                 "lexile": calc_lexile(data),
-                "cover": data.get('cover'),
+                "cover": _cover_url(data.get('cover')),  # R11: 兼容旧绝对路径
             })
+        _BOOKS_LIST_CACHE['data'] = books
+        _BOOKS_LIST_CACHE['ts'] = now
         return jsonify({"success": True, "books": books})
 
     @app.route('/api/debug/book/<book_id>/audit')
@@ -558,6 +614,7 @@ def register_routes(app):
         cur = conn.execute('DELETE FROM books WHERE id = ?', (book_id,))
         if cur.rowcount == 0:
             return jsonify({"success": False, "error": "书籍不存在"}), 404
+        _invalidate_books_list_cache()
         return jsonify({"success": True})
 
     @app.route('/api/book/import', methods=['POST'])
@@ -642,9 +699,11 @@ def register_routes(app):
                         if not text or len(text) < 20:
                             continue
 
-                        title_match = re.search(r'<title[^>]*>([^<]+)</title>', content, re.I)
+                        # R11: 只用 h1-h6 提取章节标题。
+                        # 旧 fallback 用 <title> 是 bug — <title> 是整本书名,
+                        # 没 h1-h6 的章节会全部拿到同一个书名作标题。
                         heading_match = re.search(r'<h[1-6][^>]*>([^<]+)</h[1-6]>', content, re.I)
-                        chapter_title = heading_match.group(1) if heading_match else (title_match.group(1) if title_match else '')
+                        chapter_title = heading_match.group(1) if heading_match else ''
 
                         if _is_chapter_heading(text) and len(text.split()) < 10:
                             if current_chapter and current_sentences:
@@ -690,7 +749,7 @@ def register_routes(app):
                 total_sentences = sum(len(ch['sentences']) for ch in merged_chapters)
 
             # === Phase 3a: 写入 SQLite (不再写 JSON) ===
-            book_id = re.sub(r'[^a-zA-Z0-9_-]', '_', book_title.lower())
+            book_id = _sanitize_book_id(book_title)
             book_data = {
                 "book": book_title,
                 "id": book_id,
@@ -727,6 +786,7 @@ def register_routes(app):
                 'VALUES (?, ?, ?, ?)',
                 (book_id, json.dumps(book_data, ensure_ascii=False), now, now)
             )
+            _invalidate_books_list_cache()
             return jsonify({
                 "success": True,
                 "book_id": book_id,

@@ -15,6 +15,8 @@ def _rate_limited():
         return jsonify({
             "success": False,
             "error": f"请求过快, {retry} 秒后再试",
+            "retryable": True,
+            "retry_after": retry,
         }), 429
     return None
 

@@ -524,7 +524,8 @@
             </div>
             
             <p id="pwdError" class="pwd-error">密码错误，请重试</p>
-            
+            <p id="pwdRemaining" class="pwd-remaining" style="display:none;color:#A07A45;font-size:0.85em;margin-top:6px;"></p>
+
             <div class="default-pwd-hint">
                 <strong>默认密码：</strong>0000（首次使用请修改）
             </div>
@@ -691,6 +692,20 @@
             el('pwdError').style.display = 'block';
         }
 
+        function showPwdRemaining(n) {
+            // R11: 后端返的 remaining 字段给家长看"还剩 N 次"
+            const box = el('pwdRemaining');
+            if (typeof n === 'number' && n > 0 && n <= 4) {
+                box.textContent = `⚠️ 还剩 ${n} 次尝试, 之后会锁定 15 分钟`;
+                box.style.display = 'block';
+            } else if (n === 0) {
+                box.textContent = '🔒 已锁定, 请稍后再试';
+                box.style.display = 'block';
+            } else {
+                box.style.display = 'none';
+            }
+        }
+
         function clearPwdInputs() {
             document.querySelectorAll('.pwd-digit').forEach(i => i.value = '');
             el('pwd1').focus();
@@ -738,6 +753,7 @@
                 const j = await r.json();
                 if (j.success) {
                     el('pwdError').style.display = 'none';
+                    el('pwdRemaining').style.display = 'none';
                     // R10: 如果 URL 带 ?next=/ebook, 登录后跳回去, 避免家长手动返回
                     const next = new URLSearchParams(location.search).get('next');
                     if (next && next.startsWith('/')) {
@@ -747,6 +763,7 @@
                     showDashboard();
                 } else {
                     showPwdError(j.error || 'PIN 错误');
+                    showPwdRemaining(j.remaining);
                     clearPwdInputs();
                 }
             } catch (e) {
