@@ -617,6 +617,17 @@
                         <div class="label">已掌握</div>
                     </div>
                 </div>
+                <!-- R12: 今日到期复习数 -->
+                <div style="margin-top:14px;padding:10px 14px;background:var(--warning,#D4A574);color:white;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+                    <span>🔁 今日待复习</span>
+                    <span id="vocabDueNow" style="font-size:1.4em;font-weight:700;">0</span>
+                </div>
+            </div>
+
+            <!-- R12: 阅读进度 -->
+            <div class="card">
+                <div class="card-title">📖 阅读进度</div>
+                <div id="bookProgressList"></div>
             </div>
 
             <!-- Settings -->
@@ -823,11 +834,21 @@
             } catch (e) {
                 console.warn('load parent data failed', e);
             }
-            renderDashboard(payload);
+            // R12: 真 vocab 状态机数据 (从 /api/vocab/stats 拿真计数)
+            //      + 阅读进度 (/api/progress)
+            //      + 句子熟练度汇总
+            const [vocabStats, bookProgress, booksList] = await Promise.all([
+                fetch('/api/vocab/stats').then(r => r.json()).catch(() => null),
+                fetch('/api/progress').then(r => r.json()).catch(() => null),
+                fetch('/api/books').then(r => r.json()).catch(() => null),
+            ]);
+            renderDashboard(payload, { vocabStats, bookProgress, booksList });
             loadSettings(payload.settings || {});
         }
 
-        function renderDashboard({ stats = {}, vocabulary = {} }) {
+        function renderDashboard({ stats = {}, vocabulary = {} }, extras = {}) {
+            const { vocabStats, bookProgress, booksList } = extras;
+
             // 概览
             setText('totalBooks', stats.totalBooks ?? 0);
             setText('totalMinutes', stats.totalMinutes ?? 0);
@@ -837,8 +858,8 @@
             // 周图表
             renderWeeklyChart(stats.weeklyMinutes || {});
 
-            // 词汇分布
-            const dist = vocabulary.masteryDistribution || { learning: 0, practicing: 0, familiar: 0, mastered: 0 };
+            // 词汇分布: 优先用 R12 真状态机数据 (有 SRS 才有意义)
+            const dist = vocabStats || vocabulary.masteryDistribution || { learning: 0, practicing: 0, familiar: 0, mastered: 0 };
             setText('vocabLearning', dist.learning ?? 0);
             setText('vocabPracticing', dist.practicing ?? 0);
             setText('vocabFamiliar', dist.familiar ?? 0);
@@ -847,8 +868,40 @@
             const total = (dist.learning || 0) + (dist.practicing || 0) + (dist.familiar || 0) + (dist.mastered || 0);
             renderVocabBar(dist, total);
 
+            // R12: 显示今日到期复习数
+            const dueEl = document.getElementById('vocabDueNow');
+            if (dueEl && typeof dist.due_now === 'number') {
+                dueEl.textContent = dist.due_now;
+                dueEl.style.display = dist.due_now > 0 ? '' : 'none';
+            }
+
+            // R12: per-book 阅读进度
+            renderBookProgress(bookProgress?.progress || {}, booksList?.books || []);
+
             // 最近活动
             renderActivityList(stats.recentActivities || []);
+        }
+
+        function renderBookProgress(progress, books) {
+            const box = document.getElementById('bookProgressList');
+            if (!box) return;
+            box.innerHTML = '';
+            const titles = new Map((books || []).map(b => [b.id, b.title || b.id]));
+            const ids = Object.keys(progress || {});
+            if (ids.length === 0) {
+                box.innerHTML = '<div style="color:#999;padding:8px 0;">孩子还没读过任何书</div>';
+                return;
+            }
+            ids.sort((a, b) => (progress[b].last_open_ts || 0) - (progress[a].last_open_ts || 0));
+            for (const id of ids.slice(0, 8)) {
+                const p = progress[id];
+                const li = document.createElement('div');
+                li.className = 'book-progress-item';
+                li.innerHTML = `
+                    <div class="book-progress-title">${titles.get(id) || id}</div>
+                    <div class="book-progress-meta">📍 第 ${p.chapter_idx + 1} 章 · 第 ${p.sentence_idx + 1} 句</div>`;
+                box.appendChild(li);
+            }
         }
 
         function renderVocabBar(dist, total) {

@@ -113,10 +113,21 @@ def _load_parent_data() -> dict:
     row = conn.execute('SELECT data_json FROM parent_data WHERE id = 1').fetchone()
     if row:
         try:
-            return json.loads(row['data_json'])
+            data = json.loads(row['data_json'])
+            # 补齐 R12 新增 section, 老数据没这些 key 也不报错
+            data.setdefault('stats', {})
+            data.setdefault('vocabulary', {})
+            data.setdefault('settings', {})
+            data.setdefault('vocabReviews', {})      # R12: SRS 状态机
+            data.setdefault('bookProgress', {})      # R12: 阅读位置
+            data.setdefault('sentenceMastery', {})   # R12: 句子熟练度
+            return data
         except Exception as e:
             logger.warning(f'parent_data 解析失败, 返回空: {e}')
-    return {"stats": {}, "vocabulary": {}, "settings": {}}
+    return {
+        "stats": {}, "vocabulary": {}, "settings": {},
+        "vocabReviews": {}, "bookProgress": {}, "sentenceMastery": {},
+    }
 
 
 def _save_parent_data(data: dict):
@@ -126,6 +137,182 @@ def _save_parent_data(data: dict):
         'INSERT OR REPLACE INTO parent_data (id, data_json, updated_at) VALUES (1, ?, ?)',
         (json.dumps(data, ensure_ascii=False), now)
     )
+
+
+# === R12: 间隔重复 (SRS) 状态机 ===
+# 4 桶: learning → practicing → familiar → mastered
+# 第一次复习 (刚查的词) = 立即 (0d), 否则孩子查完就忘了
+# 升级间隔: 0d / 2d / 5d / 14d
+# 答错降一级, 立即重排到该级对应间隔
+_SRS_INTERVALS_DAYS = {
+    'learning':   0,   # 查完就复习
+    'practicing': 2,
+    'familiar':   5,
+    'mastered':   14,
+}
+_SRS_STATES = ('learning', 'practicing', 'familiar', 'mastered')
+
+
+def _srs_next_state(current: str, correct: bool) -> str:
+    """返回答对/答错后的下一状态。
+
+    答对: 升级一档 (mastered 保持)
+    答错: 降一级 (learning 保持)
+    """
+    idx = _SRS_STATES.index(current) if current in _SRS_STATES else 0
+    if correct:
+        return _SRS_STATES[min(idx + 1, len(_SRS_STATES) - 1)]
+    return _SRS_STATES[max(idx - 1, 0)]
+
+
+def _srs_interval_ms(state: str) -> int:
+    return _SRS_INTERVALS_DAYS.get(state, 1) * 86400 * 1000
+
+
+# === R12: 句子熟练度判定 ===
+# 不上 ASR (儿童口音不可靠), 用录音时长相对原句时长的比例:
+#   < 0.5x  → 'attempted' (开口了但太短, 不算读了)
+#   0.5-0.7 → 'slow' (读得慢但完整)
+#   0.7-1.3 → 'fluent' (跟原句时长接近, 流畅)
+#   > 1.3   → 'slow' (读得拖沓)
+# 阈值是经验值, 不准没关系, 主要是给"读没读"一个信号
+def calc_sentence_mastery(original_sec: float, recorded_sec: float) -> str:
+    """录音时长 / 原句时长 → mastery 标签。返回 'fluent' / 'slow' / 'attempted'"""
+    if original_sec <= 0 or recorded_sec <= 0:
+        return 'attempted'
+    ratio = recorded_sec / original_sec
+    if ratio < 0.5:
+        return 'attempted'
+    if 0.7 <= ratio <= 1.3:
+        return 'fluent'
+    return 'slow'
+
+
+# === R12: helper 调 _load / _save 时安全 merge 进已有数据 ===
+def _record_vocab_lookup(word: str) -> dict:
+    """孩子查词: 标 lookedWords, 同时进 SRS learning 桶。
+    老词已存在 → 不重置状态 (避免复习间隔被无限重置)。
+    返回该词当前 SRS 状态 {state, next_review_ts, review_count}。
+    """
+    word = word.strip().lower()
+    if not word:
+        return {}
+    data = _load_parent_data()
+    vocab = data.setdefault('vocabulary', {})
+    vocab.setdefault('lookedWords', {})[word] = True
+
+    reviews = data.setdefault('vocabReviews', {})
+    now = int(time.time() * 1000)
+    if word not in reviews:
+        reviews[word] = {
+            'state': 'learning',
+            'added_ts': now,
+            'next_review_ts': now + _srs_interval_ms('learning'),
+            'last_review_ts': None,
+            'review_count': 0,
+            'correct_count': 0,
+        }
+    _save_parent_data(data)
+    return reviews[word]
+
+
+def _record_vocab_review(word: str, correct: bool) -> dict | None:
+    """孩子答对/答错一词, 推进 SRS 状态机。返回新状态, 词不存在返 None。"""
+    word = word.strip().lower()
+    data = _load_parent_data()
+    reviews = data.setdefault('vocabReviews', {})
+    if word not in reviews:
+        return None
+    r = reviews[word]
+    new_state = _srs_next_state(r['state'], correct)
+    now = int(time.time() * 1000)
+    r['state'] = new_state
+    r['last_review_ts'] = now
+    r['next_review_ts'] = now + _srs_interval_ms(new_state)
+    r['review_count'] = r.get('review_count', 0) + 1
+    if correct:
+        r['correct_count'] = r.get('correct_count', 0) + 1
+    _save_parent_data(data)
+    return r
+
+
+def _get_due_reviews(limit: int = 20) -> list:
+    """返回 next_review_ts <= now 的词列表, 按 next_review_ts 升序 (最久没过在前)。"""
+    data = _load_parent_data()
+    reviews = data.get('vocabReviews', {})
+    now = int(time.time() * 1000)
+    due = [(w, r) for w, r in reviews.items() if r.get('next_review_ts', 0) <= now]
+    due.sort(key=lambda x: x[1].get('next_review_ts', 0))
+    return due[:limit]
+
+
+def _vocab_state_counts() -> dict:
+    """统计 4 桶词数 + 今日到期数。"""
+    data = _load_parent_data()
+    reviews = data.get('vocabReviews', {})
+    counts = {s: 0 for s in _SRS_STATES}
+    now = int(time.time() * 1000)
+    due_now = 0
+    for r in reviews.values():
+        st = r.get('state', 'learning')
+        if st in counts:
+            counts[st] += 1
+        if r.get('next_review_ts', 0) <= now:
+            due_now += 1
+    return {**counts, 'due_now': due_now, 'total': len(reviews)}
+
+
+def _save_book_progress(book_id: str, chapter_idx: int, sentence_idx: int) -> dict:
+    """保存孩子最近读到的位置。返回新位置 dict。"""
+    if not book_id:
+        return {}
+    data = _load_parent_data()
+    progress = data.setdefault('bookProgress', {})
+    now = int(time.time() * 1000)
+    progress[book_id] = {
+        'chapter_idx': chapter_idx,
+        'sentence_idx': sentence_idx,
+        'last_open_ts': now,
+    }
+    _save_parent_data(data)
+    return progress[book_id]
+
+
+def _get_book_progress(book_id: str) -> dict | None:
+    data = _load_parent_data()
+    return data.get('bookProgress', {}).get(book_id)
+
+
+def _record_sentence_mastery(book_id: str, chapter_idx: int, sentence_idx: int,
+                              mastery: str, attempts: int = 1) -> dict | None:
+    """记录某句子的 mastery (fluent / slow / attempted)。
+    只升不降 (e.g. fluent 不会被 slow 覆盖), 避免录音抖动反复横跳。
+    """
+    if mastery not in ('fluent', 'slow', 'attempted'):
+        return None
+    data = _load_parent_data()
+    sm = data.setdefault('sentenceMastery', {})
+    book_sm = sm.setdefault(book_id, {})
+    ch_sm = book_sm.setdefault(str(chapter_idx), {})
+    key = str(sentence_idx)
+    now = int(time.time() * 1000)
+    existing = ch_sm.get(key)
+    # 已 fluent 不再被覆盖 (除非新 attempts 远多于旧)
+    if existing and existing.get('mastery') == 'fluent' and mastery != 'fluent':
+        return existing
+    ch_sm[key] = {
+        'mastery': mastery,
+        'attempts': (existing or {}).get('attempts', 0) + attempts,
+        'last_attempt_ts': now,
+    }
+    _save_parent_data(data)
+    return ch_sm[key]
+
+
+def _get_sentence_mastery(book_id: str) -> dict:
+    """返回 {chapter_idx: {sentence_idx: {mastery, attempts, last_attempt_ts}}}"""
+    data = _load_parent_data()
+    return data.get('sentenceMastery', {}).get(book_id, {})
 
 
 def _deep_merge(dst: dict, src: dict) -> dict:
@@ -246,3 +433,116 @@ def register_routes(app):
             mimetype='application/json',
             headers={'Content-Disposition': 'attachment; filename=shadow_learning_data.json'}
         )
+
+    # === R12: 间隔重复 (SRS) 端点 ===
+    @app.route('/api/vocab/lookup', methods=['POST'])
+    def vocab_lookup():
+        """anon: 孩子查词时调, 标 lookedWords + 进 SRS learning 桶。"""
+        ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'sync')
+        if not ok:
+            return jsonify({"success": False, "error": f"上报过快, {retry} 秒后再试"}), 429
+        word = (request.json or {}).get('word', '').strip().lower()
+        if not word:
+            return jsonify({"success": False, "error": "word 为空"})
+        r = _record_vocab_lookup(word)
+        return jsonify({"success": True, "review": r})
+
+    @app.route('/api/vocab/review', methods=['POST'])
+    def vocab_review():
+        """anon: 孩子答对一词 (correct=true) 或答错 (correct=false)。"""
+        ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'sync')
+        if not ok:
+            return jsonify({"success": False, "error": f"上报过快, {retry} 秒后再试"}), 429
+        body = request.json or {}
+        word = str(body.get('word', '')).strip().lower()
+        correct = bool(body.get('correct'))
+        if not word:
+            return jsonify({"success": False, "error": "word 为空"})
+        r = _record_vocab_review(word, correct)
+        if r is None:
+            return jsonify({"success": False, "error": "词不存在, 请先 lookup"}), 404
+        return jsonify({"success": True, "review": r})
+
+    @app.route('/api/vocab/review-queue', methods=['GET'])
+    def vocab_review_queue():
+        """anon: 返回今天该复习的词列表 (next_review_ts <= now), 按到期时间升序。"""
+        ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'sync')
+        if not ok:
+            return jsonify({"success": False, "error": f"上报过快, {retry} 秒后再试"}), 429
+        limit = min(int(request.args.get('limit', 20)), 50)
+        due = _get_due_reviews(limit=limit)
+        return jsonify({
+            "success": True,
+            "queue": [{"word": w, **r} for w, r in due],
+        })
+
+    @app.route('/api/vocab/stats', methods=['GET'])
+    def vocab_stats():
+        """anon: 4 桶词数 + 今日到期数。家长 dashboard 也用这个。"""
+        return jsonify({"success": True, **_vocab_state_counts()})
+
+    # === R12: 阅读位置 ===
+    @app.route('/api/progress', methods=['POST'])
+    def progress_save():
+        """anon: 孩子读完一个句子, 存当前位置。
+        body: {bookId, chapterIdx, sentenceIdx}"""
+        ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'sync')
+        if not ok:
+            return jsonify({"success": False, "error": f"上报过快, {retry} 秒后再试"}), 429
+        body = request.json or {}
+        book_id = str(body.get('bookId', '')).strip()
+        if not book_id:
+            return jsonify({"success": False, "error": "bookId 为空"})
+        try:
+            chapter_idx = int(body.get('chapterIdx', 0))
+            sentence_idx = int(body.get('sentenceIdx', 0))
+        except (TypeError, ValueError):
+            return jsonify({"success": False, "error": "chapterIdx/sentenceIdx 必须为整数"})
+        pos = _save_book_progress(book_id, chapter_idx, sentence_idx)
+        return jsonify({"success": True, "progress": pos})
+
+    @app.route('/api/progress/<book_id>', methods=['GET'])
+    def progress_get(book_id):
+        """anon: 读某本书的当前位置。无记录返 None。"""
+        ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'sync')
+        if not ok:
+            return jsonify({"success": False, "error": f"上报过快, {retry} 秒后再试"}), 429
+        return jsonify({"success": True, "progress": _get_book_progress(book_id)})
+
+    @app.route('/api/progress', methods=['GET'])
+    def progress_all():
+        """anon: 所有书的进度 (家长 dashboard 用)。"""
+        ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'sync')
+        if not ok:
+            return jsonify({"success": False, "error": f"上报过快, {retry} 秒后再试"}), 429
+        data = _load_parent_data()
+        return jsonify({"success": True, "progress": data.get('bookProgress', {})})
+
+    # === R12: 句子熟练度 ===
+    @app.route('/api/sentence/mastery', methods=['POST'])
+    def sentence_mastery_save():
+        """anon: 孩子读完一句录音后, 服务端/前端判 mastery 上来。
+        body: {bookId, chapterIdx, sentenceIdx, mastery}"""
+        ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'sync')
+        if not ok:
+            return jsonify({"success": False, "error": f"上报过快, {retry} 秒后再试"}), 429
+        body = request.json or {}
+        book_id = str(body.get('bookId', '')).strip()
+        mastery = str(body.get('mastery', '')).strip()
+        if not book_id or mastery not in ('fluent', 'slow', 'attempted'):
+            return jsonify({"success": False, "error": "bookId 缺失或 mastery 不合法"})
+        try:
+            chapter_idx = int(body.get('chapterIdx', 0))
+            sentence_idx = int(body.get('sentenceIdx', 0))
+        except (TypeError, ValueError):
+            return jsonify({"success": False, "error": "chapterIdx/sentenceIdx 必须为整数"})
+        r = _record_sentence_mastery(book_id, chapter_idx, sentence_idx, mastery)
+        return jsonify({"success": True, "mastery": r})
+
+    @app.route('/api/sentence/mastery/<book_id>', methods=['GET'])
+    def sentence_mastery_get(book_id):
+        """anon: 读某本书所有句子的 mastery。"""
+        ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'sync')
+        if not ok:
+            return jsonify({"success": False, "error": f"上报过快, {retry} 秒后再试"}), 429
+        return jsonify({"success": True, "mastery": _get_sentence_mastery(book_id)})
