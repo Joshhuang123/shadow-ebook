@@ -15,6 +15,11 @@
     <!-- <link rel="stylesheet" href="/kid-touch.css"> -->
     <link rel="stylesheet" href="/fonts/fonts.css">
     <style>
+        /* R13: macOS 字重更黑, antialiased 让文字更细更清晰 */
+        html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        /* R13: 标题均衡断行, 段落避免孤儿词 */
+        h1, h2, h3, h4 { text-wrap: balance; }
+        p, li, figcaption { text-wrap: pretty; }
         :root {
             --primary: #B86A4E;
             --primary-light: #D89B7E;
@@ -87,7 +92,7 @@
             border-radius: 20px;
             font-size: 1em;
             font-weight: 600;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
         }
 
         .nav-link:hover {
@@ -205,7 +210,7 @@
             border-radius: 16px;
             padding: 20px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: transform 300ms ease-out, background-color 300ms ease-out, color 300ms ease-out, box-shadow 300ms ease-out;
             position: relative;
             overflow: hidden;
         }
@@ -244,7 +249,7 @@
             color: #C25B56;
             cursor: pointer;
             opacity: 0;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
             font-size: 16px;
             display: flex;
             align-items: center;
@@ -386,6 +391,11 @@
                 inset -2px 0 5px rgba(0, 0, 0, 0.28),
                 6px 12px 28px rgba(60, 40, 20, 0.45);
         }
+        /* R13: 封面图加细 outline, 白底图融入白底时也能看到边缘 */
+        .book-cover img {
+            outline: 1px solid rgba(0, 0, 0, 0.1);
+            outline-offset: -1px;
+        }
 
         .book-cover-fallback {
             position: absolute;
@@ -458,7 +468,7 @@
             font-weight: bold;
             cursor: pointer;
             opacity: 0;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
             z-index: 10;
             display: flex;
             align-items: center;
@@ -504,7 +514,7 @@
             font-size: 14px;
             cursor: pointer;
             opacity: 0;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
             z-index: 10;
             display: flex;
             align-items: center;
@@ -539,7 +549,7 @@
             border-radius: 16px;
             padding: 10px 6px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: transform 300ms ease-out, background-color 300ms ease-out, color 300ms ease-out, box-shadow 300ms ease-out;
             text-align: center;
             display: flex;
             flex-direction: column;
@@ -695,7 +705,7 @@
             font-size: 0.9em;
             cursor: pointer;
             border-left: 3px solid transparent;
-            transition: all 0.15s;
+            transition: transform 150ms ease-out, background-color 150ms ease-out, color 150ms ease-out, border-color 150ms ease-out;
             line-height: 1.4;
         }
         .toc-item:hover {
@@ -970,7 +980,7 @@
             font-size: 0.9em;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
         }
         .chapter-tab:hover {
             border-color: var(--primary);
@@ -1015,7 +1025,7 @@
             font-size: 0.95em;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
         }
         .page-btn:hover {
             border-color: var(--primary);
@@ -1034,7 +1044,7 @@
             color: white;
             font-size: 24px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: transform 300ms ease-out, background-color 300ms ease-out, color 300ms ease-out, box-shadow 300ms ease-out;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1068,7 +1078,7 @@
             color: var(--text-secondary);
             font-size: 0.85em;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
         }
         .chapter-nav-btn:hover {
             background: var(--primary);
@@ -1087,7 +1097,7 @@
             color: white;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
         }
         .quiz-btn:hover {
             transform: translateY(-2px);
@@ -1106,7 +1116,7 @@
             padding: 2px 0;
             border-radius: 4px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
         }
 
         .sentence-item:hover {
@@ -1125,7 +1135,7 @@
         .word-inline {
             cursor: pointer;
             border-bottom: 1px dashed var(--primary-light);
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
         }
 
         .word-inline:hover {
@@ -1155,7 +1165,7 @@
             color: white;
             font-size: 24px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: transform 300ms ease-out, background-color 300ms ease-out, color 300ms ease-out, box-shadow 300ms ease-out;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1182,7 +1192,7 @@
             color: var(--text-primary);
             font-size: 18px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1198,7 +1208,7 @@
             color: white;
             font-size: 20px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: transform 300ms ease-out, background-color 300ms ease-out, color 300ms ease-out, box-shadow 300ms ease-out;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1328,7 +1338,7 @@
             color: var(--text-secondary);
             font-size: 0.85em;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
         }
 
         .mode-btn.active {
@@ -1494,7 +1504,7 @@
             border-radius: 10px;
             font-size: 1em;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
         }
 
         .review-btn.wrong {
@@ -1577,7 +1587,7 @@
             border: 1px solid var(--border);
             border-radius: 10px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
         }
         .comp-option:hover {
             border-color: var(--primary);
@@ -1769,7 +1779,7 @@
             border-radius: 10px;
             font-size: 0.95em;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
             border: none;
         }
 
@@ -1904,6 +1914,12 @@
         --body: var(--body, linear-gradient(135deg, #F5EDE5 0%, #EDE3D6 100%));
         --input: var(--input, #F5F2EC);
         --btn-hover: var(--btn-hover, #B86F4D);
+        /* R13: 按钮按下时缩一下, 像真按钮 */
+        button:active:not(:disabled),
+        .btn:active:not(:disabled),
+        [class*="-btn"]:active:not(:disabled) {
+            transform: scale(0.96);
+        }
 </style>
 </head>
 <body>

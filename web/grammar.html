@@ -16,6 +16,11 @@
     <meta name="theme-color" content="#B86A4E">
     <style>
         * { touch-action: manipulation; }
+        /* R13: macOS 字重更黑, antialiased 让文字更细更清晰 */
+        html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        /* R13: 标题均衡断行, 段落避免孤儿词 */
+        h1, h2, h3, h4 { text-wrap: balance; }
+        p, li, figcaption { text-wrap: pretty; }
         :root {
             --primary: #B86A4E;
             --primary-light: #D89B7E;
@@ -78,7 +83,7 @@
             padding: 8px 16px;
             border-radius: 8px;
             font-size: 0.9em;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
         }
 
         .nav-link:hover {
@@ -130,7 +135,7 @@
             border-radius: 16px;
             padding: 24px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: transform 300ms ease-out, background-color 300ms ease-out, color 300ms ease-out, box-shadow 300ms ease-out;
             position: relative;
             overflow: hidden;
         }
@@ -214,7 +219,7 @@
             cursor: pointer;
             font-size: 0.95em;
             font-weight: 500;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
         }
 
         .exam-tab:hover {
@@ -495,7 +500,7 @@
             font-size: 0.85em;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
             background: var(--secondary);
             color: white;
         }
@@ -598,7 +603,7 @@
             border: 2px solid var(--border);
             border-radius: 12px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
             font-size: 1em;
             color: var(--text-primary);
             text-align: left;
@@ -679,6 +684,12 @@
         --body: var(--body, linear-gradient(135deg, #F5EDE5 0%, #EDE3D6 100%));
         --input: var(--input, #F5F2EC);
         --btn-hover: var(--btn-hover, #B86F4D);
+        /* R13: 按钮按下时缩一下, 像真按钮 */
+        button:active:not(:disabled),
+        .btn:active:not(:disabled),
+        [class*="-btn"]:active:not(:disabled) {
+            transform: scale(0.96);
+        }
 </style>
 </head>
 <body>

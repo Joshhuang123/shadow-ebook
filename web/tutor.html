@@ -13,6 +13,15 @@
     <meta name="apple-mobile-web-app-title" content="Shadow Ebook">
     <meta name="theme-color" content="#B86A4E">
     <style>
+        /* R13: macOS 字重更黑, antialiased 让文字更细更清晰 */
+        html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        /* R13: 标题均衡断行, 段落避免孤儿词 */
+        h1, h2, h3, h4 { text-wrap: balance; }
+        p, li, figcaption { text-wrap: pretty; }
+        /* R13: 数字等宽, 防止 9→10 切换时布局抖动 */
+        .stat-card .value, #vocab-due-badge, #progress-text, .completion-stats {
+            font-variant-numeric: tabular-nums;
+        }
         :root {
             --primary: #B86A4E;
             --primary-light: #D89B7E;
@@ -57,7 +66,7 @@
             background: #F5F2EC;
             border-radius: 12px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -101,7 +110,7 @@
             border-radius: 50px;
             font-size: 1.1em;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
             display: inline-flex;
             align-items: center;
             gap: 8px;
@@ -245,7 +254,7 @@
             border: 2px solid #D6CFC0;
             border-radius: 12px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
             font-size: 1.1em;
         }
         .option:hover { border-color: #B86A4E; background: #F5EDE5; }
@@ -295,7 +304,7 @@
             padding: 6px 14px;
             border-radius: 8px;
             font-size: 0.85em;
-            transition: all 0.2s;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
         }
         .nav-link:hover { color: var(--primary); background: #F5EDE5; }
         .nav-link.active { color: white; background: var(--primary); }
@@ -391,6 +400,18 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        /* R13: 词汇卡入场动画 — 每张新卡淡入 + 轻微上移 */
+        @keyframes vocabCardEnter {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .vocab-card { animation: vocabCardEnter 280ms ease-out; }
+        .vocab-card > * { animation: vocabCardEnter 280ms ease-out backwards; }
+        .vocab-card > *:nth-child(1) { animation-delay: 0ms; }
+        .vocab-card > *:nth-child(2) { animation-delay: 60ms; }
+        .vocab-card > *:nth-child(3) { animation-delay: 120ms; }
+        .vocab-card > *:nth-child(4) { animation-delay: 180ms; }
+
         /* 书本选择页大卡片 */
         @media (max-width: 768px) {
             .book-selection .card {
@@ -401,6 +422,13 @@
             }
         }
     
+        /* R13: 按钮按下时缩一下, 像真按钮 */
+        button:active:not(:disabled),
+        .btn:active:not(:disabled),
+        [class*="-btn"]:active:not(:disabled) {
+            transform: scale(0.96);
+        }
+
         /* Theme fallback vars */
         --primary: var(--primary, #B86A4E);
         --primary-light: var(--primary-light, #D89B7E);
@@ -1395,7 +1423,7 @@
             const w = reviewQueue[reviewIdx];
             const stateLabels = {learning: '🆕 学习中', practicing: '📚 练习中', familiar: '👍 熟悉', mastered: '⭐ 已掌握'};
             card.innerHTML = `
-                <div style="text-align:center;padding:30px 10px;">
+                <div class="vocab-card" style="text-align:center;padding:30px 10px;">
                     <div style="color:#999;font-size:0.9em;">${reviewIdx + 1} / ${reviewQueue.length} · ${stateLabels[w.state] || w.state}</div>
                     <div style="font-size:3em;font-weight:700;margin:30px 0 10px;color:var(--primary,#B86A4E);">${w.word}</div>
                     <button class="btn btn-secondary" id="vocab-translate-btn" onclick="lookupWord('${w.word}')">🔍 查词意</button>

@@ -14,6 +14,15 @@
     <meta name="theme-color" content="#B86A4E">
     <style>
         * { touch-action: manipulation; }
+        /* R13: macOS 字重更黑, antialiased 让文字更细更清晰 */
+        html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        /* R13: 标题均衡断行, 段落避免孤儿词 */
+        h1, h2, h3, h4 { text-wrap: balance; }
+        p, li, figcaption { text-wrap: pretty; }
+        /* R13: 数字等宽, 防止 9→10 切换时布局抖动 */
+        .stat-card .value, #vocabDueNow, .chart-bar .time-label {
+            font-variant-numeric: tabular-nums;
+        }
         :root {
             --primary: #B86A4E;
             --primary-light: #D89B7E;
@@ -211,7 +220,7 @@
             border-radius: 8px 8px 0 0;
             min-width: 30px;
             position: relative;
-            transition: all 0.3s;
+            transition: transform 300ms ease-out, background-color 300ms ease-out, color 300ms ease-out, box-shadow 300ms ease-out;
         }
 
         .chart-bar:hover {
@@ -428,7 +437,7 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            transition: all 0.3s;
+            transition: transform 300ms ease-out, background-color 300ms ease-out, color 300ms ease-out, box-shadow 300ms ease-out;
         }
 
         .btn-primary {
@@ -495,6 +504,12 @@
                 grid-template-columns: repeat(2, 1fr);
             }
         }
+    /* R13: 按钮按下时缩一下, 像真按钮 */
+    button:active:not(:disabled),
+    .btn:active:not(:disabled),
+    [class*="-btn"]:active:not(:disabled) {
+        transform: scale(0.96);
+    }
     </style>
 </head>
 <body>
