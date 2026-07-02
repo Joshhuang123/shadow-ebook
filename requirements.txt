@@ -1,4 +1,5 @@
-# Shadow Ebook - 电子书阅读与跟读学习
-flask>=2.0
-edge-tts>=6.0
-pytest>=7.0
+# Shadow Ebook - 生产依赖
+# 装这个就够跑服务(dev 工具另见 requirements-dev.txt)
+Flask==3.1.3
+edge-tts==7.2.8
+gunicorn==23.0.0

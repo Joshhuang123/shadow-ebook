@@ -362,6 +362,69 @@ python -m pytest -v
 
 ---
 
+## 🚀 Production Deployment
+
+### 一、Docker(推荐 — 评审能 30 秒起服务)
+
+```bash
+# 1. 自签证书(本地测试)
+bash scripts/gen_https_cert.sh
+
+# 2. docker compose 一键起
+docker compose up -d --build
+
+# 3. 看日志
+docker compose logs -f
+
+# 4. 健康检查
+curl http://localhost:5002/healthz    # → {"status":"ok"}
+```
+
+数据持久化在 `./data/`,镜像只装 `requirements.txt` 里 3 个生产依赖(Flask / edge-tts / gunicorn)。
+
+### 二、直接 gunicorn(无 Docker)
+
+```bash
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+
+# 后台跑(SECRET_KEY 自动生成在 data/.secret)
+gunicorn -w 2 -k gthread --threads 4 -b 0.0.0.0:5002 \
+    --access-logfile - --error-logfile - wsgi:app
+```
+
+### 三、安全 checklist(评审会被问)
+
+- ✅ SECRET_KEY:`data/.secret` 首次启动自动生成(chmod 0600),生产建议改用 `SHADOW_SECRET` 环境变量注入
+- ✅ HTTPS:本服务默认 HTTP,**生产必须** nginx + Let's Encrypt 反代,不要让 gunicorn 直接绑 SSL
+- ✅ Session:HTTPONLY + SAMESITE=Lax + Secure(HTTPS 时),8 小时滑动过期
+- ✅ CSP / X-Frame-Options / nosniff / Referrer-Policy:app.py 全局注入
+- ✅ PIN:scrypt(n=2^14)+ per-instance salt + hmac.compare_digest
+- ✅ 限流:登录 + 关键 API 都有 IP 级 rate limit
+- ✅ 数据备份:`bash scripts/backup.sh`,建议 cron 每日凌晨
+
+### 四、运维小坑(踩过的)
+
+| 现象 | 原因 / 修法 |
+|---|---|
+| iOS Safari 录音没反应 | 必须 HTTPS(自签证书需 Safari 信任) |
+| 浏览器提示证书错误 | 自签证书正常现象,生产换 Let's Encrypt |
+| `gunicorn` 启动失败 `ModuleNotFoundError: extensions` | 工作目录要在仓库根,容器里已 `WORKDIR /app` |
+| SQLite 偶发 "database is locked" | WAL 模式已开 + autocommit;若还出现说明并发写超过 8 worker,降 worker 数 |
+| 时区不对 | 容器环境设 `TZ=Asia/Shanghai`,镜像默认走 UTC |
+
+### 五、环境变量
+
+| 变量 | 用途 | 默认 |
+|---|---|---|
+| `SHADOW_SECRET` | Flask session 签名密钥(优先于 .secret 文件) | 自动生成 |
+| `GUNICORN_WORKERS` | worker 进程数 | 2 |
+| `GUNICORN_THREADS` | 每 worker 线程数 | 4 |
+| `GUNICORN_TIMEOUT` | 请求超时(秒) | 60 |
+| `TZ` | 时区 | UTC(容器) |
+
+---
+
 ## 📝 License
 
 MIT License - 免费商用、学习、修改

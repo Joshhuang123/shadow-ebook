@@ -1,0 +1,19 @@
+# Shadow Ebook - 开发/桌面打包依赖
+# 本地 mac 开发 + 桌面 app 打包用,生产服务器不需要
+-r requirements.txt
+pytest==9.0.3
+Pillow==11.1.0
+openai-whisper==20250625
+playwright==1.60.0
+pywebview==6.1
+PyAudio==0.2.14
+pydub==0.25.1
+numpy==2.3.5
+scipy==1.17.0
+torch==2.10.0
+pyobjc-core==12.1
+pyobjc-framework-Cocoa==12.1
+pyobjc-framework-Quartz==12.1
+pyobjc-framework-Security==12.1
+pyobjc-framework-UniformTypeIdentifiers==12.1
+pyobjc-framework-WebKit==12.1

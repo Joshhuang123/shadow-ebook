@@ -11,9 +11,10 @@ import logging.handlers
 import os
 import secrets
 import socket
+from datetime import timedelta
 from pathlib import Path
 
-from flask import Flask, send_from_directory
+from flask import Flask, session, send_from_directory
 
 from extensions import pwa, courses, tts, books, parent_data, db
 
@@ -70,6 +71,24 @@ app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB 上传上限
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 # SESSION_COOKIE_SECURE 在 __main__ 里根据是否启用 HTTPS 自适应设置
+# 平板/家长 8h 不活动自动登出(滑动续期),家长监控场景下避免长时间挂在线
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
+app.config['SESSION_REFRESH_EACH_REQUEST'] = True
+
+
+# === Round X: healthz + session 滑动续期 ===
+@app.route('/healthz')
+def healthz():
+    """LB / K8s / 监控用探针。轻量、不读 DB、不触发 TTS。"""
+    return {'status': 'ok'}, 200
+
+
+@app.before_request
+def _refresh_session_expiry():
+    """每次请求把 session 标记为 permanent,触发 SESSION_REFRESH_EACH_REQUEST 重置过期时间。
+    没登录(session 空)的请求 noop,零开销。"""
+    if session:
+        session.permanent = True
 
 
 # === Round 3: Security headers ===

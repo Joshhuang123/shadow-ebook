@@ -1,0 +1,24 @@
+services:
+  shadow-ebook:
+    build: .
+    image: shadow-ebook:latest
+    container_name: shadow-ebook
+    restart: unless-stopped
+    ports:
+      - "5002:5002"
+    volumes:
+      # 数据持久化:secret / sqlite db / TTS 缓存 / 迁移备份
+      - ./data:/app/data
+      # HTTPS 自签证书(生产建议改 Let's Encrypt 反代,见 README)
+      - ./certs:/app/certs:ro
+    environment:
+      - TZ=Asia/Shanghai
+      - SHADOW_SECRET=${SHADOW_SECRET:-}   # 留空则用容器内自动生成的 .secret
+      - GUNICORN_WORKERS=2
+      - GUNICORN_THREADS=4
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5002/healthz')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

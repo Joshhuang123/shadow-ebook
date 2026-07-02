@@ -1,0 +1,14 @@
+# 开发产物不进镜像
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+tests/
+data/
+certs/
+logs/
+.git/
+.gitignore
+.env
+.DS_Store
+android/
