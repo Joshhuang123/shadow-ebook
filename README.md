@@ -425,6 +425,20 @@ gunicorn -w 2 -k gthread --threads 4 -b 0.0.0.0:5002 \
 
 ---
 
+## 🤖 Claude Code 实战项目
+
+本项目从 R1 到 R14(共 14 轮迭代)与 [Claude Code](https://claude.com/claude-code) 协作完成,典型场景:
+
+- **架构与拆分** — Flask 模块边界(`extensions/*.py` 每文件头声明 `Owns / Does NOT own`)、SQLite WAL + thread-local 连接、scrypt(n=2¹⁴)+ per-instance salt 做家长 PIN 哈希
+- **安全 hardening** — CSP / X-Frame-Options / nosniff / Referrer-Policy 4 层 header;HTTPONLY + Secure + SameSite=Lax cookie;登录 + API IP 级 rate limit;`hmac.compare_digest` 防时序攻击
+- **EPUB / TTS 鲁棒性** — `container.xml` 三种结构兼容、OPF metadata 优先于文件名猜封面、15s 超时 + `retryable/retry_after` + LRU 缓存 + pregenerate 后台线程
+- **生产化** — gunicorn + docker-compose + `/healthz` + 8h SESSION 滑动过期 + `scripts/backup.sh` cron 备份 + 完整部署 README
+- **质量门** — 182 个测试 17 文件,本地 `pytest` + GitHub Actions CI 全程绿,改 `auth.py / tts.py / books.py` 漏测会被 CI 拦住
+
+适合作为 Claude Code 在**生产级 Python 项目**中持续协作的参考案例。
+
+---
+
 ## 📝 License
 
 MIT License - 免费商用、学习、修改
