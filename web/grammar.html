@@ -4,6 +4,7 @@
     <link rel="stylesheet" href="/styles/tokens.css">
     <link rel="stylesheet" href="/styles/base.css">
     <link rel="stylesheet" href="/styles/components.css">
+    <script src="/js/dispatcher.js"></script>
 <script src="/theme.js"></script>
 <script src="/sync.js"></script>
     <script src="/a11y.js"></script>
@@ -31,13 +32,13 @@
             <a href="/grammar" class="nav-link active">语法学习</a>
             <a href="/stats" class="nav-link">📊 统计</a>
         </div>
-    <button id="themeBtn" onclick="cycleTheme()" style="background:var(--primary,#B86A4E);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1.1em;cursor:pointer;margin-left:12px;flex-shrink:0;">&#xD83D;&#xDD0C;</button>
+    <button id="themeBtn" data-action="cycleTheme" style="background:var(--primary,#B86A4E);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1.1em;cursor:pointer;margin-left:12px;flex-shrink:0;">&#xD83D;&#xDD0C;</button>
         </nav>
 
     <div class="main-container">
         <!-- 新概念板块 -->
         <div class="hero">
-            <button id="themeBtn" onclick="cycleTheme()" style="background:var(--primary,#B86A4E);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1.1em;cursor:pointer;margin-left:auto;flex-shrink:0;">&#xD83D;&#xDD0C;</button>
+            <button id="themeBtn" data-action="cycleTheme" style="background:var(--primary,#B86A4E);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1.1em;cursor:pointer;margin-left:auto;flex-shrink:0;">&#xD83D;&#xDD0C;</button>
 <h1 class="hero-title">📚 语法学习</h1>
             <p class="hero-subtitle">新概念英语青少版 2A · 核心语法详解</p>
         </div>
@@ -47,70 +48,70 @@
             <h2>📝 英语考试语法</h2>
             <p style="color: var(--text-secondary);">KET / PET 核心语法考点</p>
             <div class="exam-tabs">
-                <button class="exam-tab active" onclick="switchExam('ket')">KET (A2)</button>
-                <button class="exam-tab" onclick="switchExam('pet')">PET (B1)</button>
+                <button class="exam-tab active" data-action="switchExam" data-arg="ket">KET (A2)</button>
+                <button class="exam-tab" data-action="switchExam" data-arg="pet">PET (B1)</button>
             </div>
         </div>
 
         <!-- KET 语法区 -->
         <div class="exam-section active" id="ket-section">
             <div class="grammar-grid">
-                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-present-simple')">
+                <div class="grammar-card" data-level="ket" data-action="showGrammar" data-arg="ket-present-simple">
                     <div class="grammar-card-icon">📅</div>
                     <div class="grammar-card-title">一般现在时 <span class="level-badge ket">KET</span></div>
                     <div class="grammar-card-desc">习惯性动作 / 客观事实</div>
                 </div>
-                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-present-continuous')">
+                <div class="grammar-card" data-level="ket" data-action="showGrammar" data-arg="ket-present-continuous">
                     <div class="grammar-card-icon">🔄</div>
                     <div class="grammar-card-title">现在进行时 <span class="level-badge ket">KET</span></div>
                     <div class="grammar-card-desc">此刻正在进行的动作</div>
                 </div>
-                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-simple-past')">
+                <div class="grammar-card" data-level="ket" data-action="showGrammar" data-arg="ket-simple-past">
                     <div class="grammar-card-icon">⏪</div>
                     <div class="grammar-card-title">一般过去时 <span class="level-badge ket">KET</span></div>
                     <div class="grammar-card-desc">过去发生的动作</div>
                 </div>
-                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-there-be')">
+                <div class="grammar-card" data-level="ket" data-action="showGrammar" data-arg="ket-there-be">
                     <div class="grammar-card-icon">🏠</div>
                     <div class="grammar-card-title">There be 句型 <span class="level-badge ket">KET</span></div>
                     <div class="grammar-card-desc">表示"存在"的概念</div>
                 </div>
-                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-future-going-to')">
+                <div class="grammar-card" data-level="ket" data-action="showGrammar" data-arg="ket-future-going-to">
                     <div class="grammar-card-icon">🎯</div>
                     <div class="grammar-card-title">be going to <span class="level-badge ket">KET</span></div>
                     <div class="grammar-card-desc">将来的计划和打算</div>
                 </div>
-                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-modals')">
+                <div class="grammar-card" data-level="ket" data-action="showGrammar" data-arg="ket-modals">
                     <div class="grammar-card-icon">💪</div>
                     <div class="grammar-card-title">情态动词 <span class="level-badge ket">KET</span></div>
                     <div class="grammar-card-desc">can/could/must/should</div>
                 </div>
-                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-comparatives')">
+                <div class="grammar-card" data-level="ket" data-action="showGrammar" data-arg="ket-comparatives">
                     <div class="grammar-card-icon">⚖️</div>
                     <div class="grammar-card-title">形容词比较级 <span class="level-badge ket">KET</span></div>
                     <div class="grammar-card-desc">比较级和最高级</div>
                 </div>
-                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-frequency')">
+                <div class="grammar-card" data-level="ket" data-action="showGrammar" data-arg="ket-frequency">
                     <div class="grammar-card-icon">🔢</div>
                     <div class="grammar-card-title">频率表达 <span class="level-badge ket">KET</span></div>
                     <div class="grammar-card-desc">How often...? / 次数</div>
                 </div>
-                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-possessive')">
+                <div class="grammar-card" data-level="ket" data-action="showGrammar" data-arg="ket-possessive">
                     <div class="grammar-card-icon">📌</div>
                     <div class="grammar-card-title">名词所有格 <span class="level-badge ket">KET</span></div>
                     <div class="grammar-card-desc">'s / of 所有格</div>
                 </div>
-                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-pronouns')">
+                <div class="grammar-card" data-level="ket" data-action="showGrammar" data-arg="ket-pronouns">
                     <div class="grammar-card-icon">👤</div>
                     <div class="grammar-card-title">代词系统 <span class="level-badge ket">KET</span></div>
                     <div class="grammar-card-desc">人称/物主/反身代词</div>
                 </div>
-                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-prepositions')">
+                <div class="grammar-card" data-level="ket" data-action="showGrammar" data-arg="ket-prepositions">
                     <div class="grammar-card-icon">📍</div>
                     <div class="grammar-card-title">介词用法 <span class="level-badge ket">KET</span></div>
                     <div class="grammar-card-desc">时间/地点介词</div>
                 </div>
-                <div class="grammar-card" data-level="ket" onclick="showGrammar('ket-imperative')">
+                <div class="grammar-card" data-level="ket" data-action="showGrammar" data-arg="ket-imperative">
                     <div class="grammar-card-icon">📢</div>
                     <div class="grammar-card-title">祈使句 <span class="level-badge ket">KET</span></div>
                     <div class="grammar-card-desc">Open the door</div>
@@ -121,62 +122,62 @@
         <!-- PET 语法区 -->
         <div class="exam-section" id="pet-section">
             <div class="grammar-grid">
-                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-present-perfect')">
+                <div class="grammar-card" data-level="pet" data-action="showGrammar" data-arg="pet-present-perfect">
                     <div class="grammar-card-icon">✅</div>
                     <div class="grammar-card-title">现在完成时 <span class="level-badge pet">PET</span></div>
                     <div class="grammar-card-desc">过去发生，影响现在</div>
                 </div>
-                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-past-perfect')">
+                <div class="grammar-card" data-level="pet" data-action="showGrammar" data-arg="pet-past-perfect">
                     <div class="grammar-card-icon">📌</div>
                     <div class="grammar-card-title">过去完成时 <span class="level-badge pet">PET</span></div>
                     <div class="grammar-card-desc">过去的过去</div>
                 </div>
-                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-passive')">
+                <div class="grammar-card" data-level="pet" data-action="showGrammar" data-arg="pet-passive">
                     <div class="grammar-card-icon">🔁</div>
                     <div class="grammar-card-title">被动语态 <span class="level-badge pet">PET</span></div>
                     <div class="grammar-card-desc">主语是动作的承受者</div>
                 </div>
-                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-conditional')">
+                <div class="grammar-card" data-level="pet" data-action="showGrammar" data-arg="pet-conditional">
                     <div class="grammar-card-icon">🔀</div>
                     <div class="grammar-card-title">条件句 <span class="level-badge pet">PET</span></div>
                     <div class="grammar-card-desc">Zero/First/Second 条件</div>
                 </div>
-                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-reported-speech')">
+                <div class="grammar-card" data-level="pet" data-action="showGrammar" data-arg="pet-reported-speech">
                     <div class="grammar-card-icon">💬</div>
                     <div class="grammar-card-title">间接引语 <span class="level-badge pet">PET</span></div>
                     <div class="grammar-card-desc">转述别人的话</div>
                 </div>
-                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-relatives')">
+                <div class="grammar-card" data-level="pet" data-action="showGrammar" data-arg="pet-relatives">
                     <div class="grammar-card-icon">🔗</div>
                     <div class="grammar-card-title">定语从句 <span class="level-badge pet">PET</span></div>
                     <div class="grammar-card-desc">who/which/that</div>
                 </div>
-                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-modals-perfect')">
+                <div class="grammar-card" data-level="pet" data-action="showGrammar" data-arg="pet-modals-perfect">
                     <div class="grammar-card-icon">🎓</div>
                     <div class="grammar-card-title">情态动词完成时 <span class="level-badge pet">PET</span></div>
                     <div class="grammar-card-desc">must have done 等</div>
                 </div>
-                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-used-to')">
+                <div class="grammar-card" data-level="pet" data-action="showGrammar" data-arg="pet-used-to">
                     <div class="grammar-card-icon">📼</div>
                     <div class="grammar-card-title">used to <span class="level-badge pet">PET</span></div>
                     <div class="grammar-card-desc">过去的习惯</div>
                 </div>
-                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-gerund-infinitive')">
+                <div class="grammar-card" data-level="pet" data-action="showGrammar" data-arg="pet-gerund-infinitive">
                     <div class="grammar-card-icon">🎯</div>
                     <div class="grammar-card-title">动名词/不定式 <span class="level-badge pet">PET</span></div>
                     <div class="grammar-card-desc">doing vs to do</div>
                 </div>
-                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-quantifiers')">
+                <div class="grammar-card" data-level="pet" data-action="showGrammar" data-arg="pet-quantifiers">
                     <div class="grammar-card-icon">📊</div>
                     <div class="grammar-card-title">数量词 <span class="level-badge pet">PET</span></div>
                     <div class="grammar-card-desc">much/many/few/little</div>
                 </div>
-                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-adverb-clauses')">
+                <div class="grammar-card" data-level="pet" data-action="showGrammar" data-arg="pet-adverb-clauses">
                     <div class="grammar-card-icon">🕐</div>
                     <div class="grammar-card-title">状语从句 <span class="level-badge pet">PET</span></div>
                     <div class="grammar-card-desc">when/although/because</div>
                 </div>
-                <div class="grammar-card" data-level="pet" onclick="showGrammar('pet-conjunctions')">
+                <div class="grammar-card" data-level="pet" data-action="showGrammar" data-arg="pet-conjunctions">
                     <div class="grammar-card-icon">🔗</div>
                     <div class="grammar-card-title">并列连词 <span class="level-badge pet">PET</span></div>
                     <div class="grammar-card-desc">and/but/or/so/because</div>
@@ -187,55 +188,55 @@
         <!-- 新概念原有内容 -->
         <h3 style="color: var(--text-secondary); margin: 40px 0 20px; font-size: 1em;">📖 新概念英语青少版 2A</h3>
         <div class="grammar-grid" id="nc-grid">
-            <div class="grammar-card" onclick="showGrammar('present-progressive')">
+            <div class="grammar-card" data-action="showGrammar" data-arg="present-progressive">
                 <div class="grammar-card-icon">🔄</div>
                 <div class="grammar-card-title">现在进行时</div>
                 <div class="grammar-card-desc">Unit 1-2 · be + doing</div>
             </div>
 
-            <div class="grammar-card" onclick="showGrammar('simple-present')">
+            <div class="grammar-card" data-action="showGrammar" data-arg="simple-present">
                 <div class="grammar-card-icon">📅</div>
                 <div class="grammar-card-title">一般现在时</div>
                 <div class="grammar-card-desc">Unit 5-6, 10 · 习惯性动作</div>
             </div>
 
-            <div class="grammar-card" onclick="showGrammar('simple-past')">
+            <div class="grammar-card" data-action="showGrammar" data-arg="simple-past">
                 <div class="grammar-card-icon">⏪</div>
                 <div class="grammar-card-title">一般过去时</div>
                 <div class="grammar-card-desc">Unit 11-13 · 过去发生的事</div>
             </div>
 
-            <div class="grammar-card" onclick="showGrammar('frequency')">
+            <div class="grammar-card" data-action="showGrammar" data-arg="frequency">
                 <div class="grammar-card-icon">🔢</div>
                 <div class="grammar-card-title">频率表达</div>
                 <div class="grammar-card-desc">Unit 7 · How often...</div>
             </div>
 
-            <div class="grammar-card" onclick="showGrammar('be-going-to')">
+            <div class="grammar-card" data-action="showGrammar" data-arg="be-going-to">
                 <div class="grammar-card-icon">🎯</div>
                 <div class="grammar-card-title">be going to</div>
                 <div class="grammar-card-desc">Unit 8 · 表计划</div>
             </div>
 
-            <div class="grammar-card" onclick="showGrammar('want-to-do')">
+            <div class="grammar-card" data-action="showGrammar" data-arg="want-to-do">
                 <div class="grammar-card-icon">💭</div>
                 <div class="grammar-card-title">want to do</div>
                 <div class="grammar-card-desc">Unit 9 · 想要做某事</div>
             </div>
 
-            <div class="grammar-card" onclick="showGrammar('possessive-pronouns')">
+            <div class="grammar-card" data-action="showGrammar" data-arg="possessive-pronouns">
                 <div class="grammar-card-icon">📌</div>
                 <div class="grammar-card-title">名词性物主代词</div>
                 <div class="grammar-card-desc">Unit 3 · mine, yours, hers...</div>
             </div>
 
-            <div class="grammar-card" onclick="showGrammar('imperative')">
+            <div class="grammar-card" data-action="showGrammar" data-arg="imperative">
                 <div class="grammar-card-icon">📢</div>
                 <div class="grammar-card-title">祈使句</div>
                 <div class="grammar-card-desc">Unit 4 · Open the door</div>
             </div>
 
-            <div class="grammar-card" onclick="showGrammar('tense-compare')">
+            <div class="grammar-card" data-action="showGrammar" data-arg="tense-compare">
                 <div class="grammar-card-icon">⚖️</div>
                 <div class="grammar-card-title">三时态对比</div>
                 <div class="grammar-card-desc">现在进行时 vs 一般现在时 vs 一般过去时</div>
@@ -246,7 +247,7 @@
     <!-- 语法详情弹窗 -->
     <div class="grammar-modal" id="grammar-modal">
         <div class="grammar-modal-content">
-            <button class="modal-close" onclick="closeGrammar()">×</button>
+            <button class="modal-close" data-action="closeGrammar">×</button>
             <div id="grammar-content"></div>
         </div>
     </div>
@@ -265,8 +266,8 @@
                 <div class="practice-result-text" id="practice-result-text">太棒了！</div>
                 <div class="practice-result-score" id="practice-result-score">正确率 80%</div>
                 <div class="practice-buttons">
-                    <button class="btn btn-secondary" onclick="closePractice()">关闭</button>
-                    <button class="btn btn-primary" onclick="restartPractice()">再练一次</button>
+                    <button class="btn btn-secondary" data-action="closePractice">关闭</button>
+                    <button class="btn btn-primary" data-action="restartPractice">再练一次</button>
                 </div>
             </div>
         </div>
@@ -1739,7 +1740,7 @@
             if (hasQuestions) {
                 html += `
                     <div class="grammar-section" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
-                        <button class="practice-btn" onclick="closeGrammar(); startPractice('${key}');" style="width: 100%; padding: 14px; font-size: 1em;">
+                        <button class="practice-btn" data-action="clickRestartPractice" data-arg="${key}" style="width: 100%; padding: 14px; font-size: 1em;">
                             🎯 开始练习 (${grammarQuestions[key].length}题)
                         </button>
                     </div>
@@ -1816,7 +1817,7 @@
             document.getElementById('practice-question').textContent = q.q;
 
             const optionsHtml = q.o.map((opt, i) =>
-                `<button class="practice-option" onclick="checkAnswer(${i})">${opt}</button>`
+                `<button class="practice-option" data-action="checkAnswer" data-arg="${i}">${opt}</button>`
             ).join('');
             document.getElementById('practice-options').innerHTML = optionsHtml;
             document.getElementById('practice-options').classList.remove('hidden');

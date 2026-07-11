@@ -4,6 +4,7 @@
     <link rel="stylesheet" href="/styles/tokens.css">
     <link rel="stylesheet" href="/styles/base.css">
     <link rel="stylesheet" href="/styles/components.css">
+    <script src="/js/dispatcher.js"></script>
 <script src="/theme.js"></script>
 <script src="/sync.js"></script>
     <script src="/a11y.js"></script>
@@ -26,7 +27,7 @@
             <a href="/grammar" class="nav-link">语法学习</a>
             <a href="/stats" class="nav-link">📊 统计</a>
         </div>
-    <button id="themeBtn" onclick="cycleTheme()" style="background:var(--primary,#B86A4E);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1.1em;cursor:pointer;margin-left:12px;flex-shrink:0;">&#xD83D;&#xDD0C;</button>
+    <button id="themeBtn" data-action="cycleTheme" style="background:var(--primary,#B86A4E);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1.1em;cursor:pointer;margin-left:12px;flex-shrink:0;">&#xD83D;&#xDD0C;</button>
         </nav>
     <div class="container">
         <header>
@@ -38,15 +39,15 @@
         <div id="book-selection" class="card">
             <h2>📚 选择学习内容</h2>
             <div class="unit-list">
-                <div class="unit-item" onclick="selectBook('nc2a')">
+                <div class="unit-item" data-action="selectBook" data-arg="nc2a">
                     <span class="unit-name">📖 新概念英语青少版2A</span>
                     <span class="unit-count">9个单元 · 语法跟读</span>
                 </div>
-                <div class="unit-item" onclick="selectBook('mth29')">
+                <div class="unit-item" data-action="selectBook" data-arg="mth29">
                     <span class="unit-name">🎄 Magic Tree House #29<br><small>Christmas in Camelot 圣诞奇案</small></span>
                     <span class="unit-count">7个章节 · 故事跟读</span>
                 </div>
-                <div class="unit-item" onclick="showVocabReview()" id="vocab-review-entry">
+                <div class="unit-item" data-action="showVocabReview" id="vocab-review-entry">
                     <span class="unit-name">🔁 今日复习 <span id="vocab-due-badge" style="background:var(--warning,#D4A574);color:white;border-radius:10px;padding:2px 8px;font-size:0.7em;margin-left:8px;">0</span></span>
                     <span class="unit-count">间隔重复 · 巩固查过的词</span>
                 </div>
@@ -61,13 +62,13 @@
 
         <!-- 单元选择 (NC2A) -->
         <div id="unit-selection" class="card hidden">
-            <h2>📚 选择学习单元 <button class="btn btn-secondary" onclick="showBooks()" style="padding:5px 15px;font-size:0.8em;margin-left:10px;">← 返回选择</button></h2>
+            <h2>📚 选择学习单元 <button class="btn btn-secondary" data-action="showBooks" style="padding:5px 15px;font-size:0.8em;margin-left:10px;">← 返回选择</button></h2>
             <div class="unit-list" id="unit-list"></div>
         </div>
 
         <!-- 章节选择 (Magic Tree House) -->
         <div id="chapter-selection" class="card hidden">
-            <h2>🎄 Christmas in Camelot <button class="btn btn-secondary" onclick="showBooks()" style="padding:5px 15px;font-size:0.8em;margin-left:10px;">← 返回选择</button></h2>
+            <h2>🎄 Christmas in Camelot <button class="btn btn-secondary" data-action="showBooks" style="padding:5px 15px;font-size:0.8em;margin-left:10px;">← 返回选择</button></h2>
             <p style="color:#666;margin-bottom:15px;">Jack和Annie收到Morgan的邀请，去卡米洛特过圣诞节！跟读故事句子，学习地道的英语表达。</p>
             <div class="unit-list" id="chapter-list"></div>
         </div>
@@ -88,10 +89,10 @@
             </div>
 
             <div class="controls">
-                <button class="btn btn-primary" id="btn-listen" onclick="playSentence()">
+                <button class="btn btn-primary" id="btn-listen" data-action="playSentence">
                     🔊 听标准发音
                 </button>
-                <button class="btn btn-secondary" id="btn-pregenerate" onclick="pregenerateAudio()">
+                <button class="btn btn-secondary" id="btn-pregenerate" data-action="pregenerateAudio">
                     📥 预下载音频
                 </button>
             </div>
@@ -117,14 +118,14 @@
                 <div class="waveform-row">
                     <div class="waveform-label">
                         <span>🔊 原音</span>
-                        <button class="waveform-play-btn" id="btn-play-original" onclick="playOriginal()">▶ 播放</button>
+                        <button class="waveform-play-btn" id="btn-play-original" data-action="playOriginal">▶ 播放</button>
                     </div>
                     <canvas id="waveform-original" class="waveform-canvas"></canvas>
                 </div>
                 <div class="waveform-row">
                     <div class="waveform-label">
                         <span>🎤 你的录音</span>
-                        <button class="waveform-play-btn" id="btn-play-recorded" onclick="playRecorded()">▶ 播放</button>
+                        <button class="waveform-play-btn" id="btn-play-recorded" data-action="playRecorded">▶ 播放</button>
                     </div>
                     <canvas id="waveform-recorded" class="waveform-canvas"></canvas>
                 </div>
@@ -134,10 +135,10 @@
             </div>
 
             <div class="controls">
-                <button class="btn btn-danger" id="btn-record" onclick="startRecording()">
+                <button class="btn btn-danger" id="btn-record" data-action="startRecording">
                     🎤 开始跟读
                 </button>
-                <button class="btn btn-success hidden" id="btn-stop" onclick="stopRecording()">
+                <button class="btn btn-success hidden" id="btn-stop" data-action="stopRecording">
                     ⏹ 停止录音
                 </button>
             </div>
@@ -149,9 +150,9 @@
             </div>
 
             <div class="nav-buttons">
-                <button class="btn btn-secondary" onclick="prevSentence()" id="btn-prev">← 上一个</button>
-                <button class="btn btn-secondary" onclick="showUnits()">← 返回</button>
-                <button class="btn btn-primary" onclick="nextSentence()" id="btn-next">下一个 →</button>
+                <button class="btn btn-secondary" data-action="prevSentence" id="btn-prev">← 上一个</button>
+                <button class="btn btn-secondary" data-action="showUnits">← 返回</button>
+                <button class="btn btn-primary" data-action="nextSentence" id="btn-next">下一个 →</button>
             </div>
         </div>
 
@@ -163,8 +164,8 @@
                 <div class="options" id="options-container"></div>
             </div>
             <div class="nav-buttons">
-                <button class="btn btn-secondary" onclick="skipQuiz()">跳过测验</button>
-                <button class="btn btn-primary" onclick="nextQuestion()">下一题 →</button>
+                <button class="btn btn-secondary" data-action="skipQuiz">跳过测验</button>
+                <button class="btn btn-primary" data-action="nextQuestion">下一题 →</button>
             </div>
         </div>
 
@@ -175,8 +176,8 @@
                 <h3>太棒了！本单元完成！</h3>
                 <div class="completion-stats" id="completion-stats"></div>
                 <div class="controls">
-                    <button class="btn btn-secondary" onclick="showUnits()">选择其他单元</button>
-                    <button class="btn btn-primary" onclick="restartUnit()">再练一遍</button>
+                    <button class="btn btn-secondary" data-action="showUnits">选择其他单元</button>
+                    <button class="btn btn-primary" data-action="restartUnit">再练一遍</button>
                 </div>
             </div>
         </div>
@@ -394,7 +395,7 @@
 
             const list = document.getElementById('unit-list');
             list.innerHTML = nc2aUnits.map((u, i) => `
-                <div class="unit-item" onclick="selectUnit(${i})">
+                <div class="unit-item" data-action="selectUnit" data-arg="${i}">
                     <span class="unit-name">${u.name}</span>
                     <span class="unit-count">${u.sentences.length}句</span>
                 </div>
@@ -409,7 +410,7 @@
 
             const list = document.getElementById('chapter-list');
             list.innerHTML = mth29Chapters.map((c, i) => `
-                <div class="unit-item" onclick="selectChapter(${i})">
+                <div class="unit-item" data-action="selectChapter" data-arg="${i}">
                     <span class="unit-name">${c.name}</span>
                     <span class="unit-count">${c.sentences.length}句</span>
                 </div>
@@ -971,7 +972,7 @@
                         <div style="font-size:4em;">🎉</div>
                         <h2>今日复习完成！</h2>
                         <p style="color:#666;">所有词都复习过啦, 明天再来</p>
-                        <button class="btn btn-primary" onclick="showBooks()" style="margin-top:20px;">← 返回</button>
+                        <button class="btn btn-primary" data-action="showBooks" style="margin-top:20px;">← 返回</button>
                     </div>`;
                 return;
             }
@@ -986,7 +987,7 @@
                         <div style="font-size:4em;">🎉</div>
                         <h2>复习完成！</h2>
                         <p style="color:#666;">${reviewQueue.length} 词已巩固, 状态自动推进</p>
-                        <button class="btn btn-primary" onclick="showBooks()" style="margin-top:20px;">← 返回</button>
+                        <button class="btn btn-primary" data-action="showBooks" style="margin-top:20px;">← 返回</button>
                     </div>`;
                 refreshVocabBadge();
                 return;
@@ -997,13 +998,13 @@
                 <div class="vocab-card" style="text-align:center;padding:30px 10px;">
                     <div style="color:#999;font-size:0.9em;">${reviewIdx + 1} / ${reviewQueue.length} · ${stateLabels[w.state] || w.state}</div>
                     <div style="font-size:3em;font-weight:700;margin:30px 0 10px;color:var(--primary,#B86A4E);">${w.word}</div>
-                    <button class="btn btn-secondary" id="vocab-translate-btn" onclick="lookupWord('${w.word}')">🔍 查词意</button>
+                    <button class="btn btn-secondary" id="vocab-translate-btn" data-action="lookupWord" data-arg="${w.word}">🔍 查词意</button>
                     <div id="vocab-translate-result" style="margin:20px 0;min-height:60px;color:#444;"></div>
                     <div style="margin-top:30px;display:flex;gap:15px;justify-content:center;">
-                        <button class="btn btn-danger" onclick="answerVocab(false)" style="flex:1;max-width:160px;">❌ 忘了</button>
-                        <button class="btn btn-success" onclick="answerVocab(true)" style="flex:1;max-width:160px;">✅ 记住了</button>
+                        <button class="btn btn-danger" data-action="answerVocab" data-arg="false" style="flex:1;max-width:160px;">❌ 忘了</button>
+                        <button class="btn btn-success" data-action="answerVocab" data-arg="true" style="flex:1;max-width:160px;">✅ 记住了</button>
                     </div>
-                    <button class="btn btn-secondary" onclick="showBooks()" style="margin-top:30px;font-size:0.85em;">稍后再来</button>
+                    <button class="btn btn-secondary" data-action="showBooks" style="margin-top:30px;font-size:0.85em;">稍后再来</button>
                 </div>`;
         }
 
@@ -1095,19 +1096,19 @@
 
             let html = '';
             q.o.forEach((opt, i) => {
-                html += `<div class="option" onclick="selectOption(this, ${i}, ${q.a})">${opt}</div>`;
+                html += `<div class="option" data-action="selectOption" data-arg="${i}" data-arg2="${q.a}">${opt}</div>`;
             });
             document.getElementById('options-container').innerHTML = html;
         }
 
-        function selectOption(el, selected, correct) {
+        function selectOption(selected, correct, _el, ev) {
             document.querySelectorAll('.option').forEach(o => o.style.pointerEvents = 'none');
 
             if (selected === correct) {
-                el.classList.add('correct');
+                this.classList.add('correct');
                 correctCount++;
             } else {
-                el.classList.add('wrong');
+                this.classList.add('wrong');
                 document.querySelectorAll('.option')[correct].classList.add('correct');
             }
 

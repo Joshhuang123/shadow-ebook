@@ -4,6 +4,7 @@
     <link rel="stylesheet" href="/styles/tokens.css">
     <link rel="stylesheet" href="/styles/base.css">
     <link rel="stylesheet" href="/styles/components.css">
+    <script src="/js/dispatcher.js"></script>
 <script src="/theme.js"></script>
 <script src="/sync.js"></script>
     <script src="/a11y.js"></script>
@@ -40,7 +41,7 @@
                 <option value="en-US-GuyNeural">🔊 Guy (男声)</option>
             </select>
         </div>
-    <button id="themeBtn" onclick="cycleTheme()" style="background:var(--primary,#B86A4E);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1em;cursor:pointer;margin-left:12px;flex-shrink:0;font-weight:bold;">日</button>
+    <button id="themeBtn" data-action="cycleTheme" style="background:var(--primary,#B86A4E);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1em;cursor:pointer;margin-left:12px;flex-shrink:0;font-weight:bold;">日</button>
         </nav>
 
     <div class="main-container">
@@ -62,7 +63,7 @@
         <!-- 阅读器页 -->
         <div class="reader-page" id="reader-page">
             <div class="reader-header">
-                <a href="#" class="back-btn" onclick="showBookList()">
+                <a href="#" class="back-btn" data-action="showBookList">
                     <span>←</span>
                     <span>返回书架</span>
                 </a>
@@ -75,7 +76,7 @@
                 <aside class="toc-sidebar" id="toc-sidebar">
                     <div class="toc-sidebar-header">
                         <span class="toc-sidebar-text">📑 目录</span>
-                        <button class="toc-toggle" id="toc-toggle" onclick="toggleTocSidebar()" title="折叠/展开">◀</button>
+                        <button class="toc-toggle" id="toc-toggle" data-action="toggleTocSidebar" title="折叠/展开">◀</button>
                     </div>
                     <div class="toc-list" id="toc-list"></div>
                 </aside>
@@ -120,15 +121,15 @@
 
                     <!-- R10: 浮动控制条 (sticky 吸底, 永远可见, 跟 sidebar 状态无关) -->
                     <div class="reader-controls-sticky">
-                        <button class="page-btn" onclick="prevSentence()" title="上一句 (←)">◀</button>
-                        <button class="play-btn-large" id="btn-play" onclick="playCurrentSentence()" style="width:48px;height:48px;" title="播放/暂停 (Space)">
+                        <button class="page-btn" data-action="prevSentence" title="上一句 (←)">◀</button>
+                        <button class="play-btn-large" id="btn-play" data-action="playCurrentSentence" style="width:48px;height:48px;" title="播放/暂停 (Space)">
                             <span id="play-icon">▶</span>
                         </button>
-                        <button class="page-btn" onclick="nextSentence()" title="下一句 (→)">▶</button>
+                        <button class="page-btn" data-action="nextSentence" title="下一句 (→)">▶</button>
                         <span class="page-info" id="page-info">1 / 10</span>
                         <span class="divider"></span>
-                        <button class="page-btn" onclick="prevChapter()" title="上一章">⏮ 章</button>
-                        <button class="page-btn" onclick="nextChapter()" title="下一章">章 ⏭</button>
+                        <button class="page-btn" data-action="prevChapter" title="上一章">⏮ 章</button>
+                        <button class="page-btn" data-action="nextChapter" title="下一章">章 ⏭</button>
                     </div>
                 </div>
 
@@ -136,12 +137,12 @@
                     <!-- R10: 折叠 header -->
                     <div class="sidebar-header">
                         <span class="sidebar-header-label">🎛️ 控制</span>
-                        <button class="toc-toggle" id="sidebar-toggle" onclick="toggleSidebar()" title="折叠/展开">▶</button>
+                        <button class="toc-toggle" id="sidebar-toggle" data-action="toggleSidebar" title="折叠/展开">▶</button>
                     </div>
                     <!-- R10: 基础控制(翻页/章节)已抽到 text-panel 底部 sticky, 这里只剩高级功能 -->
 
                     <!-- 章节测验 -->
-                    <button class="btn btn-secondary quiz-btn" id="btn-comp" onclick="showComprehensionModal()" style="width:100%;font-size:0.9em;">
+                    <button class="btn btn-secondary quiz-btn" id="btn-comp" data-action="showComprehensionModal" style="width:100%;font-size:0.9em;">
                         📖 章节测验
                     </button>
 
@@ -149,9 +150,9 @@
                     <div class="sidebar-card" style="padding:12px 16px;">
                         <div class="sidebar-title" style="margin-bottom:8px;font-size:0.85em;">🔤 字体大小</div>
                         <div style="display:flex;align-items:center;gap:8px;">
-                            <button class="page-btn" onclick="changeFontSize(-2)" style="padding:6px 12px;font-size:0.9em;">A-</button>
+                            <button class="page-btn" data-action="changeFontSize" data-arg="-2" style="padding:6px 12px;font-size:0.9em;">A-</button>
                             <span id="font-size-display" style="flex:1;text-align:center;font-size:0.9em;">20px</span>
-                            <button class="page-btn" onclick="changeFontSize(2)" style="padding:6px 12px;font-size:0.9em;">A+</button>
+                            <button class="page-btn" data-action="changeFontSize" data-arg="2" style="padding:6px 12px;font-size:0.9em;">A+</button>
                         </div>
                     </div>
                     <!-- 跟读评分 -->
@@ -159,12 +160,12 @@
                         <div class="sidebar-title">🎤 跟读评分</div>
 
                         <div class="mode-toggle">
-                            <button class="mode-btn active" id="mode-read" onclick="setMode('read')">阅读</button>
-                            <button class="mode-btn" id="mode-shadow" onclick="setMode('shadow')">跟读</button>
+                            <button class="mode-btn active" id="mode-read" data-action="setMode" data-arg="read">阅读</button>
+                            <button class="mode-btn" id="mode-shadow" data-action="setMode" data-arg="shadow">跟读</button>
                         </div>
 
                         <div style="text-align:center;">
-                            <button class="record-btn" id="btn-record" onclick="toggleRecord()">🎙️</button>
+                            <button class="record-btn" id="btn-record" data-action="toggleRecord">🎙️</button>
                         </div>
 
                         <div id="score-display" style="display:none;">
@@ -198,15 +199,15 @@
                         <div class="sidebar-title">
                             📚 生词本
                             <span id="vocab-count" style="color:var(--text-secondary);font-weight:400;font-size:0.85em;">(0)</span>
-                            <span id="review-badge" class="review-badge hidden" onclick="startReview()">🔔 待复习 <span id="review-count">0</span></span>
+                            <span id="review-badge" class="review-badge hidden" data-action="startReview">🔔 待复习 <span id="review-count">0</span></span>
                         </div>
-                        <button id="btn-start-review" class="btn-vocab" onclick="startReview()" style="width:100%;margin-bottom:10px;display:none;">📝 开始复习</button>
+                        <button id="btn-start-review" class="btn-vocab" data-action="startReview" style="width:100%;margin-bottom:10px;display:none;">📝 开始复习</button>
                         <div class="vocab-list" id="vocab-list">
                             <div class="vocab-empty">点击单词加入生词本</div>
                         </div>
                     </div>
 
-                    <div class="sidebar-card" style="cursor:pointer;" onclick="showARPanel()">
+                    <div class="sidebar-card" style="cursor:pointer;" data-action="showARPanel">
                         <div class="sidebar-title">📊 阅读等级</div>
                         <div class="ar-level">
                             <div class="ar-level-value" id="ar-display">--</div>
@@ -235,7 +236,7 @@
                     <div class="word-modal-word" id="modal-word">word</div>
                     <div class="word-modal-phonetic" id="modal-phonetic">/wɜːrd/</div>
                 </div>
-                <button class="word-modal-close" onclick="closeWordModal()">×</button>
+                <button class="word-modal-close" data-action="closeWordModal">×</button>
             </div>
             <div class="word-modal-meanings" id="modal-meanings">
                 <div class="word-meaning-item">
@@ -245,18 +246,18 @@
                 </div>
             </div>
             <div class="word-modal-actions">
-                <button class="btn-translate" onclick="playPronunciation()">🔊 发音</button>
-                <button class="btn-vocab" id="btn-add-vocab" onclick="addToVocab()">+ 生词本</button>
+                <button class="btn-translate" data-action="playPronunciation">🔊 发音</button>
+                <button class="btn-vocab" id="btn-add-vocab" data-action="addToVocab">+ 生词本</button>
             </div>
         </div>
     </div>
 
     <!-- AR 面板 -->
-    <div class="word-modal-overlay" id="ar-modal" onclick="closeARPanel()">
-        <div class="word-modal" onclick="event.stopPropagation()">
+    <div class="word-modal-overlay" id="ar-modal" data-action="closeARPanel">
+        <div class="word-modal" data-action="clickStopPropagate">
             <div class="word-modal-header">
                 <div class="sidebar-title">📊 阅读等级评估</div>
-                <button class="word-modal-close" onclick="closeARPanel()">×</button>
+                <button class="word-modal-close" data-action="closeARPanel">×</button>
             </div>
             <div class="ar-level">
                 <div class="ar-level-value" id="modal-ar-value">--</div>
@@ -288,7 +289,7 @@
         <div class="word-modal" style="max-width:450px;">
             <div class="word-modal-header">
                 <div class="word-modal-word">📖 章节理解测验</div>
-                <button class="word-modal-close" onclick="closeCompModal()">×</button>
+                <button class="word-modal-close" data-action="closeCompModal">×</button>
             </div>
             <div id="comp-content" style="padding:20px;text-align:center;">
                 <!-- 题目内容 -->
@@ -301,7 +302,7 @@
         <div class="word-modal" style="max-width:400px;">
             <div class="word-modal-header">
                 <div class="word-modal-word" id="review-title">📝 词汇复习</div>
-                <button class="word-modal-close" onclick="closeReviewModal()">×</button>
+                <button class="word-modal-close" data-action="closeReviewModal">×</button>
             </div>
             <div id="review-content" style="padding:20px;text-align:center;">
                 <!-- 复习内容 -->
@@ -611,11 +612,11 @@
                             const tooltip = b.author ? `${b.title} — ${b.author}` : b.title;
 
                             html += `
-                                <div class="book-spine" onclick="loadBook('${b.id}')" title="${tooltip.replace(/"/g, '&quot;')}">
+                                <div class="book-spine" data-action="loadBook" data-arg="${b.id}" title="${tooltip.replace(/"/g, '&quot;')}">
                                     <span class="lexile-badge ${levelClass}">${b.lexile > 0 ? b.lexile + 'L' : '?'}</span>
                                     <span class="cache-badge" id="cache-badge-${b.id}" style="display:none;"></span>
-                                    <button class="book-delete-btn" onclick="event.stopPropagation(); deleteBook('${b.id}', '${b.title.replace(/'/g, "\\'")}')" title="删除">×</button>
-                                    <button class="cache-audio-btn" onclick="event.stopPropagation(); cacheBookAudio('${b.id}')" title="缓存音频">🔊</button>
+                                    <button class="book-delete-btn" data-action="clickStopDeleteBook" data-arg="${b.id}" data-arg2="${b.title.replace(/'/g, '&#39;')}" title="删除">×</button>
+                                    <button class="cache-audio-btn" data-action="clickStopCacheAudio" data-arg="${b.id}" title="缓存音频">🔊</button>
                                     <div class="book-cover" style="background:linear-gradient(135deg,${fallbackColor});">
                                         <img src="${coverUrl}" alt="${b.title}"
                                              style="width:100%;height:100%;object-fit:cover;border-radius:6px;opacity:0;"
@@ -644,7 +645,7 @@
                 // R10: 提示家长"需先登录" 免得点了之后才发现要鉴权
                 const importHint = parentAuthed ? '支持 EPUB 格式' : '需先在 /parent 登录';
                 grid.insertAdjacentHTML('beforeend', `
-                    <div class="import-card" onclick="document.getElementById('import-file').click()">
+                    <div class="import-card" data-action="clickTriggerImportFile">
                         <div class="icon">➕</div>
                         <div class="text">导入新书</div>
                         <div class="hint">${importHint}</div>
@@ -1191,8 +1192,8 @@
                 <div class="review-word">${escapeHtml(word.word)}</div>
                 <div class="review-meaning">${escapeHtml(word.meaning)}</div>
                 <div class="review-buttons">
-                    <button class="review-btn wrong" onclick="reviewAnswer(false)">不认识</button>
-                    <button class="review-btn correct" onclick="reviewAnswer(true)">认识 ✓</button>
+                    <button class="review-btn wrong" data-action="reviewAnswer" data-arg="false">不认识</button>
+                    <button class="review-btn correct" data-action="reviewAnswer" data-arg="true">认识 ✓</button>
                 </div>
             `;
         }
@@ -1248,7 +1249,7 @@
                         </div>
                     </div>
                     <p style="color:var(--text-secondary);">正确率: ${accuracy}%</p>
-                    <button class="btn btn-primary" onclick="closeReviewModal()" style="margin-top:20px;">完成</button>
+                    <button class="btn btn-primary" data-action="closeReviewModal" style="margin-top:20px;">完成</button>
                 </div>
             `;
 
@@ -1607,12 +1608,12 @@
                     const cleanW = w.replace(/[^a-zA-Z]/g, '').toLowerCase();
                     const isLooked = lookedWords[cleanW];
                     const safeW = w.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-                    return `<span class="word-inline ${isLooked ? 'looked' : ''}" onclick="lookupWord('${safeW}', this, event)">${w}</span>`;
+                    return `<span class="word-inline ${isLooked ? 'looked' : ''}" data-action="lookupWord" data-arg="${safeW}" >${w}</span>`;
                 }
                 return w;
             }).join('');
 
-            return `<span class="${className}" id="sentence-${index}" onclick="jumpTo(${index})">${processedWords} </span>`;
+            return `<span class="${className}" id="sentence-${index}" data-action="jumpTo" data-arg="${index}">${processedWords} </span>`;
         }
 
         // 滚动到当前句子（朗读时）
@@ -1968,7 +1969,7 @@
                 <div class="comp-progress">${compIndex + 1} / ${compQuestions.length}</div>
                 <div class="comp-question">${q.q}</div>
                 <div class="comp-options">
-                    ${q.o.map((opt, i) => `<div class="comp-option" onclick="selectCompAnswer(${i}, ${q.a})">${opt}</div>`).join('')}
+                    ${q.o.map((opt, i) => `<div class="comp-option" data-action="selectCompAnswer" data-arg="${i}" data-arg2="${q.a}">${opt}</div>`).join('')}
                 </div>
             `;
         }
@@ -2009,7 +2010,7 @@
                         </div>
                     </div>
                     <p style="color:var(--text-secondary);">正确率: ${accuracy}%</p>
-                    <button class="btn btn-primary" onclick="closeCompModal()" style="margin-top:20px;">完成</button>
+                    <button class="btn btn-primary" data-action="closeCompModal" style="margin-top:20px;">完成</button>
                 </div>
             `;
 
@@ -2045,7 +2046,7 @@
     </script>
 
     <!-- R10: 折叠后浮动的展开按钮 (不占 grid 空间) -->
-    <button class="toc-fab hidden" id="toc-fab" onclick="toggleTocSidebar()" title="展开目录">📑</button>
-    <button class="controls-fab hidden" id="controls-fab" onclick="toggleSidebar()" title="展开控制">🎛️</button>
+    <button class="toc-fab hidden" id="toc-fab" data-action="toggleTocSidebar" title="展开目录">📑</button>
+    <button class="controls-fab hidden" id="controls-fab" data-action="toggleSidebar" title="展开控制">🎛️</button>
 </body>
 </html>

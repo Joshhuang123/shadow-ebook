@@ -4,6 +4,7 @@
     <link rel="stylesheet" href="/styles/tokens.css">
     <link rel="stylesheet" href="/styles/base.css">
     <link rel="stylesheet" href="/styles/components.css">
+    <script src="/js/dispatcher.js"></script>
 <script src="/theme.js"></script>
 <script src="/sync.js"></script>
     <script src="/a11y.js"></script>
@@ -29,7 +30,7 @@
             <a href="/tutor" class="nav-link">跟读学习</a>
             <a href="/grammar" class="nav-link">语法学习</a>
         </div>
-    <button id="themeBtn" onclick="cycleTheme()" style="background:var(--primary,#B86A4E);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1.1em;cursor:pointer;margin-left:12px;flex-shrink:0;">&#xD83D;&#xDD0C;</button>
+    <button id="themeBtn" data-action="cycleTheme" style="background:var(--primary,#B86A4E);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1.1em;cursor:pointer;margin-left:12px;flex-shrink:0;">&#xD83D;&#xDD0C;</button>
         </nav>
 
     <div class="main-container">
@@ -48,7 +49,7 @@
             <div class="section-title">📚 词汇量测试</div>
             <div id="vocab-test-content">
                 <p style="color:var(--text-secondary);margin-bottom:15px;">测试你的词汇水平，获得个性化书单推荐</p>
-                <button class="btn btn-primary" onclick="startVocabTest()">开始测试</button>
+                <button class="btn btn-primary" data-action="startVocabTest">开始测试</button>
             </div>
         </div>
 
@@ -69,19 +70,19 @@
             <div id="interest-filter">
                 <p style="color:var(--text-secondary);margin-bottom:10px;font-size:0.9em;">兴趣筛选：</p>
                 <div class="interest-tags" id="interest-tags">
-                    <span class="interest-tag" data-interest="all" onclick="setInterest('all')">全部</span>
-                    <span class="interest-tag" data-interest="adventure" onclick="setInterest('adventure')">冒险</span>
-                    <span class="interest-tag" data-interest="fantasy" onclick="setInterest('fantasy')">奇幻</span>
-                    <span class="interest-tag" data-interest="school" onclick="setInterest('school')">校园</span>
-                    <span class="interest-tag" data-interest="mystery" onclick="setInterest('mystery')">悬疑</span>
-                    <span class="interest-tag" data-interest="history" onclick="setInterest('history')">历史</span>
-                    <span class="interest-tag" data-interest="science" onclick="setInterest('science')">科普</span>
+                    <span class="interest-tag" data-interest="all" data-action="setInterest" data-arg="all">全部</span>
+                    <span class="interest-tag" data-interest="adventure" data-action="setInterest" data-arg="adventure">冒险</span>
+                    <span class="interest-tag" data-interest="fantasy" data-action="setInterest" data-arg="fantasy">奇幻</span>
+                    <span class="interest-tag" data-interest="school" data-action="setInterest" data-arg="school">校园</span>
+                    <span class="interest-tag" data-interest="mystery" data-action="setInterest" data-arg="mystery">悬疑</span>
+                    <span class="interest-tag" data-interest="history" data-action="setInterest" data-arg="history">历史</span>
+                    <span class="interest-tag" data-interest="science" data-action="setInterest" data-arg="science">科普</span>
                 </div>
             </div>
             <div class="book-rec-list" id="book-rec-list">
                 <!-- 推荐书籍 -->
             </div>
-            <button class="btn btn-secondary" onclick="retestVocab()" style="margin-top:15px;">重新测试</button>
+            <button class="btn btn-secondary" data-action="retestVocab" style="margin-top:15px;">重新测试</button>
         </div>
 
         <!-- 学习时长图表 -->
@@ -102,7 +103,7 @@
 
         <!-- 重置按钮 -->
         <div style="text-align: center; margin-top: 30px;">
-            <button class="reset-btn" onclick="resetStats()">🗑️ 重置所有数据</button>
+            <button class="reset-btn" data-action="resetStats">🗑️ 重置所有数据</button>
         </div>
     </div>
 
@@ -182,7 +183,7 @@
             document.getElementById('vocab-test-progress').textContent = `${vocabTestIndex + 1} / ${vocabTestQuestions.length}`;
             document.getElementById('vocab-test-q').textContent = q.q;
             document.getElementById('vocab-test-options').innerHTML = q.o.map((opt, i) =>
-                `<div class="vocab-test-option" onclick="selectVocabAnswer(${i}, ${q.a})">${opt}</div>`
+                `<div class="vocab-test-option" data-action="selectVocabAnswer" data-arg="${i}" data-arg2="${q.a}">${opt}</div>`
             ).join('');
         }
 
@@ -305,7 +306,7 @@
                     const diff = book.lexile < levelInfo.minLexile + 200 ? "推荐" : "挑战";
                     const tag = interestLabels[meta.interest] || '冒险';
                     return `
-                    <div class="book-rec-item" onclick="window.location.href='/ebook'">
+                    <div class="book-rec-item" data-action="clickGoHref" data-arg="/ebook">
                         <div class="book-rec-icon">📖</div>
                         <div class="book-rec-info">
                             <div class="book-rec-title">${escapeHtml(book.title.replace(/_/g, ' '))}</div>
