@@ -1,0 +1,473 @@
+
+        // 默认数据结构
+        const DEFAULT_STATS = {
+            totalStudyTime: 0,        // 总学习时间（秒）
+            streakDays: 0,            // 连续天数
+            lastStudyDate: null,      // 最后学习日期
+            wordsLearned: 0,          // 学习词汇数
+            wordsMastered: 0,         // 掌握词汇数
+            quizAccuracy: 0,          // 测验正确率
+            sentencesPracticed: 0,    // 跟读句子数
+            grammarProgress: {},      // 语法进度 { key: { correct, total } }
+            dailyStudyTime: {},       // 每日学习时间 { "2024-04-23": 3600 }
+            chapterRead: 0,           // 读完章节数
+            comprehensionAccuracy: 0, // 阅读理解正确率
+            vocabLevel: null          // 词汇水平测试结果
+        };
+
+        // 词汇测试题目（按难度分组）
+        const VOCAB_QUESTIONS = [
+            // 入门级 (CEFR A1, ~500词汇)
+            { q: "Which word means '重要的'?", o: ["important", "interest", "inside", "instead"], a: 0, level: 1 },
+            { q: "Which word means '困难的'?", o: ["different", "difficult", "dangerous", "delicious"], a: 1, level: 1 },
+            { q: "Which word means '快乐的'?", o: ["sad", "happy", "angry", "tired"], a: 1, level: 1 },
+            { q: "Which word means '大的'?", o: ["small", "big", "little", "short"], a: 1, level: 1 },
+            { q: "Which word means '说'?", o: ["speak", "spend", "special", "spirit"], a: 0, level: 1 },
+            // 初级 (CEFR A2, ~1000词汇)
+            { q: "Which word means '机会'?", o: ["opportunity", "option", "organization", "observation"], a: 0, level: 2 },
+            { q: "Which word means '决定'?", o: ["decision", "Division", "Discussion", "Description"], a: 0, level: 2 },
+            { q: "Which word means '经验'?", o: ["experience", "experiment", "expert", "expression"], a: 0, level: 2 },
+            { q: "Which word means '想象'?", o: ["imagine", "image", "immediate", "impact"], a: 0, level: 2 },
+            { q: "Which word means '提到'?", o: ["mention", "mission", "measure", "message"], a: 0, level: 2 },
+            // 中级 (CEFR B1, ~2000词汇)
+            { q: "Which word means '坚持'?", o: ["persist", "insist", "consist", "assist"], a: 0, level: 3 },
+            { q: "Which word means '分配'?", o: ["distribute", "contribute", "attribute", "distract"], a: 0, level: 3 },
+            { q: "Which word means '证实'?", o: ["confirm", "conform", "transform", "inform"], a: 0, level: 3 },
+            { q: "Which word means '观点'?", o: ["opinion", "option", "otion", "otion"], a: 0, level: 3 },
+            { q: "Which word means '能力'?", o: ["ability", "capacity", "cability", "mobility"], a: 0, level: 3 },
+            // 中高级 (CEFR B2, ~3000词汇)
+            { q: "Which word means '推测'?", o: ["infer", "offer", "prefer", "refer"], a: 0, level: 4 },
+            { q: "Which word means '逃避'?", o: ["avoid", "await", "award", "aware"], a: 0, level: 4 },
+            { q: "Which word means '阐明'?", o: ["clarify", "classify", "qualify", "simplify"], a: 0, level: 4 },
+            { q: "Which word means '调解'?", o: ["mediate", "mediate", "medlate", "modiate"], a: 0, level: 4 },
+            { q: "Which word means '综合'?", o: ["synthesize", "sympathize", "systemize", "symbolize"], a: 0, level: 4 }
+        ];
+
+        // 难度等级映射
+        const LEVEL_MAP = {
+            1: { name: "入门", minLexile: 0, maxLexile: 600 },
+            2: { name: "初级", minLexile: 500, maxLexile: 800 },
+            3: { name: "中级", minLexile: 750, maxLexile: 950 },
+            4: { name: "高级", minLexile: 900, maxLexile: 2000 }
+        };
+
+        let vocabTestIndex = 0;
+        let vocabTestCorrect = 0;
+        let vocabTestQuestions = [];
+
+        // 开始词汇测试
+        function startVocabTest() {
+            document.getElementById('vocab-test-question').classList.remove('hidden');
+            document.getElementById('book-rec-section').classList.add('hidden');
+            vocabTestIndex = 0;
+            vocabTestCorrect = 0;
+            vocabTestQuestions = [...VOCAB_QUESTIONS].sort(() => Math.random() - 0.5).slice(0, 10);
+            showVocabQuestion();
+        }
+
+        function showVocabQuestion() {
+            if (vocabTestIndex >= vocabTestQuestions.length) {
+                showVocabResult();
+                return;
+            }
+            const q = vocabTestQuestions[vocabTestIndex];
+            document.getElementById('vocab-test-progress').textContent = `${vocabTestIndex + 1} / ${vocabTestQuestions.length}`;
+            document.getElementById('vocab-test-q').textContent = q.q;
+            document.getElementById('vocab-test-options').innerHTML = q.o.map((opt, i) =>
+                `<div class="vocab-test-option" data-action="selectVocabAnswer" data-arg="${i}" data-arg2="${q.a}">${opt}</div>`
+            ).join('');
+        }
+
+        function selectVocabAnswer(selected, correct) {
+            const options = document.querySelectorAll('.vocab-test-option');
+            options.forEach(o => o.style.pointerEvents = 'none');
+            if (selected === correct) {
+                options[selected].classList.add('correct');
+                vocabTestCorrect++;
+            } else {
+                options[selected].classList.add('wrong');
+                options[correct].classList.add('correct');
+            }
+            setTimeout(() => {
+                vocabTestIndex++;
+                showVocabQuestion();
+            }, 1000);
+        }
+
+        // 书籍元数据（兴趣标签、难度分类）
+        const BOOK_META = {
+            // Magic Tree House 系列 - 冒险
+            'magic tree house': { interest: 'adventure', lexile: 450 },
+            'christmas in camelot': { interest: 'adventure', lexile: 500 },
+            // Harry Potter - 奇幻
+            'philosopher': { interest: 'fantasy', lexile: 880 },
+            'chamber of secrets': { interest: 'fantasy', lexile: 870 },
+            'prisoner of azkaban': { interest: 'fantasy', lexile: 870 },
+            'goblet of fire': { interest: 'fantasy', lexile: 880 },
+            'order of the phoenix': { interest: 'fantasy', lexile: 900 },
+            'half-blood prince': { interest: 'fantasy', lexile: 680 },
+            'deathly hallows': { interest: 'fantasy', lexile: 900 },
+            // Percy Jackson - 奇幻/神话
+            'lightning thief': { interest: 'fantasy', lexile: 590 },
+            'sea of monsters': { interest: 'fantasy', lexile: 600 },
+            'titans curse': { interest: 'fantasy', lexile: 620 },
+            'battle of the labyrinth': { interest: 'fantasy', lexile: 630 },
+            'last olympian': { interest: 'fantasy', lexile: 620 },
+            'house of hades': { interest: 'fantasy', lexile: 650 },
+            'blood of olympus': { interest: 'fantasy', lexile: 650 },
+            'percy jackson': { interest: 'fantasy', lexile: 600 },
+            // Diary of a Wimpy Kid - 校园/幽默
+            'diary of a wimpy kid': { interest: 'school', lexile: 800 },
+            'wimpy kid': { interest: 'school', lexile: 800 },
+            // 历史/科普
+            'treasury of greek': { interest: 'history', lexile: 750 },
+            'gods goddesses': { interest: 'history', lexile: 750 },
+        };
+
+        function getBookMeta(bookId) {
+            const normalized = bookId.replace(/_/g, ' ').toLowerCase();
+            for (const [key, meta] of Object.entries(BOOK_META)) {
+                if (normalized.includes(key)) return meta;
+            }
+            return { interest: 'adventure', lexile: 600 }; // 默认值
+        }
+
+        const _escMap = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+        const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => _escMap[c]);
+
+        let allBooks = [];       // 所有书籍缓存
+        let currentInterest = 'all';  // 当前兴趣筛选
+        let currentLevel = null; // 当前词汇等级
+
+        function setInterest(interest) {
+            currentInterest = interest;
+            // 更新标签样式
+            document.querySelectorAll('.interest-tag').forEach(t => {
+                t.classList.toggle('active', t.dataset.interest === interest);
+            });
+            // 重新筛选并渲染
+            renderBookRecs();
+        }
+
+        function renderBookRecs() {
+            if (!allBooks.length) return;
+            const levelInfo = LEVEL_MAP[currentLevel] || LEVEL_MAP[1];
+
+            // 按蓝思值过滤（i+1原则：略高于当前水平）
+            let rec = allBooks.filter(b => {
+                const lex = b.lexile || 0;
+                return lex >= levelInfo.minLexile && lex <= levelInfo.maxLexile + 200;
+            });
+
+            // 按兴趣筛选
+            if (currentInterest !== 'all') {
+                rec = rec.filter(b => {
+                    const meta = getBookMeta(b.id);
+                    return meta.interest === currentInterest;
+                });
+            }
+
+            // 按蓝思值接近程度排序
+            const target = levelInfo.minLexile + 100;
+            rec.sort((a, b) => Math.abs(a.lexile - target) - Math.abs(b.lexile - target));
+            rec = rec.slice(0, 5);
+
+            // 如果没有匹配的，显示该兴趣下的全部
+            if (rec.length === 0) {
+                let fallback = allBooks.filter(b => {
+                    const meta = getBookMeta(b.id);
+                    return meta.interest === currentInterest;
+                }).slice(0, 5);
+                rec = fallback;
+            }
+
+            const interestLabels = {
+                adventure: '冒险',
+                fantasy: '奇幻',
+                school: '校园',
+                mystery: '悬疑',
+                history: '历史',
+                science: '科普'
+            };
+
+            document.getElementById('book-rec-list').innerHTML = rec.length === 0
+                ? '<div class="empty-state">暂无匹配的书籍，请先导入EPUB</div>'
+                : rec.map(book => {
+                    const meta = getBookMeta(book.id);
+                    const diff = book.lexile < levelInfo.minLexile + 200 ? "推荐" : "挑战";
+                    const tag = interestLabels[meta.interest] || '冒险';
+                    return `
+                    <div class="book-rec-item" data-action="clickGoHref" data-arg="/ebook">
+                        <div class="book-rec-icon">📖</div>
+                        <div class="book-rec-info">
+                            <div class="book-rec-title">${escapeHtml(book.title.replace(/_/g, ' '))}</div>
+                            <div class="book-rec-meta">${Number(book.chapters) || 0}章节 · ${Number(book.sentences) || 0}句子</div>
+                        </div>
+                        <span class="book-rec-level-tag">${Number(book.lexile) || 0}L · ${escapeHtml(diff)} · ${escapeHtml(tag)}</span>
+                    </div>`;
+                }).join('');
+        }
+
+        function showVocabResult(savedLevel) {
+            document.getElementById('vocab-test-question').classList.add('hidden');
+            document.getElementById('vocab-test-content').classList.add('hidden');
+            document.getElementById('book-rec-section').classList.remove('hidden');
+
+            let level;
+            if (savedLevel !== undefined) {
+                level = savedLevel;
+            } else {
+                const accuracy = vocabTestCorrect / vocabTestQuestions.length;
+                if (accuracy >= 0.9) { level = 4; }
+                else if (accuracy >= 0.7) { level = 3; }
+                else if (accuracy >= 0.5) { level = 2; }
+                else { level = 1; }
+
+                // 保存结果
+                const stats = loadStats();
+                stats.vocabLevel = level;
+                saveStats(stats);
+            }
+            currentLevel = level;
+
+            // 根据等级获取名称
+            const levelNames = { 1: "初级 (500-1000词)", 2: "中级 (1000-2000词)", 3: "中高级 (2000-3000词)", 4: "高级 (3000+词)" };
+            const levelInfo = LEVEL_MAP[level] || LEVEL_MAP[1];
+            document.getElementById('book-rec-level').textContent = `你的词汇水平: ${levelNames[level]}`;
+
+            // 重置兴趣筛选
+            setInterest('all');
+
+            // 从API获取书籍并推荐
+            fetch('/api/books')
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success || !data.books.length) {
+                        document.getElementById('book-rec-list').innerHTML = '<div class="empty-state">暂无书籍，请先导入EPUB</div>';
+                        return;
+                    }
+                    allBooks = data.books;
+                    renderBookRecs();
+                })
+                .catch(() => {
+                    document.getElementById('book-rec-list').innerHTML = '<div class="empty-state">加载书单失败</div>';
+                });
+        }
+
+        function retestVocab() {
+            document.getElementById('vocab-test-question').classList.add('hidden');
+            document.getElementById('book-rec-section').classList.add('hidden');
+            document.getElementById('vocab-test-content').classList.remove('hidden');
+            currentLevel = null;
+            allBooks = [];
+            setInterest('all');
+        }
+
+        // 加载统计数据
+        function loadStats() {
+            const saved = localStorage.getItem('shadowStats');
+            if (saved) {
+                return { ...DEFAULT_STATS, ...JSON.parse(saved) };
+            }
+            return DEFAULT_STATS;
+        }
+
+        // 保存统计数据
+        function saveStats(stats) {
+            localStorage.setItem('shadowStats', JSON.stringify(stats));
+            shadowReport({ stats });
+        }
+
+        // 更新连续天数
+        function updateStreak(stats) {
+            const today = new Date().toISOString().split('T')[0];
+            const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+            if (stats.lastStudyDate === today) {
+                // 今天已学习，不更新连续天数
+            } else if (stats.lastStudyDate === yesterday) {
+                // 昨天学习过，连续天数+1
+                stats.streakDays++;
+                stats.lastStudyDate = today;
+            } else if (stats.lastStudyDate !== today) {
+                // 中间断了一天，重置为1
+                stats.streakDays = 1;
+                stats.lastStudyDate = today;
+            }
+
+            return stats;
+        }
+
+        // 格式化时间
+        function formatTime(seconds) {
+            if (seconds < 60) return seconds + '秒';
+            if (seconds < 3600) return Math.round(seconds / 60) + '分钟';
+            const hours = Math.floor(seconds / 3600);
+            const mins = Math.round((seconds % 3600) / 60);
+            return hours + '小时' + (mins > 0 ? mins + '分钟' : '');
+        }
+
+        // 渲染统计卡片
+        function renderStats(stats) {
+            const grid = document.getElementById('stats-grid');
+
+            const streakClass = stats.streakDays >= 3 ? 'streak-card' : '';
+
+            grid.innerHTML = `
+                <div class="stat-card ${streakClass}">
+                    <div class="stat-icon">🔥</div>
+                    <div class="stat-value">${stats.streakDays}</div>
+                    <div class="stat-label">连续打卡天数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⏱️</div>
+                    <div class="stat-value">${formatTime(stats.totalStudyTime)}</div>
+                    <div class="stat-label">总学习时长</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📚</div>
+                    <div class="stat-value">${stats.wordsLearned}</div>
+                    <div class="stat-label">学习词汇</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🗣️</div>
+                    <div class="stat-value">${stats.sentencesPracticed}</div>
+                    <div class="stat-label">跟读句子</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-value">${stats.wordsMastered}</div>
+                    <div class="stat-label">掌握词汇</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📖</div>
+                    <div class="stat-value">${stats.chapterRead}</div>
+                    <div class="stat-label">读完章节</div>
+                </div>
+            `;
+        }
+
+        // 渲染柱状图
+        function renderBarChart(stats) {
+            const chart = document.getElementById('time-chart');
+            const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+            const today = new Date();
+            const data = [];
+
+            // 获取近7天数据
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(today.getTime() - i * 86400000);
+                const dateStr = date.toISOString().split('T')[0];
+                const dayName = days[date.getDay()];
+                const time = stats.dailyStudyTime[dateStr] || 0;
+                data.push({ date: dateStr, day: dayName, time });
+            }
+
+            const maxTime = Math.max(...data.map(d => d.time), 3600); // 最小1小时作为最大值
+
+            chart.innerHTML = data.map(d => {
+                const height = d.time > 0 ? Math.max((d.time / maxTime) * 150, 20) : 4;
+                const isToday = d.date === today.toISOString().split('T')[0];
+                return `
+                    <div class="bar-item">
+                        <div class="bar-value">${d.time > 0 ? formatTime(d.time) : '-'}</div>
+                        <div class="bar" style="height: ${height}px; ${isToday ? 'opacity: 1;' : 'opacity: 0.7;'}"></div>
+                        <div class="bar-label">${d.day}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 渲染掌握进度
+        function renderProgress(stats) {
+            const section = document.getElementById('progress-section');
+
+            // 计算各模块进度
+            const grammarKeys = Object.keys(stats.grammarProgress || {});
+            const grammarTotal = grammarKeys.reduce((sum, key) => {
+                const g = stats.grammarProgress[key];
+                return sum + (g.correct || 0);
+            }, 0);
+            const grammarMax = grammarKeys.length * 5;
+
+            const wordProgress = stats.wordsMastered > 0
+                ? Math.min((stats.wordsMastered / stats.wordsLearned) * 100, 100)
+                : 0;
+
+            const grammarProgress = grammarMax > 0
+                ? Math.min((grammarTotal / grammarMax) * 100, 100)
+                : 0;
+
+            const speakingProgress = stats.sentencesPracticed > 0
+                ? Math.min(stats.sentencesPracticed / 100 * 100, 100)
+                : 0;
+
+            section.innerHTML = `
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <span>📚 词汇掌握</span>
+                        <span>${stats.wordsMastered} / ${stats.wordsLearned} 词</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill words" style="width: ${wordProgress}%"></div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <span>📖 语法练习</span>
+                        <span>${grammarTotal} / ${grammarMax} 题</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill grammar" style="width: ${grammarProgress}%"></div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <span>🗣️ 跟读练习</span>
+                        <span>${stats.sentencesPracticed} 句</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill speaking" style="width: ${speakingProgress}%"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 重置数据
+        function resetStats() {
+            if (confirm('确定要重置所有学习数据吗？此操作不可恢复。')) {
+                localStorage.removeItem('shadowStats');
+                const stats = loadStats();
+                renderStats(stats);
+                renderBarChart(stats);
+                renderProgress(stats);
+            }
+        }
+
+        // 初始化
+        function init() {
+            const stats = loadStats();
+            renderStats(stats);
+            renderBarChart(stats);
+            renderProgress(stats);
+
+            // 初始化兴趣标签默认状态
+            document.querySelectorAll('.interest-tag').forEach(t => {
+                t.classList.toggle('active', t.dataset.interest === 'all');
+            });
+
+            // 如果已有词汇测试结果，显示推荐
+            if (stats.vocabLevel !== null && stats.vocabLevel !== undefined) {
+                showVocabResult(stats.vocabLevel);
+            }
+        }
+
+        // 注册 Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(() => console.log('SW registered'))
+                .catch(err => console.log('SW registration failed:', err));
+        }
+
+        init();
+    

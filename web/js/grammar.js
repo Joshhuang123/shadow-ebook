@@ -1,0 +1,1701 @@
+
+        const grammarData = {
+            'present-progressive': {
+                title: '现在进行时',
+                subtitle: 'Present Progressive · Unit 1-2',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">主语 + am/is/are + 动词-ing + (其他)</div>`
+                    },
+                    {
+                        title: '📖 用法',
+                        content: `<ul class="rule-list">
+                            <li>表示<span class="highlight">此刻</span>正在进行的动作</li>
+                            <li>口诀：<span class="highlight">"正在做某事，be 动词加 ing"</span></li>
+                        </ul>`
+                    },
+                    {
+                        title: '📝 句型变化',
+                        content: `<table>
+                            <tr><th>句型</th><th>结构</th><th>例句</th></tr>
+                            <tr><td>肯定句</td><td>I am working.</td><td>I'm reading a book.</td></tr>
+                            <tr><td>否定句</td><td>I am not working.</td><td>I'm not watching TV.</td></tr>
+                            <tr><td>一般疑问句</td><td>Am I working?</td><td><span class="highlight">Are</span> you <span class="highlight">doing</span> something?</td></tr>
+                            <tr><td>特殊疑问句</td><td>What am I doing?</td><td><span class="highlight">What are</span> they <span class="highlight">doing</span>?</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '✏️ 动词-ing 变化规则',
+                        content: `<ul class="rule-list">
+                            <li><span class="highlight">直接加 -ing</span>: read → reading, play → playing</li>
+                            <li><span class="highlight">去 e 加 -ing</span>: make → making, write → writing</li>
+                            <li><span class="highlight">重读闭音节双写尾字母加 -ing</span>: sit → sitting, run → running</li>
+                        </ul>`
+                    },
+                    {
+                        title: '💡 时间标志词',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">now, right now, at the moment, look, listen</div>
+                            <div class="tip-content">Look! The children are playing in the garden.</div>
+                        </div>`
+                    }
+                ]
+            },
+            'simple-present': {
+                title: '一般现在时',
+                subtitle: 'Simple Present · Unit 5-6, 10',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">主语 + 动词(+s/es) + 其他    (描述习惯性动作)</div>`
+                    },
+                    {
+                        title: '📖 用法',
+                        content: `<ul class="rule-list">
+                            <li>表示<span class="highlight">经常性</span>或<span class="highlight">习惯性</span>的动作</li>
+                            <li>表示<span class="highlight">客观事实</span>或<span class="highlight">普遍真理</span></li>
+                        </ul>`
+                    },
+                    {
+                        title: '👤 第三人称单数变化 (he/she/it)',
+                        content: `<table>
+                            <tr><th>规则</th><th>动词例子</th></tr>
+                            <tr><td>一般加 -s</td><td>reads, plays, works</td></tr>
+                            <tr><td>字母s/x/ch/sh/o结尾加 -es</td><td>watches, goes, studies</td></tr>
+                            <tr><td>辅音字母+y → y+ies</td><td>study→studies, fly→flies</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '⏰ 时间标志词',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">always, usually, often, sometimes, never, every day/week/month/year</div>
+                            <div class="tip-content">I usually get up at seven o'clock. She often goes to school by bike.</div>
+                        </div>`
+                    }
+                ]
+            },
+            'simple-past': {
+                title: '一般过去时',
+                subtitle: 'Simple Past · Unit 11-13',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">主语 + 动词过去式 + 其他    (描述过去的动作)</div>`
+                    },
+                    {
+                        title: '🔄 Be 动词过去式',
+                        content: `<table>
+                            <tr><th>现在</th><th>过去</th></tr>
+                            <tr><td>I am</td><td>I <span class="highlight">was</span></td></tr>
+                            <tr><td>he/she/it is</td><td>he/she/it <span class="highlight">was</span></td></tr>
+                            <tr><td>we/you/they are</td><td>we/you/they <span class="highlight">were</span></td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '✏️ 规则动词过去式',
+                        content: `<table>
+                            <tr><th>规则</th><th>例子</th></tr>
+                            <tr><td>一般加 -ed</td><td>work → worked, play → played</td></tr>
+                            <tr><td>e 结尾加 -d</td><td>live → lived, hope → hoped</td></tr>
+                            <tr><td>辅音+y → y+ied</td><td>study → studied, cry → cried</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '⚠️ 常见不规则动词 (必须背！)',
+                        content: `<table>
+                            <tr><td>go → went</td><td>see → saw</td><td>eat → ate</td></tr>
+                            <tr><td>have → had</td><td>take → took</td><td>come → came</td></tr>
+                            <tr><td>get → got</td><td>buy → bought</td><td>read → read*</td></tr>
+                        </table>
+                        <div class="tip-box">
+                            <div class="tip-content">* read 的过去式和原形相同，但发音不同：[ri:d] → [red]</div>
+                        </div>`
+                    },
+                    {
+                        title: '⏰ 时间标志词',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">yesterday, last night/week/month/year, this morning, in 2023</div>
+                            <div class="tip-content">I visited my grandmother yesterday. She played tennis last weekend.</div>
+                        </div>`
+                    }
+                ]
+            },
+            'frequency': {
+                title: '频率表达',
+                subtitle: 'How often...? · Unit 7',
+                sections: [
+                    {
+                        title: '📊 频率排序',
+                        content: `<table>
+                            <tr><th>频率</th><th>英语</th><th>例句</th></tr>
+                            <tr><td>100%</td><td><span class="highlight">always</span></td><td>I always get up early.</td></tr>
+                            <tr><td>80%</td><td><span class="highlight">usually</span></td><td>I usually have breakfast at 7.</td></tr>
+                            <tr><td>50%</td><td><span class="highlight">often/sometimes</span></td><td>I often go to the cinema.</td></tr>
+                            <tr><td>20%</td><td>seldom</td><td>I seldom eat meat.</td></tr>
+                            <tr><td>0%</td><td>never</td><td>I never smoke.</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '❓ How often 提问',
+                        content: `<div class="formula-box">How often do you exercise? → I exercise twice a week.</div>
+                        <ul class="example-list">
+                            <li><div class="en">How often do you go to the cinema?</div><div class="zh">你多久去看一次电影？</div></li>
+                            <li><div class="en">I go to the cinema once a week.</div><div class="zh">我每周去看一次电影。</div></li>
+                            <li><div class="en">She exercises twice a day.</div><div class="zh">她每天锻炼两次。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '🔢 次数表达',
+                        content: `<ul class="rule-list">
+                            <li><span class="highlight">once</span> = 一次</li>
+                            <li><span class="highlight">twice</span> = 两次</li>
+                            <li><span class="highlight">three times</span> = 三次</li>
+                            <li>a week/month/year = 每周/月/年</li>
+                        </ul>`
+                    }
+                ]
+            },
+            'be-going-to': {
+                title: 'be going to 表计划',
+                subtitle: 'Future Plans · Unit 8',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">主语 + am/is/are + going to + 动词原形</div>`
+                    },
+                    {
+                        title: '📖 用法',
+                        content: `<ul class="rule-list">
+                            <li>表示<span class="highlight">已经决定好</span>的计划</li>
+                            <li>表示根据现有证据<span class="highlight">很可能发生</span>的事</li>
+                        </ul>`
+                    },
+                    {
+                        title: '📝 例句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">What are you going to do this weekend?</div><div class="zh">你这个周末打算做什么？</div></li>
+                            <li><div class="en">I'm going to visit my grandmother.</div><div class="zh">我打算去看望奶奶。</div></li>
+                            <li><div class="en">She's going to buy a new dress.</div><div class="zh">她打算买一条新裙子。</div></li>
+                            <li><div class="en">What are you going to be when you grow up?</div><div class="zh">你长大后想成为什么？</div></li>
+                        </ul>`
+                    }
+                ]
+            },
+            'want-to-do': {
+                title: 'want to do / want sb to do',
+                subtitle: 'Want · Unit 9',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">
+                            want to do = 想要做某事<br>
+                            want sb to do = 想要某人做某事
+                        </div>`
+                    },
+                    {
+                        title: '📝 例句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">What do you want to do?</div><div class="zh">你想做什么？</div></li>
+                            <li><div class="en">I want to play football.</div><div class="zh">我想踢足球。</div></li>
+                            <li><div class="en">I want you to help me with my English.</div><div class="zh">我想要你帮我学英语。</div></li>
+                            <li><div class="en">Do you want to learn English?</div><div class="zh">你想学英语吗？</div></li>
+                        </ul>`
+                    }
+                ]
+            },
+            'possessive-pronouns': {
+                title: '名词性物主代词',
+                subtitle: 'Possessive Pronouns · Unit 3',
+                sections: [
+                    {
+                        title: '📊 表格对比',
+                        content: `<table>
+                            <tr><th>形容词性物主代词</th><th>名词性物主代词</th></tr>
+                            <tr><td>my</td><td><span class="highlight">mine</span></td></tr>
+                            <tr><td>your</td><td><span class="highlight">yours</span></td></tr>
+                            <tr><td>his</td><td><span class="highlight">his</span></td></tr>
+                            <tr><td>her</td><td><span class="highlight">hers</span></td></tr>
+                            <tr><td>our</td><td><span class="highlight">ours</span></td></tr>
+                            <tr><td>their</td><td><span class="highlight">theirs</span></td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '💡 区别',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">口诀：名词性物主代词 = 后面不能加名词，独立使用等于"my + 名词"</div>
+                            <div class="tip-content">This book is <span class="highlight">mine</span>. (= my book)<br>
+                            Is this your bag? No, it's <span class="highlight">hers</span>. (= her bag)</div>
+                        </div>`
+                    }
+                ]
+            },
+            'imperative': {
+                title: '祈使句',
+                subtitle: 'Imperative · Unit 4',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">
+                            肯定句: 动词原形 + 其他<br>
+                            否定句: Don't + 动词原形 + 其他
+                        </div>`
+                    },
+                    {
+                        title: '📝 例句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">Open the door, please.</div><div class="zh">请开门。</div></li>
+                            <li><div class="en">Don't be late!</div><div class="zh">别迟到！</div></li>
+                            <li><div class="en">Don't take your gloves off.</div><div class="zh">别脱下手套。</div></li>
+                            <li><div class="en">Sit down, please.</div><div class="zh">请坐下。</div></li>
+                            <li><div class="en">Listen to me carefully.</div><div class="zh">认真听我说。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '💡 特点',
+                        content: `<ul class="rule-list">
+                            <li>表示<span class="highlight">命令、请求、建议</span></li>
+                            <li>省略主语 (you)，动词用原形</li>
+                            <li>否定式用 <span class="highlight">Don't</span> 开头</li>
+                        </ul>`
+                    }
+                ]
+            },
+            'tense-compare': {
+                title: '三时态对比',
+                subtitle: 'Three Tenses Comparison',
+                sections: [
+                    {
+                        title: '⚖️ 现在进行时 vs 一般现在时 vs 一般过去时',
+                        content: `<div class="tense-compare">
+                            <div class="tense-box blue">
+                                <h4>🔄 现在进行时</h4>
+                                <div class="formula">am/is/are + 动词-ing</div>
+                                <ul class="rule-list">
+                                    <li><span class="highlight">此刻</span>正在发生</li>
+                                    <li>时间：now, right now</li>
+                                    <li>例：I am reading now.</li>
+                                </ul>
+                            </div>
+                            <div class="tense-box green">
+                                <h4>📅 一般现在时</h4>
+                                <div class="formula">动词(+s/es)</div>
+                                <ul class="rule-list">
+                                    <li><span class="highlight">习惯性</span>经常发生</li>
+                                    <li>时间：always, usually, every day</li>
+                                    <li>例：I read books every day.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="tense-box blue" style="margin-top:16px;">
+                            <h4>⏪ 一般过去时</h4>
+                            <div class="formula">动词过去式</div>
+                            <ul class="rule-list">
+                                <li><span class="highlight">过去</span>发生的事</li>
+                                <li>时间：yesterday, last week</li>
+                                <li>例：I read a book yesterday.</li>
+                            </ul>
+                        </div>`
+                    },
+                    {
+                        title: '💡 一句话区分',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">现在进行时：此刻正在做</div>
+                            <div class="tip-content">What are you doing? — I'm watching TV.</div>
+                        </div>
+                        <div class="tip-box">
+                            <div class="tip-title">一般现在时：天天都这样做</div>
+                            <div class="tip-content">Do you watch TV every day? — Yes, I usually watch TV.</div>
+                        </div>
+                        <div class="tip-box">
+                            <div class="tip-title">一般过去时：昨天发生的</div>
+                            <div class="tip-content">Did you watch TV yesterday? — Yes, I watched TV last night.</div>
+                        </div>`
+                    }
+                ]
+            },
+
+            // ==================== KET (A2) 语法 ====================
+            'ket-present-simple': {
+                title: '一般现在时',
+                subtitle: 'Simple Present · KET (A2)',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">主语 + 动词(+s/es) + 其他</div>`
+                    },
+                    {
+                        title: '📖 用法',
+                        content: `<ul class="rule-list">
+                            <li>表示<span class="highlight">习惯性</span>或<span class="highlight">经常性</span>的动作</li>
+                            <li>表示<span class="highlight">客观事实</span>或<span class="highlight">普遍真理</span></li>
+                        </ul>`
+                    },
+                    {
+                        title: '👤 第三人称单数变化 (he/she/it)',
+                        content: `<table>
+                            <tr><th>规则</th><th>例子</th></tr>
+                            <tr><td>一般加 -s</td><td>works, plays, reads</td></tr>
+                            <tr><td>s/x/ch/sh/o 加 -es</td><td>watches, goes, finishes</td></tr>
+                            <tr><td>辅音+y → y+ies</td><td>studies→studies, try→tries</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '⏰ 时间标志词',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">always, usually, often, sometimes, never, every day</div>
+                            <div class="tip-content">I always get up at 7. She works in a bank.</div>
+                        </div>`
+                    },
+                    {
+                        title: '❓ 否定句和疑问句',
+                        content: `<table>
+                            <tr><th>句型</th><th>结构</th><th>例句</th></tr>
+                            <tr><td>否定句</td><td>主语 + don't/doesn't + 动词原形</td><td>I don't like fish.</td></tr>
+                            <tr><td>一般疑问句</td><td>Do/Does + 主语 + 动词原形？</td><td>Do you like music?</td></tr>
+                        </table>`
+                    }
+                ]
+            },
+            'ket-present-continuous': {
+                title: '现在进行时',
+                subtitle: 'Present Continuous · KET (A2)',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">主语 + am/is/are + 动词-ing</div>`
+                    },
+                    {
+                        title: '📖 用法',
+                        content: `<ul class="rule-list">
+                            <li>表示<span class="highlight">此刻</span>正在进行的动作</li>
+                            <li>表示<span class="highlight">现阶段</span>正在发生但此刻不一定在进行的事</li>
+                        </ul>`
+                    },
+                    {
+                        title: '✏️ 动词-ing 变化规则',
+                        content: `<table>
+                            <tr><th>规则</th><th>例子</th></tr>
+                            <tr><td>直接加 -ing</td><td>read→reading, play→playing</td></tr>
+                            <tr><td>去 e 加 -ing</td><td>make→making, write→writing</td></tr>
+                            <tr><td>重读闭音节双写尾字母</td><td>sit→sitting, run→running</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '⏰ 时间标志词',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">now, right now, at the moment, currently, look, listen</div>
+                            <div class="tip-content">I'm reading a book now. She is working at the moment.</div>
+                        </div>`
+                    },
+                    {
+                        title: '⚠️ 与一般现在时对比',
+                        content: `<table>
+                            <tr><th>一般现在时</th><th>现在进行时</th></tr>
+                            <tr><td>习惯性动作</td><td>此刻正在做</td></tr>
+                            <tr><td>I play football every day.</td><td>I am playing football now.</td></tr>
+                        </table>`
+                    }
+                ]
+            },
+            'ket-simple-past': {
+                title: '一般过去时',
+                subtitle: 'Simple Past · KET (A2)',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">主语 + 动词过去式 + 其他</div>`
+                    },
+                    {
+                        title: '🔄 Be 动词过去式',
+                        content: `<table>
+                            <tr><th>现在</th><th>过去</th><th>例句</th></tr>
+                            <tr><td>I am</td><td>I was</td><td>I was at home.</td></tr>
+                            <tr><td>he/she/it is</td><td>he/she/it was</td><td>She was happy.</td></tr>
+                            <tr><td>we/you/they are</td><td>we/you/they were</td><td>They were at school.</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '✏️ 规则动词过去式',
+                        content: `<table>
+                            <tr><th>规则</th><th>例子</th></tr>
+                            <tr><td>一般加 -ed</td><td>work→worked, play→played</td></tr>
+                            <tr><td>e 结尾加 -d</td><td>live→lived, hope→hoped</td></tr>
+                            <tr><td>辅音+y → y+ied</td><td>study→studied, try→tried</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '⚠️ 常见不规则动词 (必须背！)',
+                        content: `<table>
+                            <tr><td>go → went</td><td>see → saw</td><td>eat → ate</td></tr>
+                            <tr><td>have → had</td><td>take → took</td><td>come → came</td></tr>
+                            <tr><td>get → got</td><td>buy → bought</td><td>do → did</td></tr>
+                            <tr><td>make → made</td><td>say → said</td><td>give → gave</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '⏰ 时间标志词',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">yesterday, last night/week/month, ago, in 2023</div>
+                            <div class="tip-content">I went to the cinema yesterday. She arrived an hour ago.</div>
+                        </div>`
+                    }
+                ]
+            },
+            'ket-there-be': {
+                title: 'There be 句型',
+                subtitle: 'There is/There are · KET (A2)',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">
+                            There is + 单数名词<br>
+                            There are + 复数名词
+                        </div>`
+                    },
+                    {
+                        title: '📖 用法',
+                        content: `<ul class="rule-list">
+                            <li>表示"<span class="highlight">有</span>"（存在）</li>
+                            <li>there be 和 have 的区别：have 表示"拥有"，there be 表示"存在"</li>
+                        </ul>`
+                    },
+                    {
+                        title: '📝 例句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">There is a book on the table.</div><div class="zh">桌上有一本书。</div></li>
+                            <li><div class="en">There are three cats in the garden.</div><div class="zh">花园里有三只猫。</div></li>
+                            <li><div class="en">There was a meeting yesterday.</div><div class="zh">昨天有一个会议。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '❓ 一般疑问句',
+                        content: `<div class="formula-box">Is/Are + there + 名词 + (地点)?</div>
+                        <ul class="example-list">
+                            <li><div class="en">Is there a supermarket near here?</div><div class="zh">这附近有超市吗？</div></li>
+                            <li><div class="en">Yes, there is. / No, there isn't.</div><div class="zh">是的，有。/ 不，没有。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '💡 some 和 any',
+                        content: `<table>
+                            <tr><th>some</th><th>any</th></tr>
+                            <tr><td>肯定句</td><td>否定句/疑问句</td></tr>
+                            <tr><td>There are some books.</td><td>Are there any books?</td></tr>
+                        </table>`
+                    }
+                ]
+            },
+            'ket-future-going-to': {
+                title: 'be going to 表将来',
+                subtitle: 'Future Plans · KET (A2)',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">主语 + am/is/are + going to + 动词原形</div>`
+                    },
+                    {
+                        title: '📖 用法',
+                        content: `<ul class="rule-list">
+                            <li>表示<span class="highlight">已经决定好</span>的计划</li>
+                            <li>表示根据现有证据<span class="highlight">很可能发生</span>的事</li>
+                        </ul>`
+                    },
+                    {
+                        title: '📝 例句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">I'm going to study English tomorrow.</div><div class="zh">我明天打算学英语。</div></li>
+                            <li><div class="en">What are you going to do this weekend?</div><div class="zh">你这个周末打算做什么？</div></li>
+                            <li><div class="en">It's going to rain. Take an umbrella!</div><div class="zh">要下雨了。带上伞！</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '⚠️ will vs be going to',
+                        content: `<table>
+                            <tr><th>will</th><th>be going to</th></tr>
+                            <tr><td>临时决定</td><td>计划/决定</td></tr>
+                            <tr><td>I'll call you later.</td><td>I'm going to visit my uncle.</td></tr>
+                            <tr><td>预测（你认为）</td><td>有证据的预测</td></tr>
+                        </table>`
+                    }
+                ]
+            },
+            'ket-modals': {
+                title: '情态动词',
+                subtitle: 'Can, Could, Must, Should · KET (A2)',
+                sections: [
+                    {
+                        title: '📌 常见情态动词',
+                        content: `<table>
+                            <tr><th>动词</th><th>用法</th><th>例句</th></tr>
+                            <tr><td>can</td><td>能力/允许</td><td>I can swim. Can I go?</td></tr>
+                            <tr><td>could</td><td>过去能力/礼貌请求</td><td>I could play piano. Could you help?</td></tr>
+                            <tr><td>must</td><td>必须（主观）</td><td>You must finish homework.</td></tr>
+                            <tr><td>have to</td><td>必须（客观）</td><td>I have to get up early.</td></tr>
+                            <tr><td>should</td><td>建议</td><td>You should see a doctor.</td></tr>
+                            <tr><td>may</td><td>可能/允许</td><td>It may rain. May I come in?</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '❓ 否定句',
+                        content: `<table>
+                            <tr><th>动词</th><th>否定</th><th>例句</th></tr>
+                            <tr><td>can</td><td>can't/cannot</td><td>I can't understand.</td></tr>
+                            <tr><td>must</td><td>mustn't (不许)</td><td>You mustn't smoke here.</td></tr>
+                            <tr><td>should</td><td>shouldn't</td><td>You shouldn't worry.</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '💡 can vs could vs be able to',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">can - 现在能力</div>
+                            <div class="tip-content">I can speak English. (现在会)</div>
+                        </div>
+                        <div class="tip-box">
+                            <div class="tip-title">could - 过去能力</div>
+                            <div class="tip-content">I could swim when I was 5. (过去会)</div>
+                        </div>
+                        <div class="tip-box">
+                            <div class="tip-title">be able to - 各种时态</div>
+                            <div class="tip-content">I will be able to drive next year. (将来能力)</div>
+                        </div>`
+                    }
+                ]
+            },
+            'ket-comparatives': {
+                title: '形容词比较级',
+                subtitle: 'Comparatives & Superlatives · KET (A2)',
+                sections: [
+                    {
+                        title: '📌 比较级公式',
+                        content: `<div class="formula-box">主语 + be动词 + 比较级 + than + 其他</div>`
+                    },
+                    {
+                        title: '✏️ 变化规则',
+                        content: `<table>
+                            <tr><th>规则</th><th>比较级</th><th>最高级</th></tr>
+                            <tr><td>一般加 -er</td><td>taller</td><td>tallest</td></tr>
+                            <tr><td>以 e 结尾加 -r</td><td>nicer</td><td>nicest</td></tr>
+                            <tr><td>辅音+y → y+ier</td><td>funnier</td><td>funniest</td></tr>
+                            <tr><td>重读闭音节末尾单辅音双写</td><td>bigger</td><td>biggest</td></tr>
+                            <tr><td>多音节词前加 more</td><td>more beautiful</td><td>most beautiful</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '⚠️ 不规则变化 (必须背！)',
+                        content: `<table>
+                            <tr><th>原级</th><th>比较级</th><th>最高级</th></tr>
+                            <tr><td>good</td><td>better</td><td>best</td></tr>
+                            <tr><td>bad</td><td>worse</td><td>worst</td></tr>
+                            <tr><td>far</td><td>farther/further</td><td>farthest/furthest</td></tr>
+                            <tr><td>old</td><td>older/elder</td><td>oldest/eldest</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '📝 例句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">Tom is taller than Jack.</div><div class="zh">Tom比Jack高。</div></li>
+                            <li><div class="en">This book is more interesting than that one.</div><div class="zh">这本书比那本有趣。</div></li>
+                            <li><div class="en">She is the tallest girl in the class.</div><div class="zh">她是班里最高的女孩。</div></li>
+                        </ul>`
+                    }
+                ]
+            },
+            'ket-frequency': {
+                title: '频率表达',
+                subtitle: 'How often...? · KET (A2)',
+                sections: [
+                    {
+                        title: '📊 频率排序',
+                        content: `<table>
+                            <tr><th>频率</th><th>英语</th><th>例句</th></tr>
+                            <tr><td>100%</td><td>always</td><td>I always arrive early.</td></tr>
+                            <tr><td>80%</td><td>usually</td><td>I usually have breakfast at 7.</td></tr>
+                            <tr><td>50%</td><td>often/sometimes</td><td>I often go swimming.</td></tr>
+                            <tr><td>20%</td><td>seldom/rarely</td><td>I seldom eat meat.</td></tr>
+                            <tr><td>0%</td><td>never</td><td>I never smoke.</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '❓ How often 提问',
+                        content: `<div class="formula-box">How often do you exercise? → I exercise twice a week.</div>`
+                    },
+                    {
+                        title: '🔢 次数表达',
+                        content: `<ul class="rule-list">
+                            <li><span class="highlight">once</span> = 一次</li>
+                            <li><span class="highlight">twice</span> = 两次</li>
+                            <li><span class="highlight">three times</span> = 三次</li>
+                            <li>a week/month/year = 每周/月/年</li>
+                        </ul>`
+                    }
+                ]
+            },
+
+            // ==================== PET (B1) 语法 ====================
+            'pet-present-perfect': {
+                title: '现在完成时',
+                subtitle: 'Present Perfect · PET (B1)',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">主语 + have/has + 过去分词(V3)</div>`
+                    },
+                    {
+                        title: '📖 用法',
+                        content: `<ul class="rule-list">
+                            <li>表示<span class="highlight">过去发生</span>但<span class="highlight">对现在有影响</span>的动作</li>
+                            <li>表示<span class="highlight">经历</span>（曾经做过...）</li>
+                            <li>表示<span class="highlight">未完成</span>的时间段（this week, today）</li>
+                        </ul>`
+                    },
+                    {
+                        title: '⚠️ have/has 用法',
+                        content: `<table>
+                            <tr><th>主语</th><th>助动词</th></tr>
+                            <tr><td>I/you/we/they</td><td>have</td></tr>
+                            <tr><td>he/she/it</td><td>has</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '✏️ 过去分词变化',
+                        content: `<table>
+                            <tr><th>类型</th><th>例子</th></tr>
+                            <tr><td>规则动词 (+ed)</td><td>worked, played, studied</td></tr>
+                            <tr><td>不规则动词</td><td>gone, seen, done, been, had, took</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '⏰ 时间标志词',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">already, yet, just, ever, never, recently, this week/month/year</div>
+                            <div class="tip-content">I have already finished my homework.<br>
+                            Have you ever been to Beijing?<br>
+                            I haven't seen her yet.</div>
+                        </div>`
+                    },
+                    {
+                        title: '⚠️ have been vs have gone',
+                        content: `<table>
+                            <tr><th>have been to</th><th>have gone to</th></tr>
+                            <tr><td>去过（回来了）</td><td>去了（还没回来）</td></tr>
+                            <tr><td>I've been to Shanghai.</td><td>He's gone to Shanghai.</td></tr>
+                            <tr><td>我去过上海。</td><td>他去上海了。</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '💡 与一般过去时对比',
+                        content: `<table>
+                            <tr><th>现在完成时</th><th>一般过去时</th></tr>
+                            <tr><td>过去+现在影响</td><td>纯粹的过去</td></tr>
+                            <tr><td>无具体时间/有影响</td><td>有具体时间</td></tr>
+                            <tr><td>I've lost my key. (现在找不着)</td><td>I lost my key yesterday. (昨天丢的)</td></tr>
+                        </table>`
+                    }
+                ]
+            },
+            'pet-past-perfect': {
+                title: '过去完成时',
+                subtitle: 'Past Perfect · PET (B1)',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">主语 + had + 过去分词(V3)</div>`
+                    },
+                    {
+                        title: '📖 用法',
+                        content: `<ul class="rule-list">
+                            <li>表示<span class="highlight">过去的过去</span></li>
+                            <li>两个过去的动作，先发生的用过去完成时</li>
+                        </ul>`
+                    },
+                    {
+                        title: '📝 例句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">When I arrived, she had already left.</div><div class="zh">我到的时候，她已经离开了。</div></li>
+                            <li><div class="en">He realized he had made a mistake.</div><div class="zh">他意识到他犯了一个错误。</div></li>
+                            <li><div class="en">By the time we got there, the film had started.</div><div class="zh">我们到那儿的时候，电影已经开始了。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '💡 时间连词',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">before, after, by the time, when, until</div>
+                            <div class="tip-content">After she <span class="highlight">had finished</span> her work, she went home.<br>
+                            Before he <span class="highlight">came</span>, I had prepared dinner.</div>
+                        </div>`
+                    }
+                ]
+            },
+            'pet-passive': {
+                title: '被动语态',
+                subtitle: 'Passive Voice · PET (B1)',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">
+                            一般现在时：主语 + am/is/are + 过去分词<br>
+                            一般过去时：主语 + was/were + 过去分词<br>
+                            现在完成时：主语 + have/has + been + 过去分词
+                        </div>`
+                    },
+                    {
+                        title: '📖 用法',
+                        content: `<ul class="rule-list">
+                            <li>当<span class="highlight">动作的承受者</span>比执行者更重要时使用</li>
+                            <li>不知道动作是谁做的时使用</li>
+                            <li>客观描述事件时使用</li>
+                        </ul>`
+                    },
+                    {
+                        title: '📝 例句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">English is spoken in many countries.</div><div class="zh">许多国家说英语。</div></li>
+                            <li><div class="en">The book was written by J.K. Rowling.</div><div class="zh">这本书是J.K.罗琳写的。</div></li>
+                            <li><div class="en">The homework has been finished.</div><div class="zh">作业已经被完成了。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '⚠️ 主动变被动',
+                        content: `<table>
+                            <tr><th>主动语态</th><th>被动语态</th></tr>
+                            <tr><td>Someone cleans the room.</td><td>The room is cleaned.</td></tr>
+                            <tr><td>She wrote a letter.</td><td>A letter was written.</td></tr>
+                            <tr><td>They are building a house.</td><td>A house is being built.</td></tr>
+                        </table>`
+                    }
+                ]
+            },
+            'pet-conditional': {
+                title: '条件句',
+                subtitle: 'Zero, First & Second Conditional · PET (B1)',
+                sections: [
+                    {
+                        title: '📌 三种条件句',
+                        content: `<table>
+                            <tr><th>类型</th><th>公式</th><th>用法</th></tr>
+                            <tr><td>零条件</td><td>If + 现在时, 现在时</td><td>客观事实</td></tr>
+                            <tr><td>一条件</td><td>If + 现在时, will + 原形</td><td>真实可能</td></tr>
+                            <tr><td>二条件</td><td>If + 过去式, would + 原形</td><td>虚构/假设</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '🔵 零条件 - 客观真理',
+                        content: `<div class="formula-box">If + 主语 + 动词现在式, 主语 + 动词现在式</div>
+                        <ul class="example-list">
+                            <li><div class="en">If you heat water, it boils.</div><div class="zh">如果你加热水，水就会开。</div></li>
+                            <li><div class="en">If it rains, the ground gets wet.</div><div class="zh">如果下雨，地面就会湿。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '🟢 一条件 - 真实可能',
+                        content: `<div class="formula-box">If + 主语 + 动词现在式, 主语 + will + 动词原形</div>
+                        <ul class="example-list">
+                            <li><div class="en">If it rains tomorrow, I will stay home.</div><div class="zh">如果明天下雨，我就待在家里。</div></li>
+                            <li><div class="en">If you study hard, you will pass the exam.</div><div class="zh">如果你努力学习，你会通过考试的。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '🟡 二条件 - 虚构/假设',
+                        content: `<div class="formula-box">If + 主语 + 动词过去式(were/did), 主语 + would + 动词原形</div>
+                        <ul class="example-list">
+                            <li><div class="en">If I had a million dollars, I would buy a big house.</div><div class="zh">如果我有一百万美元，我会买一栋大房子。</div></li>
+                            <li><div class="en">If I were you, I would accept the offer.</div><div class="zh">如果我是你，我会接受这个提议。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '💡 were vs was 在二条件中',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">二条件中，were 比 was 更常用！</div>
+                            <div class="tip-content">If I were rich, I would travel. (比 If I was... 更正确)</div>
+                        </div>`
+                    }
+                ]
+            },
+            'pet-reported-speech': {
+                title: '间接引语',
+                subtitle: 'Reported Speech · PET (B1)',
+                sections: [
+                    {
+                        title: '📌 规则',
+                        content: `<table>
+                            <tr><th>直接引语</th><th>间接引语</th></tr>
+                            <tr><td>现在时</td><td>过去时</td></tr>
+                            <tr><td>am/is/are</td><td>was/were</td></tr>
+                            <tr><td>have/has</td><td>had</td></tr>
+                            <tr><td>will</td><td>would</td></tr>
+                            <tr><td>can</td><td>could</td></tr>
+                            <tr><td>must</td><td>had to</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '📝 例句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">"I am tired." → She said she was tired.</div></li>
+                            <li><div class="en">"I will come." → He said he would come.</div></li>
+                            <li><div class="en">"I can swim." → She said she could swim.</div></li>
+                            <li><div class="en">"I went to Paris." → He said he had gone to Paris.</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '⚠️ 时间词变化',
+                        content: `<table>
+                            <tr><th>直接引语</th><th>间接引语</th></tr>
+                            <tr><td>today</td><td>that day</td></tr>
+                            <tr><td>yesterday</td><td>the day before</td></tr>
+                            <tr><td>tomorrow</td><td>the next/following day</td></tr>
+                            <tr><td>this week</td><td>that week</td></tr>
+                        </table>`
+                    }
+                ]
+            },
+            'pet-relatives': {
+                title: '定语从句',
+                subtitle: 'Relative Clauses · PET (B1)',
+                sections: [
+                    {
+                        title: '📌 关系代词',
+                        content: `<table>
+                            <tr><th>代词</th><th>指代</th><th>例句</th></tr>
+                            <tr><td>who</td><td>人</td><td>The girl who is singing is my sister.</td></tr>
+                            <tr><td>which</td><td>物</td><td>The book which I bought is interesting.</td></tr>
+                            <tr><td>that</td><td>人/物</td><td>The man that helped us is a teacher.</td></tr>
+                            <tr><td>whose</td><td>所属</td><td>The boy whose bag is lost is crying.</td></tr>
+                            <tr><td>where</td><td>地点</td><td>The shop where I bought this is closed.</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '📝 例句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">The student who sat next to me passed the exam.</div><div class="zh">坐在我旁边的学生考试及格了。</div></li>
+                            <li><div class="en">I have a friend whose father is a doctor.</div><div class="zh">我有一个朋友，他爸爸是医生。</div></li>
+                            <li><div class="en">This is the house where I was born.</div><div class="zh">这是我出生的房子。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '💡 who vs which vs that',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">用 that 的情况：</div>
+                            <div class="tip-content">- 最高级后面：The best movie that I've ever seen<br>
+                            - all, everything, nothing, something后面<br>
+                            - 修饰主句整个内容</div>
+                        </div>`
+                    }
+                ]
+            },
+            'pet-modals-perfect': {
+                title: '情态动词完成时',
+                subtitle: 'Modal Verbs + Have Done · PET (B1)',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">情态动词 + have + 过去分词(V3)</div>`
+                    },
+                    {
+                        title: '🔵 must have done - 肯定推测（过去）',
+                        content: `<ul class="example-list">
+                            <li><div class="en">He must have been to Beijing. He knows so much about it.</div><div class="zh">他一定去过北京。他对此了解很多。</div></li>
+                            <li><div class="en">She must have forgotten our meeting.</div><div class="zh">她一定是忘了我们的会议。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: "🔴 can't/couldn't have done - 否定推测",
+                        content: `<ul class="example-list">
+                            <li><div class="en">He can't have stolen the money. He was with me all day.</div><div class="zh">他不可能偷了钱。他整天都和我在一起。</div></li>
+                            <li><div class="en">She couldn't have driven there. She doesn't have a car.</div><div class="zh">她不可能开车去的。她没有车。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '🟡 should have done - 本应该（却没）',
+                        content: `<ul class="example-list">
+                            <li><div class="en">You should have studied harder. You failed the exam.</div><div class="zh">你应该更努力学习的。你考试没及格。</div></li>
+                            <li><div class="en">I should have listened to your advice.</div><div class="zh">我应该听你的建议的。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: "🟡 shouldn't have done - 本不应该（却）",
+                        content: `<ul class="example-list">
+                            <li><div class="en">You shouldn't have told her the secret.</div><div class="zh">你不应该告诉她那个秘密的。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '🟢 may/might have done - 可能已经',
+                        content: `<ul class="example-list">
+                            <li><div class="en">He may have missed the train.</div><div class="zh">他可能没赶上火车。</div></li>
+                            <li><div class="en">She might have forgotten to call.</div><div class="zh">她可能忘了打电话。</div></li>
+                        </ul>`
+                    }
+                ]
+            },
+            'pet-used-to': {
+                title: 'used to',
+                subtitle: 'Past Habits · PET (B1)',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">主语 + used to + 动词原形</div>`
+                    },
+                    {
+                        title: '📖 用法',
+                        content: `<ul class="rule-list">
+                            <li>表示<span class="highlight">过去的习惯</span>（现在不再）</li>
+                            <li>表示<span class="highlight">过去的状态</span>（现在变了）</li>
+                        </ul>`
+                    },
+                    {
+                        title: '📝 例句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">I used to play tennis, but now I play basketball.</div><div class="zh">我以前打网球，但现在我打篮球。</div></li>
+                            <li><div class="en">She used to live in Paris.</div><div class="zh">她以前住在巴黎。（现在不住了）</div></li>
+                            <li><div class="en">Did you use to smoke?</div><div class="zh">你以前抽烟吗？</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '⚠️ used to vs would',
+                        content: `<table>
+                            <tr><th>used to</th><th>would</th></tr>
+                            <tr><td>可表示过去状态</td><td>只表示重复动作</td></tr>
+                            <tr><td>He used to be shy. (✓)</td><td>He would be shy. (✗)</td></tr>
+                        </table>`
+                    }
+                ]
+            },
+
+            // ==================== KET 扩展语法 ====================
+            'ket-possessive': {
+                title: '名词所有格',
+                subtitle: 'Possessive · KET (A2)',
+                sections: [
+                    {
+                        title: "📌 's 所有格",
+                        content: `<div class="formula-box">
+                            有生命名词 + 's<br>
+                            无生命名词用 of
+                        </div>`
+                    },
+                    {
+                        title: "📝 's 用法",
+                        content: `<ul class="example-list">
+                            <li><div class="en">Tom's book</div><div class="zh">Tom的书</div></li>
+                            <li><div class="en">my mother's bag</div><div class="zh">我妈妈的包</div></li>
+                            <li><div class="en">the children's toys</div><div class="zh">孩子们的玩具</div></li>
+                            <li><div class="en">Jim and Tom's room</div><div class="zh">Jim和Tom共有的房间</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '📍 of 所有格',
+                        content: `<ul class="example-list">
+                            <li><div class="en">the door of the room</div><div class="zh">房间的门</div></li>
+                            <li><div class="en">the capital of China</div><div class="zh">中国的首都</div></li>
+                            <li><div class="en">a picture of my family</div><div class="zh">我全家福</div></li>
+                        </ul>`
+                    }
+                ]
+            },
+            'ket-pronouns': {
+                title: '代词系统',
+                subtitle: 'Pronouns · KET (A2)',
+                sections: [
+                    {
+                        title: '👤 人称代词',
+                        content: `<table>
+                            <tr><th>主格</th><th>宾格</th></tr>
+                            <tr><td>I</td><td>me</td></tr>
+                            <tr><td>you</td><td>you</td></tr>
+                            <tr><td>he/she/it</td><td>him/her/it</td></tr>
+                            <tr><td>we/they</td><td>us/them</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '🏠 物主代词',
+                        content: `<table>
+                            <tr><th>形容词性</th><th>名词性</th></tr>
+                            <tr><td>my</td><td>mine</td></tr>
+                            <tr><td>your</td><td>yours</td></tr>
+                            <tr><td>his/her/its</td><td>his/hers/its</td></tr>
+                            <tr><td>our/their</td><td>ours/theirs</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '🪞 反身代词',
+                        content: `<table>
+                            <tr><th>人称</th><th>反身代词</th></tr>
+                            <tr><td>I</td><td>myself</td></tr>
+                            <tr><td>you</td><td>yourself</td></tr>
+                            <tr><td>he/she/it</td><td>himself/herself/itself</td></tr>
+                            <tr><td>we/they</td><td>ourselves/themselves</td></tr>
+                        </table>
+                        <ul class="example-list">
+                            <li><div class="en">I bought myself a new phone.</div><div class="zh">我给自己买了一部新手机。</div></li>
+                            <li><div class="en">She taught herself English.</div><div class="zh">她自学英语。</div></li>
+                            <li><div class="en">Help yourself to some food.</div><div class="zh">请随便吃。</div></li>
+                        </ul>`
+                    }
+                ]
+            },
+            'ket-prepositions': {
+                title: '介词用法',
+                subtitle: 'Prepositions · KET (A2)',
+                sections: [
+                    {
+                        title: '🕐 时间介词',
+                        content: `<table>
+                            <tr><th>介词</th><th>用法</th><th>例句</th></tr>
+                            <tr><td>at</td><td>时刻/节日</td><td>at 3 o'clock, at Christmas</td></tr>
+                            <tr><td>on</td><td>具体日期</td><td>on Monday, on July 4th</td></tr>
+                            <tr><td>in</td><td>月份/季节/年</td><td>in summer, in 2024</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '📍 地点介词',
+                        content: `<table>
+                            <tr><th>介词</th><th>用法</th><th>例句</th></tr>
+                            <tr><td>in</td><td>在...里面</td><td>in the room, in Beijing</td></tr>
+                            <tr><td>on</td><td>在...上面</td><td>on the table, on the wall</td></tr>
+                            <tr><td>at</td><td>在...地点</td><td>at school, at home</td></tr>
+                            <tr><td>next to</td><td>在...旁边</td><td>next to the window</td></tr>
+                            <tr><td>in front of</td><td>在...前面</td><td>in front of the school</td></tr>
+                            <tr><td>behind</td><td>在...后面</td><td>behind the door</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '💡 介词短语',
+                        content: `<ul class="example-list">
+                            <li><div class="en">I'm good at English.</div><div class="zh">我擅长英语。</div></li>
+                            <li><div class="en">She lives with her parents.</div><div class="zh">她和父母住在一起。</div></li>
+                            <li><div class="en">The book is about history.</div><div class="zh">这本书是关于历史的。</div></li>
+                        </ul>`
+                    }
+                ]
+            },
+            'ket-imperative': {
+                title: '祈使句',
+                subtitle: 'Imperative · KET (A2)',
+                sections: [
+                    {
+                        title: '📌 公式',
+                        content: `<div class="formula-box">
+                            肯定句: 动词原形 + 其他<br>
+                            否定句: Don't + 动词原形 + 其他
+                        </div>`
+                    },
+                    {
+                        title: '📝 例句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">Open the door, please.</div><div class="zh">请开门。</div></li>
+                            <li><div class="en">Don't be late!</div><div class="zh">别迟到！</div></li>
+                            <li><div class="en">Don't take your gloves off.</div><div class="zh">别脱下手套。</div></li>
+                            <li><div class="en">Sit down, please.</div><div class="zh">请坐下。</div></li>
+                            <li><div class="en">Listen to me carefully.</div><div class="zh">认真听我说。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '💡 特点',
+                        content: `<ul class="rule-list">
+                            <li>表示<span class="highlight">命令、请求、建议</span></li>
+                            <li>省略主语 (you)，动词用原形</li>
+                            <li>否定式用 <span class="highlight">Don't</span> 开头</li>
+                        </ul>`
+                    }
+                ]
+            },
+
+            // ==================== PET 扩展语法 ====================
+            'pet-gerund-infinitive': {
+                title: '动名词/不定式',
+                subtitle: 'Gerund vs Infinitive · PET (B1)',
+                sections: [
+                    {
+                        title: '📌 动名词 (V-ing)',
+                        content: `<ul class="rule-list">
+                            <li>表示<span class="highlight">习惯、爱好、一般事实</span></li>
+                            <li>用在介词后面</li>
+                            <li>某些动词后必须用动名词：enjoy, mind, finish, suggest, keep, avoid, consider</li>
+                        </ul>`
+                    },
+                    {
+                        title: '📝 动名词例句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">I enjoy reading books.</div><div class="zh">我喜欢读书。</div></li>
+                            <li><div class="en">She is good at learning languages.</div><div class="zh">她擅长学习语言。</div></li>
+                            <li><div class="en">Would you mind opening the window?</div><div class="zh">你介意打开窗户吗？</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '📌 不定式 (to + V)',
+                        content: `<ul class="rule-list">
+                            <li>表示<span class="highlight">具体某一次</span>的动作</li>
+                            <li>表示<span class="highlight">将来</span>的动作</li>
+                            <li>某些动词后必须用不定式：want, hope, decide, plan, agree, promise, refuse</li>
+                        </ul>`
+                    },
+                    {
+                        title: '📝 不定式例句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">I want to learn English.</div><div class="zh">我想学英语。</div></li>
+                            <li><div class="en">She decided to move to Beijing.</div><div class="zh">她决定搬去北京。</div></li>
+                            <li><div class="en">I hope to see you again soon.</div><div class="zh">我希望很快再见到你。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '⚠️ 常见接动名词的动词',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">口诀：完成、建议、逃避、继续、享受、介意</div>
+                            <div class="tip-content">finish, suggest, avoid, keep, enjoy, mind<br>
+                            + doing (动名词)</div>
+                        </div>`
+                    },
+                    {
+                        title: '⚠️ 常见接不定式的动词',
+                        content: `<div class="tip-box">
+                            <div class="tip-title">口诀：希望、决定、拒绝、计划、同意、愿意</div>
+                            <div class="tip-content">hope, decide, refuse, plan, agree, promise<br>
+                            + to + 动词原形</div>
+                        </div>`
+                    }
+                ]
+            },
+            'pet-quantifiers': {
+                title: '数量词',
+                subtitle: 'Quantifiers · PET (B1)',
+                sections: [
+                    {
+                        title: '📌 可数 vs 不可数',
+                        content: `<table>
+                            <tr><th>可数名词</th><th>不可数名词</th></tr>
+                            <tr><td>many, few, a few</td><td>much, little, a little</td></tr>
+                            <tr><td>a lot of, lots of</td><td>a lot of, lots of</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '📊 数量词用法',
+                        content: `<table>
+                            <tr><th>词</th><th>意义</th><th>用法</th><th>例句</th></tr>
+                            <tr><td>many</td><td>许多</td><td>可数名词复数</td><td>many books</td></tr>
+                            <tr><td>much</td><td>许多</td><td>不可数名词</td><td>much water</td></tr>
+                            <tr><td>a few</td><td>几个</td><td>肯定含义</td><td>I have a few friends.</td></tr>
+                            <tr><td>few</td><td>很少</td><td>否定含义</td><td>Few people know this.</td></tr>
+                            <tr><td>a little</td><td>一点</td><td>肯定含义</td><td>I have a little money.</td></tr>
+                            <tr><td>little</td><td>很少</td><td>否定含义</td><td>There is little time.</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '💡 a lot of / lots of',
+                        content: `<div class="tip-box">
+                            <div class="tip-content">a lot of 和 lots of 可以修饰<span class="highlight">可数名词</span>和<span class="highlight">不可数名词</span>，多用于口语和肯定句中。</div>
+                        </div>
+                        <ul class="example-list">
+                            <li><div class="en">A lot of students passed the exam.</div><div class="zh">很多学生通过了考试。</div></li>
+                            <li><div class="en">Lots of people came to the party.</div><div class="zh">很多人来参加了派对。</div></li>
+                        </ul>`
+                    }
+                ]
+            },
+            'pet-adverb-clauses': {
+                title: '状语从句',
+                subtitle: 'Adverb Clauses · PET (B1)',
+                sections: [
+                    {
+                        title: '📌 时间状语从句',
+                        content: `<div class="formula-box">when/while/after/before/by the time + 过去式, 过去完成时</div>
+                        <ul class="example-list">
+                            <li><div class="en">When I arrived, she had already left.</div><div class="zh">我到的时候，她已经离开了。</div></li>
+                            <li><div class="en">While I was sleeping, someone called.</div><div class="zh">我睡觉的时候有人打电话来了。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '📌 原因状语从句',
+                        content: `<div class="formula-box">because/since/as + 原因</div>
+                        <ul class="example-list">
+                            <li><div class="en">I didn't go because I was sick.</div><div class="zh">我没去因为我病了。</div></li>
+                            <li><div class="en">Since you're here, let's start.</div><div class="zh">既然你在这里，我们开始吧。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '📌 让步状语从句',
+                        content: `<div class="formula-box">although/though/even though + 从句</div>
+                        <ul class="example-list">
+                            <li><div class="en">Although it rained, we enjoyed the trip.</div><div class="zh">虽然下雨了，我们旅途还是很愉快。</div></li>
+                            <li><div class="en">He passed the exam even though he didn't study.</div><div class="zh">虽然他没学习，还是通过了考试。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '📌 目的/结果状语从句',
+                        content: `<ul class="example-list">
+                            <li><div class="en">I studied hard so that I could pass the exam.</div><div class="zh">我努力学习是为了通过考试。（目的）</div></li>
+                            <li><div class="en">It was so hot that we couldn't sleep.</div><div class="zh">太热了以至于我们睡不着。（结果）</div></li>
+                        </ul>`
+                    }
+                ]
+            },
+            'pet-conjunctions': {
+                title: '并列连词',
+                subtitle: 'Conjunctions · PET (B1)',
+                sections: [
+                    {
+                        title: '📌 四大并列连词',
+                        content: `<table>
+                            <tr><th>连词</th><th>作用</th><th>例句</th></tr>
+                            <tr><td>and</td><td>并列/顺承</td><td>I like tea and coffee.</td></tr>
+                            <tr><td>but</td><td>转折</td><td>She's old but active.</td></tr>
+                            <tr><td>or</td><td>选择/否定的条件</td><td>Study hard or you'll fail.</td></tr>
+                            <tr><td>so</td><td>结果</td><td>I was tired, so I went to bed.</td></tr>
+                        </table>`
+                    },
+                    {
+                        title: '📝 both...and',
+                        content: `<ul class="example-list">
+                            <li><div class="en">Both Tom and Jerry are my friends.</div><div class="zh">Tom和Jerry都是我的朋友。</div></li>
+                            <li><div class="en">She can speak both English and French.</div><div class="zh">她会说英语和法语。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '📝 either...or / neither...nor',
+                        content: `<ul class="example-list">
+                            <li><div class="en">Either you come with me or you stay here.</div><div class="zh">你要么跟我来，要么留在这里。</div></li>
+                            <li><div class="en">Neither Tom nor Jerry was there.</div><div class="zh">Tom和Jerry都不在那里。</div></li>
+                        </ul>`
+                    },
+                    {
+                        title: '📝 not only...but also',
+                        content: `<ul class="example-list">
+                            <li><div class="en">Not only did she win, but she also broke the record.</div><div class="zh">她不仅赢了，还破了纪录。</div></li>
+                            <li><div class="en">He is not only smart but also kind.</div><div class="zh">他不仅聪明，而且善良。</div></li>
+                        </ul>`
+                    }
+                ]
+            }
+        };
+
+        // ==================== 语法练习题库 ====================
+        const grammarQuestions = {
+            // KET 题目
+            'ket-present-simple': [
+                { q: "She ___ English every day.", o: ["learn", "learns", "learning"], a: 1 },
+                { q: "I don't ___ fish.", o: ["like", "likes", "liking"], a: 0 },
+                { q: "___ he play football? - Yes, he ___", o: ["Does, does", "Do, do", "Does, do"], a: 2 },
+                { q: "The sun ___ in the east.", o: ["rise", "rises", "rising"], a: 1 },
+                { q: "My mother ___ coffee every morning.", o: ["drink", "drinks", "drinking"], a: 1 },
+            ],
+            'ket-present-continuous': [
+                { q: "Look! The children ___ in the garden.", o: ["play", "are playing", "played"], a: 1 },
+                { q: "I ___ my homework now.", o: ["do", "am doing", "does"], a: 1 },
+                { q: "She ___ a book at the moment.", o: ["read", "is reading", "reads"], a: 1 },
+                { q: "What ___ you ___? - I'm waiting.", o: ["are, doing", "do, doing", "is, doing"], a: 0 },
+                { q: "The baby ___ now.", o: ["sleeps", "is sleeping", "slept"], a: 1 },
+            ],
+            'ket-simple-past': [
+                { q: "I ___ to Beijing last year.", o: ["go", "went", "gone"], a: 1 },
+                { q: "She ___ her homework yesterday.", o: ["finish", "finished", "finishes"], a: 1 },
+                { q: "___ you ___ the film? - Yes, I ___", o: ["Did, see, did", "Do, see, do", "Does, saw, did"], a: 0 },
+                { q: "He ___ a big house last month.", o: ["buy", "bought", "buys"], a: 1 },
+                { q: "They ___ at home yesterday.", o: ["wasn't", "weren't", "aren't"], a: 1 },
+            ],
+            'ket-there-be': [
+                { q: "There ___ a book on the table.", o: ["is", "are", "be"], a: 0 },
+                { q: "There ___ two cats in the room.", o: ["is", "are", "has"], a: 1 },
+                { q: "___ there any milk? - No, there ___", o: ["Is, isn't", "Are, aren't", "Is, isn't"], a: 0 },
+                { q: "There ___ a meeting yesterday.", o: ["was", "were", "is"], a: 0 },
+                { q: "There ___ many people at the party.", o: ["was", "were", "is"], a: 1 },
+            ],
+            'ket-future-going-to': [
+                { q: "I ___ study English tomorrow.", o: ["am going to", "going to", "go to"], a: 0 },
+                { q: "What ___ you ___ to do this weekend?", o: ["are, going", "do, want", "is, going"], a: 0 },
+                { q: "She ___ buy a new dress.", o: ["is going to", "are going to", "going to"], a: 0 },
+                { q: "Look at the clouds! It ___ rain.", o: ["is going to", "will", "can"], a: 0 },
+                { q: "___ you ___ to come? - Yes, I ___", o: ["Are, going, am", "Do, go, do", "Are, go, am"], a: 0 },
+            ],
+            'ket-modals': [
+                { q: "___ I open the window?", o: ["Can", "Do", "Does"], a: 0 },
+                { q: "You ___ finish your homework first.", o: ["must", "can", "may"], a: 0 },
+                { q: "I ___ swim when I was 5.", o: ["could", "can", "must"], a: 0 },
+                { q: "You ___ see a doctor. You look ill.", o: ["should", "can", "mustn't"], a: 0 },
+                { q: "___ I help you with your bags?", o: ["Can", "Must", "Should"], a: 0 },
+            ],
+            'ket-comparatives': [
+                { q: "Tom is ___ than Jack.", o: ["taller", "tallest", "more tall"], a: 0 },
+                { q: "This book is ___ than that one.", o: ["more interesting", "interestinger", "most interesting"], a: 0 },
+                { q: "She is the ___ girl in the class.", o: ["tallest", "taller", "most tall"], a: 0 },
+                { q: "My house is ___ yours.", o: ["bigger than", "biggest than", "bigger then"], a: 0 },
+                { q: "He is ___ student in our school.", o: ["the best", "better", "good"], a: 0 },
+            ],
+            'ket-frequency': [
+                { q: "I go swimming ___ a week.", o: ["twice", "two times", "second"], a: 0 },
+                { q: "___ do you exercise? - Every day.", o: ["How often", "How many", "What time"], a: 0 },
+                { q: "She ___ goes to the cinema. She prefers staying home.", o: ["never", "always", "often"], a: 0 },
+                { q: "I have breakfast ___ a week.", o: ["three times", "third time", "three time"], a: 0 },
+                { q: "He is ___ late. He's very punctual.", o: ["never", "always", "sometimes"], a: 0 },
+            ],
+            'ket-possessive': [
+                { q: "That's ___ bag.", o: ["Tom's", "Tom", "Toms"], a: 0 },
+                { q: "The capital ___ France is Paris.", o: ["of", "'s", "to"], a: 0 },
+                { q: "___ room is bigger, yours or mine?", o: ["Whose", "Who's", "Who"], a: 0 },
+                { q: "This is a picture ___ my family.", o: ["of", "'s", "to"], a: 0 },
+                { q: "The ___ toys are expensive.", o: ["children's", "childrens", "childrens'"], a: 0 },
+            ],
+            'ket-pronouns': [
+                { q: "___ is my teacher. ___ name is Mrs. Smith.", o: ["She, Her", "He, His", "It, Its"], a: 0 },
+                { q: "Give the book to ___, please.", o: ["me", "I", "my"], a: 0 },
+                { q: "I bought ___ a new computer.", o: ["myself", "me", "I"], a: 0 },
+                { q: "This is ___ bag. It's not yours.", o: ["hers", "her", "she"], a: 0 },
+                { q: "Help ___ to some fruit.", o: ["yourself", "you", "yours"], a: 0 },
+            ],
+            'ket-prepositions': [
+                { q: "I was born ___ 2005.", o: ["in", "on", "at"], a: 0 },
+                { q: "We have class ___ Monday.", o: ["on", "in", "at"], a: 0 },
+                { q: "She sits ___ the window.", o: ["next to", "in", "on"], a: 0 },
+                { q: "The cat is ___ the table.", o: ["under", "in", "at"], a: 0 },
+                { q: "I get up ___ 7 o'clock ___ the morning.", o: ["at, in", "in, at", "on, in"], a: 0 },
+            ],
+            'ket-imperative': [
+                { q: "___ the door, please.", o: ["Open", "Opens", "Opening"], a: 0 },
+                { q: "___ be late! It's impolite.", o: ["Don't", "Not", "Doesn't"], a: 0 },
+                { q: "___ carefully in class.", o: ["Listen", "Listens", "Listening"], a: 0 },
+                { q: "___ worry! Everything will be fine.", o: ["Don't", "Not", "Doesn't"], a: 0 },
+                { q: "Please ___ down.", o: ["sit", "sits", "sitting"], a: 0 },
+            ],
+
+            // PET 题目
+            'pet-present-perfect': [
+                { q: "I ___ finished my homework.", o: ["have", "has", "had"], a: 0 },
+                { q: "She ___ already ___ to Beijing.", o: ["has, been", "have, gone", "had, been"], a: 0 },
+                { q: "___ you ever ___ to Shanghai?", o: ["Have, been", "Has, been", "Did, go"], a: 0 },
+                { q: "I haven't seen her ___.", o: ["yet", "already", "just"], a: 0 },
+                { q: "He ___ lived here since 2010.", o: ["has", "have", "had"], a: 0 },
+            ],
+            'pet-past-perfect': [
+                { q: "By the time I arrived, she ___.", o: ["had left", "left", "has left"], a: 0 },
+                { q: "He realized he ___ a mistake.", o: ["had made", "made", "has made"], a: 0 },
+                { q: "When I got home, they ___.", o: ["had already eaten", "already ate", "have eaten"], a: 0 },
+                { q: "She said she ___ the movie before.", o: ["had seen", "saw", "has seen"], a: 0 },
+                { q: "___, I had finished my work.", o: ["Before you came", "When you came", "After you came"], a: 0 },
+            ],
+            'pet-passive': [
+                { q: "English ___ in many countries.", o: ["is spoken", "speaks", "spoken"], a: 0 },
+                { q: "The book ___ by J.K. Rowling.", o: ["was written", "wrote", "is wrote"], a: 0 },
+                { q: "The homework ___ now.", o: ["is being finished", "is finishing", "has been finished"], a: 0 },
+                { q: "Many trees ___ in the garden last spring.", o: ["were planted", "planted", "are planted"], a: 0 },
+                { q: "This cake ___ by my mother.", o: ["was made", "made", "is making"], a: 0 },
+            ],
+            'pet-conditional': [
+                { q: "If it ___ tomorrow, I will stay home.", o: ["rains", "rained", "will rain"], a: 0 },
+                { q: "If I ___ a million dollars, I would buy a house.", o: ["had", "have", "would have"], a: 0 },
+                { q: "If you heat water, it ___.", o: ["boils", "boiled", "will boil"], a: 0 },
+                { q: "If I ___ you, I would accept the offer.", o: ["were", "was", "am"], a: 0 },
+                { q: "___ you ___ angry, I would apologize.", o: ["Were,", "Are,", "If you are,"], a: 0 },
+            ],
+            'pet-reported-speech': [
+                { q: "\"I am tired,\" she said. She said she ___ tired.", o: ["was", "is", "been"], a: 0 },
+                { q: "\"I will come,\" he said. He said he ___.", o: ["would come", "will come", "can come"], a: 0 },
+                { q: "\"I can swim,\" she said. She said she ___.", o: ["could swim", "can swim", "could not swim"], a: 0 },
+                { q: "\"I went to Paris,\" he said. He said he ___ to Paris.", o: ["had gone", "went", "has gone"], a: 0 },
+                { q: "She said she ___ the movie. (yesterday)", o: ["had seen", "saw", "has seen"], a: 0 },
+            ],
+            'pet-relatives': [
+                { q: "The girl ___ is singing is my sister.", o: ["who", "which", "that"], a: 0 },
+                { q: "The book ___ I bought is interesting.", o: ["which", "who", "whom"], a: 0 },
+                { q: "I have a friend ___ father is a doctor.", o: ["whose", "who's", "whom"], a: 0 },
+                { q: "The shop ___ I bought this is closed.", o: ["where", "which", "that"], a: 0 },
+                { q: "The best movie ___ I've ever seen.", o: ["that", "which", "who"], a: 0 },
+            ],
+            'pet-modals-perfect': [
+                { q: "He ___ have been to Beijing. He knows so much about it.", o: ["must", "can't", "shouldn't"], a: 0 },
+                { q: "She ___ have stolen the money. She was with me all day.", o: ["can't", "must", "could"], a: 0 },
+                { q: "You ___ have studied harder. You failed the exam.", o: ["should", "must", "can"], a: 0 },
+                { q: "He ___ have missed the train. He was late.", o: ["might", "must", "should"], a: 0 },
+                { q: "You ___ have told her the secret.", o: ["shouldn't", "must", "can"], a: 0 },
+            ],
+            'pet-used-to': [
+                { q: "I ___ play tennis, but now I play basketball.", o: ["used to", "use to", "did use to"], a: 0 },
+                { q: "She ___ live in Paris.", o: ["used to", "used to to", "use to"], a: 0 },
+                { q: "___ you ___ to smoke?", o: ["Did, use", "Used,", "Do, used"], a: 0 },
+                { q: "He ___ be shy, but now he's very friendly.", o: ["used to", "use to", "used to to"], a: 0 },
+                { q: "There ___ be a cinema here.", o: ["used to", "use to", "used to"], a: 0 },
+            ],
+            'pet-gerund-infinitive': [
+                { q: "I enjoy ___ books.", o: ["reading", "read", "to read"], a: 0 },
+                { q: "She decided ___ to Beijing.", o: ["to move", "moving", "move"], a: 0 },
+                { q: "Would you mind ___ the window?", o: ["opening", "open", "to open"], a: 0 },
+                { q: "I want ___ English.", o: ["to learn", "learning", "learn"], a: 0 },
+                { q: "He suggested ___ the problem.", o: ["solving", "to solve", "solve"], a: 0 },
+            ],
+            'pet-quantifiers': [
+                { q: "There is ___ water in the glass.", o: ["a little", "a few", "few"], a: 0 },
+                { q: "I have ___ friends in this city.", o: ["a few", "a little", "few"], a: 0 },
+                { q: "___ people came to the party.", o: ["A lot of", "Much", "Little"], a: 0 },
+                { q: "There is ___ time left.", o: ["little", "a few", "few"], a: 0 },
+                { q: "I have ___ homework today.", o: ["much", "many", "a few"], a: 0 },
+            ],
+            'pet-adverb-clauses': [
+                { q: "___ I was sleeping, someone called.", o: ["While", "When", "After"], a: 0 },
+                { q: "I didn't go ___ I was sick.", o: ["because", "although", "when"], a: 0 },
+                { q: "___ it rained, we enjoyed the trip.", o: ["Although", "Because", "When"], a: 0 },
+                { q: "She studied hard ___ she could pass the exam.", o: ["so that", "although", "because"], a: 0 },
+                { q: "___ you arrive, call me.", o: ["When", "While", "During"], a: 0 },
+            ],
+            'pet-conjunctions': [
+                { q: "I like tea ___ coffee.", o: ["and", "but", "or"], a: 0 },
+                { q: "She's old ___ she's very active.", o: ["but", "and", "so"], a: 0 },
+                { q: "Study hard ___ you'll fail.", o: ["or", "but", "so"], a: 0 },
+                { q: "It was raining, ___ we stayed home.", o: ["so", "but", "and"], a: 0 },
+                { q: "___ Tom ___ Jerry are my friends.", o: ["Both, and", "Either, or", "Neither, nor"], a: 0 },
+            ],
+        };
+
+        function showGrammar(key) {
+            const data = grammarData[key];
+            if (!data) return;
+
+            let html = `
+                <h2 class="modal-title">${data.title}</h2>
+                <p class="modal-subtitle">${data.subtitle}</p>
+            `;
+
+            data.sections.forEach(section => {
+                html += `
+                    <div class="grammar-section">
+                        <h3>${section.title}</h3>
+                        ${section.content}
+                    </div>
+                `;
+            });
+
+            // 检查是否有练习题
+            const hasQuestions = grammarQuestions[key] && grammarQuestions[key].length > 0;
+            if (hasQuestions) {
+                html += `
+                    <div class="grammar-section" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
+                        <button class="practice-btn" data-action="clickRestartPractice" data-arg="${key}" style="width: 100%; padding: 14px; font-size: 1em;">
+                            🎯 开始练习 (${grammarQuestions[key].length}题)
+                        </button>
+                    </div>
+                `;
+            }
+
+            document.getElementById('grammar-content').innerHTML = html;
+            document.getElementById('grammar-modal').classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeGrammar() {
+            document.getElementById('grammar-modal').classList.remove('show');
+            document.body.style.overflow = '';
+        }
+
+        // 点击弹窗外部关闭
+        document.getElementById('grammar-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'grammar-modal') {
+                closeGrammar();
+            }
+        });
+
+        // ESC 关闭
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeGrammar();
+        });
+
+        function switchExam(exam) {
+            // 更新标签状态
+            document.querySelectorAll('.exam-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.textContent.includes(exam.toUpperCase()));
+            });
+            // 更新section显示
+            document.querySelectorAll('.exam-section').forEach(section => {
+                section.classList.toggle('active', section.id === exam + '-section');
+            });
+        }
+
+        // ==================== 语法练习功能 ====================
+        let currentPractice = {
+            key: null,
+            questions: [],
+            currentIndex: 0,
+            correct: 0,
+            answered: false
+        };
+
+        function startPractice(key) {
+            const questions = grammarQuestions[key];
+            if (!questions || questions.length === 0) {
+                alert('暂无练习题');
+                return;
+            }
+
+            currentPractice = {
+                key: key,
+                questions: questions,
+                currentIndex: 0,
+                correct: 0,
+                answered: false
+            };
+
+            const grammar = grammarData[key];
+            document.getElementById('practice-title').textContent = grammar ? grammar.title : '语法练习';
+            showPracticeQuestion();
+            document.getElementById('practice-modal').classList.add('show');
+        }
+
+        function showPracticeQuestion() {
+            const q = currentPractice.questions[currentPractice.currentIndex];
+            document.getElementById('practice-progress').textContent =
+                `${currentPractice.currentIndex + 1}/${currentPractice.questions.length}`;
+            document.getElementById('practice-question').textContent = q.q;
+
+            const optionsHtml = q.o.map((opt, i) =>
+                `<button class="practice-option" data-action="checkAnswer" data-arg="${i}">${opt}</button>`
+            ).join('');
+            document.getElementById('practice-options').innerHTML = optionsHtml;
+            document.getElementById('practice-options').classList.remove('hidden');
+            document.getElementById('practice-result').classList.add('hidden');
+            currentPractice.answered = false;
+        }
+
+        function checkAnswer(selectedIndex) {
+            if (currentPractice.answered) return;
+            currentPractice.answered = true;
+
+            const q = currentPractice.questions[currentPractice.currentIndex];
+            const options = document.querySelectorAll('.practice-option');
+
+            options.forEach((opt, i) => {
+                opt.classList.add('disabled');
+                if (i === q.a) {
+                    opt.classList.add('correct');
+                } else if (i === selectedIndex && selectedIndex !== q.a) {
+                    opt.classList.add('incorrect');
+                }
+            });
+
+            if (selectedIndex === q.a) {
+                currentPractice.correct++;
+            }
+
+            // 延迟后自动下一题
+            setTimeout(() => {
+                currentPractice.currentIndex++;
+                if (currentPractice.currentIndex >= currentPractice.questions.length) {
+                    showPracticeResults();
+                } else {
+                    showPracticeQuestion();
+                }
+            }, 1200);
+        }
+
+        function showPracticeResults() {
+            const total = currentPractice.questions.length;
+            const correct = currentPractice.correct;
+            const percentage = Math.round((correct / total) * 100);
+
+            document.getElementById('practice-options').classList.add('hidden');
+            document.getElementById('practice-result').classList.remove('hidden');
+
+            let icon = '🎉';
+            let text = '太棒了！';
+            if (percentage < 60) {
+                icon = '💪';
+                text = '继续加油！';
+            } else if (percentage < 80) {
+                icon = '👍';
+                text = '做得不错！';
+            }
+
+            document.getElementById('practice-result-icon').textContent = icon;
+            document.getElementById('practice-result-text').textContent = text;
+            document.getElementById('practice-result-score').textContent =
+                `正确率 ${percentage}% (${correct}/${total})`;
+
+            // 保存进度
+            savePracticeProgress(currentPractice.key, correct, total);
+        }
+
+        function closePractice() {
+            document.getElementById('practice-modal').classList.remove('show');
+            updateAllProgressBadges();
+        }
+
+        function restartPractice() {
+            startPractice(currentPractice.key);
+        }
+
+        function savePracticeProgress(key, correct, total) {
+            const percentage = Math.round((correct / total) * 100);
+            let progress = JSON.parse(localStorage.getItem('grammarProgress') || '{}');
+            progress[key] = { practiced: true, correct, total, percentage };
+            localStorage.setItem('grammarProgress', JSON.stringify(progress));
+        }
+
+        function loadPracticeProgress() {
+            return JSON.parse(localStorage.getItem('grammarProgress') || '{}');
+        }
+
+        function getProgressBadge(key) {
+            const progress = loadPracticeProgress();
+            const p = progress[key];
+            if (!p) return { class: 'not-started', icon: '' };
+            if (p.percentage >= 80) return { class: 'mastered', icon: '✓' };
+            return { class: 'in-progress', icon: '●' };
+        }
+
+        function updateAllProgressBadges() {
+            document.querySelectorAll('.grammar-card[data-level]').forEach(card => {
+                const key = card.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+                if (!key) return;
+
+                // 移除旧徽章
+                const oldBadge = card.querySelector('.progress-badge');
+                if (oldBadge) oldBadge.remove();
+
+                // 添加新徽章
+                const badge = getProgressBadge(key);
+                if (badge.icon) {
+                    const badgeEl = document.createElement('span');
+                    badgeEl.className = `progress-badge ${badge.class}`;
+                    badgeEl.textContent = badge.icon;
+                    card.style.position = 'relative';
+                    card.appendChild(badgeEl);
+                }
+            });
+        }
+
+        // 页面加载时更新进度徽章
+        document.addEventListener('DOMContentLoaded', updateAllProgressBadges);
+
+        // ========== 学习统计 ==========
+        function updateStats(data) {
+            const stats = JSON.parse(localStorage.getItem('shadowStats') || '{}');
+            const today = new Date().toISOString().split('T')[0];
+
+            if (data.grammarProgress) {
+                stats.grammarProgress = stats.grammarProgress || {};
+                const key = data.grammarProgress.key;
+                stats.grammarProgress[key] = data.grammarProgress;
+            }
+
+            // 更新每日学习时间
+            if (data.studyTime) {
+                stats.totalStudyTime = (stats.totalStudyTime || 0) + data.studyTime;
+                stats.dailyStudyTime = stats.dailyStudyTime || {};
+                stats.dailyStudyTime[today] = (stats.dailyStudyTime[today] || 0) + data.studyTime;
+            }
+
+            // 更新连续天数
+            const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+            if (stats.lastStudyDate === today) {
+            } else if (stats.lastStudyDate === yesterday) {
+                stats.streakDays = (stats.streakDays || 0) + 1;
+            } else {
+                stats.streakDays = 1;
+            }
+            stats.lastStudyDate = today;
+
+            localStorage.setItem('shadowStats', JSON.stringify(stats));
+            shadowReport({ stats });
+        }
+
+        // PWA 注册
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(() => console.log('SW registered'))
+                .catch(err => console.log('SW registration failed:', err));
+        }
+    

@@ -1,0 +1,1023 @@
+
+        // 当前模式: 'nc2a' 或 'mth29'
+        let currentBook = 'nc2a';
+
+        // R12: 页面加载时拉一下今日到期复习数, 顶到入口 badge 上
+        document.addEventListener('DOMContentLoaded', () => { refreshVocabBadge(); });
+
+        // 课程数据 - 新概念2A
+        const nc2aUnits = [
+            { name: "Unit 1-2: 现在进行时", sentences: [
+                {text: "What are you doing?", translation: "你在做什么？", grammar: "现在进行时 be + doing"},
+                {text: "I'm waiting for you.", translation: "我在等你。", grammar: "主语+be+动词ing"},
+                {text: "What is Robert doing?", translation: "Robert在做什么？", grammar: "现在进行时疑问句"},
+                {text: "He is reading a book.", translation: "他在读书。", grammar: "现在进行时"},
+                {text: "The children are playing in the garden.", translation: "孩子们正在花园里玩。", grammar: "现在进行时复数"},
+                {text: "Are you listening to me?", translation: "你在听我说话吗？", grammar: "现在进行时一般疑问句"},
+                {text: "Yes, I am. / No, I'm not.", translation: "是的，我在听。/ 不，我没在听。", grammar: "肯定/否定回答"},
+            ]},
+            { name: "Unit 5-6: 一般现在时", sentences: [
+                {text: "I usually get up at seven o'clock.", translation: "我通常七点起床。", grammar: "一般现在时 习惯性动作"},
+                {text: "When do you usually have breakfast?", translation: "你通常什么时候吃早饭？", grammar: "When提问 时间"},
+                {text: "I usually have breakfast at half past seven.", translation: "我通常七点半吃早饭。", grammar: "时间表达"},
+                {text: "She often goes to school by bike.", translation: "她经常骑自行车去学校。", grammar: "第三人称单数 goes"},
+                {text: "He usually gets up early.", translation: "他通常早起。", grammar: "第三人称单数 gets"},
+                {text: "Do you often read English books?", translation: "你经常读英语书吗？", grammar: "一般现在时疑问句"},
+                {text: "Yes, I do. / No, I don't.", translation: "是的，我经常读。/ 不，我不经常读。", grammar: "简略回答"},
+            ]},
+            { name: "Unit 7: 频率", sentences: [
+                {text: "How often do you go to the cinema?", translation: "你多久去看一次电影？", grammar: "频率提问 How often"},
+                {text: "I go to the cinema once a week.", translation: "我每周去看一次电影。", grammar: "once a week 频率"},
+                {text: "She exercises twice a day.", translation: "她每天锻炼两次。", grammar: "twice频率"},
+                {text: "We usually eat out once a month.", translation: "我们通常每月出去吃一次饭。", grammar: "频率 usually+once"},
+            ]},
+            { name: "Unit 8: be going to", sentences: [
+                {text: "What are you going to do this weekend?", translation: "你这个周末打算做什么？", grammar: "be going to 表计划"},
+                {text: "I'm going to visit my grandmother.", translation: "我打算去看望奶奶。", grammar: "be going to + 动词原形"},
+                {text: "She's going to buy a new dress.", translation: "她打算买一条新裙子。", grammar: "be going to 第三人称"},
+                {text: "What are you going to be when you grow up?", translation: "你长大后想成为什么？", grammar: "be going to 将来"},
+            ]},
+            { name: "Unit 9: want to do", sentences: [
+                {text: "What do you want to do?", translation: "你想做什么？", grammar: "want to do 想要做某事"},
+                {text: "I want to play football.", translation: "我想踢足球。", grammar: "want to + 动词原形"},
+                {text: "I want you to help me with my English.", translation: "我想要你帮我学英语。", grammar: "want sb to do"},
+                {text: "Do you want to learn English?", translation: "你想学英语吗？", grammar: "want to do 疑问句"},
+            ]},
+            { name: "Unit 11: 一般过去时-be动词", sentences: [
+                {text: "Were you at school yesterday?", translation: "昨天你在学校吗？", grammar: "一般过去时 were 疑问"},
+                {text: "Yes, I was. / No, I wasn't.", translation: "是的，我在。/ 不，我不在。", grammar: "wasn't = was not"},
+                {text: "She was at home this morning.", translation: "今天早上她在家里。", grammar: "was 用于单数"},
+                {text: "They were very happy last night.", translation: "昨晚他们很开心。", grammar: "were 用于复数"},
+                {text: "I was ill yesterday.", translation: "昨天我生病了。", grammar: "was 过去状态"},
+            ]},
+            { name: "Unit 12-13: 一般过去时-动词", sentences: [
+                {text: "I visited my grandmother yesterday.", translation: "昨天我去看望了奶奶。", grammar: "规则动词过去式 -ed"},
+                {text: "She played tennis last weekend.", translation: "上周末她打了网球。", grammar: "规则动词 played"},
+                {text: "Did you go to school yesterday?", translation: "昨天你去学校了吗？", grammar: "Did + 主语 + 动词原形？"},
+                {text: "Yes, I did. / No, I didn't.", translation: "是的，我去了。/ 不，我没去。", grammar: "didn't = did not"},
+                {text: "What did you do last weekend?", translation: "上周末你做了什么？", grammar: "What did + 主语 + do?"},
+            ]},
+            { name: "Unit 3: 名词性物主代词", sentences: [
+                {text: "Whose is this book?", translation: "这本书是谁的？", grammar: "Whose 提问归属"},
+                {text: "It's mine.", translation: "这是我的。", grammar: "mine = my book"},
+                {text: "Is this your bag?", translation: "这是你的包吗？", grammar: "your 形容词性物主代词"},
+                {text: "No, it's hers.", translation: "不，这是她的。", grammar: "hers = her bag"},
+                {text: "These shoes are theirs.", translation: "这些鞋是他们的。", grammar: "theirs = their shoes"},
+            ]},
+            { name: "Unit 4: 祈使句", sentences: [
+                {text: "Open the door, please.", translation: "请开门。", grammar: "肯定祈使句"},
+                {text: "Don't be late!", translation: "别迟到！", grammar: "否定祈使句 Don't + 动词原形"},
+                {text: "Don't take your gloves off.", translation: "别脱下手套。", grammar: "否定祈使句"},
+                {text: "Sit down, please.", translation: "请坐下。", grammar: "祈使句"},
+                {text: "Listen to me carefully.", translation: "认真听我说。", grammar: "祈使句 listen to"},
+            ]},
+        ];
+
+        // Magic Tree House #29 Christmas in Camelot
+        const mth29Chapters = [
+            { name: "Chapter 1: The Invitation", sentences: [
+                {text: "Sunlight had faded from the late-afternoon sky.", translation: "午后天空的阳光渐渐消失。"},
+                {text: "Puffy snow clouds were moving in.", translation: "蓬松的雪云正在飘来。"},
+                {text: "Let's hurry. I'm cold.", translation: "我们快点。我好冷。"},
+                {text: "He and Annie were walking home from school.", translation: "他和Annie正走在放学回家的路上。"},
+                {text: "Their Christmas vacation was just beginning.", translation: "他们的圣诞假期刚刚开始。"},
+                {text: "Wait. Look.", translation: "等等。看。"},
+                {text: "She pointed to a white bird sitting on a bare tree branch.", translation: "她指向一只坐在光秃秃树枝上的白色小鸟。"},
+                {text: "The bird was staring straight at them.", translation: "那只鸟正直直地盯着他们。"},
+                {text: "It's a dove.", translation: "它是一只鸽子。"},
+                {text: "It's a messenger from Morgan.", translation: "它是Morgan的使者。"},
+                {text: "She has a mission for us. I can feel it.", translation: "她给我们一个任务。我能感觉到。"},
+                {text: "The dove spread its wings and flew into the woods.", translation: "鸽子展开翅膀飞进了树林。"},
+                {text: "Come on! The tree house is back!", translation: "快来！树屋回来了！"},
+                {text: "Even in the growing darkness, they easily found their way.", translation: "即使天越来越黑，他们还是轻松地找到了路。"},
+                {text: "They came to the tallest oak in the woods.", translation: "他们来到了树林里最高的橡树前。"},
+            ]},
+            { name: "Chapter 2: Camelot", sentences: [
+                {text: "Jack shivered. He could see his breath in the dim light.", translation: "Jack颤抖着。昏暗的光线中他能看到自己的呼吸。"},
+                {text: "Annie was staring out the window.", translation: "Annie正盯着窗外看。"},
+                {text: "This is Camelot?", translation: "这就是卡米洛特？"},
+                {text: "The tree house had landed in a grove of tall, bare trees.", translation: "树屋降落在一片高大光秃的树林中。"},
+                {text: "A huge, dark castle loomed against the gray sky.", translation: "一座巨大黑暗的城堡矗立在灰色的天空下。"},
+                {text: "No light shone from its windows.", translation: "窗户里没有灯光。"},
+                {text: "No banners waved from its turrets.", translation: "塔楼没有旗帜飘扬。"},
+                {text: "Wind whistled through its tall towers, sounding sad and lonely.", translation: "风呼啸着穿过高塔，听起来悲伤而孤独。"},
+                {text: "It looks deserted.", translation: "看起来像是被遗弃了。"},
+                {text: "I hope we came to the right place.", translation: "我希望我们没来错地方。"},
+                {text: "Jack pulled his notebook and pencil out of his pack.", translation: "Jack从包里掏出笔记本和铅笔。"},
+                {text: "Hey, I see someone.", translation: "嘿，我看到有人。"},
+                {text: "A woman was crossing the castle drawbridge.", translation: "一个女人正穿过城堡的吊桥。"},
+                {text: "She wore a long cloak and carried a lantern.", translation: "她穿着长斗篷，提着灯笼。"},
+                {text: "Her white hair blew in the wind.", translation: "她的白发在风中飘动。"},
+            ]},
+            { name: "Chapter 4: The Christmas Knight", sentences: [
+                {text: "I have come to see Arthur the king!", translation: "我来见Arthur国王！"},
+                {text: "We are the Christmas Knights!", translation: "我们是圣诞骑士！"},
+                {text: "We are here to protect the king and queen!", translation: "我们在这里保护国王和王后！"},
+                {text: "This is the darkest castle I've ever seen.", translation: "这是我见过的最黑暗的城堡。"},
+                {text: "There is no feast tonight.", translation: "今晚没有宴会。"},
+                {text: "Something is very wrong in Camelot.", translation: "卡米洛特出了很大的问题。"},
+                {text: "We must find the source of the darkness.", translation: "我们必须找到黑暗的根源。"},
+                {text: "The king looks sad and tired.", translation: "国王看起来悲伤而疲惫。"},
+                {text: "Christmas is supposed to be a happy time.", translation: "圣诞节应该是一个快乐的时光。"},
+                {text: "I have a bad feeling about this.", translation: "我有种不好的预感。"},
+            ]},
+            { name: "Chapter 7: The Magic Spell", sentences: [
+                {text: "Merlin appeared in a blaze of magical light.", translation: "Merlin在神奇的的光芒中出现。"},
+                {text: "I need your help to break the spell.", translation: "我需要你们的帮助来打破咒语。"},
+                {text: "The evil knight has put a spell on King Arthur.", translation: "邪恶的骑士对Arthur国王施了咒语。"},
+                {text: "Only true kindness can break this curse.", translation: "只有真正的善良才能打破这个诅咒。"},
+                {text: "We must find the missing Christmas treasure.", translation: "我们必须找到失踪的圣诞宝藏。"},
+                {text: "Jack opened his notebook to read the rhyme.", translation: "Jack打开笔记本念咒语。"},
+                {text: "The words glowed golden on the page.", translation: "文字在页面上发出金色的光芒。"},
+                {text: "Annie reached for Jack's hand.", translation: "Annie伸手握住Jack的手。"},
+                {text: "Together they spoke the magic words.", translation: "他们一起说出了魔法咒语。"},
+                {text: "The castle began to glow with warm light.", translation: "城堡开始发出温暖的光芒。"},
+            ]},
+            { name: "Chapter 13: The Golden Hall", sentences: [
+                {text: "The great hall was filled with light and warmth.", translation: "大厅里充满了光明和温暖。"},
+                {text: "Knights and ladies were feasting and singing.", translation: "骑士和女士们正在宴饮歌唱。"},
+                {text: "This is the Christmas I've been dreaming of!", translation: "这就是我梦想中的圣诞节！"},
+                {text: "King Arthur raised his goblet to toast them.", translation: "Arthur国王举起酒杯向他们致敬。"},
+                {text: "Thank you for saving Camelot.", translation: "谢谢你们拯救了卡米洛特。"},
+                {text: "You have shown true courage and kindness.", translation: "你们展现了真正的勇气和善良。"},
+                {text: "Morgan le Fay appeared with a warm smile.", translation: "Morgan le Fay带着温暖的笑容出现了。"},
+                {text: "You have earned this special gift.", translation: "你们赢得了这份特殊的礼物。"},
+                {text: "The tree house began to spin slowly.", translation: "树屋开始慢慢旋转。"},
+                {text: "It was time to go home.", translation: "是时候回家了。"},
+            ]},
+            { name: "Chapter 14: Home", sentences: [
+                {text: "The tree house landed gently in the Frog Creek woods.", translation: "树屋轻轻地落在Frog Creek树林里。"},
+                {text: "Jack and Annie looked at each other and smiled.", translation: "Jack和Annie相视而笑。"},
+                {text: "What an adventure!", translation: "多么神奇的冒险！"},
+                {text: "We actually saved Christmas in Camelot!", translation: "我们真的在卡米洛特拯救了圣诞节！"},
+                {text: "The snow was falling softly outside.", translation: "雪在外面轻轻飘落。"},
+                {text: "I wish we could go back someday.", translation: "我希望有一天我们能回去。"},
+                {text: "Let's write about our adventure.", translation: "让我们把冒险经历写下来吧。"},
+                {text: "Some things are too magical to forget.", translation: "有些事情太神奇了，难以忘记。"},
+            ]},
+            { name: "Chapter 16: The End", sentences: [
+                {text: "Jack closed his notebook with a satisfied sigh.", translation: "Jack满意地叹了口气，合上笔记本。"},
+                {text: "That was the best Christmas ever.", translation: "那是有史以来最好的圣诞节。"},
+                {text: "Annie was right. Magic is real.", translation: "Annie是对的。魔法是真实存在的。"},
+                {text: "And the magic of kindness is the strongest of all.", translation: "而善良的魔法是最强大的。"},
+                {text: "The tree house glowed softly in the moonlight.", translation: "树屋在月光下柔和地发光。"},
+                {text: "Morgan's gift would stay with them forever.", translation: "Morgan的礼物将永远与他们同在。"},
+                {text: "The end.", translation: "结束。"},
+            ]},
+        ];
+
+        // 合并units引用
+        let units = nc2aUnits;
+
+        // 状态
+        let currentUnit = 0;
+        let currentSentence = 0;
+        let isRecording = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let practiceComplete = 0;
+        let totalPractice = 0;
+
+        // 显示书籍选择
+        function showBooks() {
+            document.getElementById('book-selection').classList.remove('hidden');
+            document.getElementById('unit-selection').classList.add('hidden');
+            document.getElementById('chapter-selection').classList.add('hidden');
+            document.getElementById('practice-view').classList.add('hidden');
+            document.getElementById('quiz-view').classList.add('hidden');
+            document.getElementById('completion-view').classList.add('hidden');
+            document.getElementById('header-subtitle').textContent = '选择学习内容开始跟读练习';
+        }
+
+        // 选择书籍
+        function selectBook(bookId) {
+            currentBook = bookId;
+            if (bookId === 'nc2a') {
+                units = nc2aUnits;
+                document.getElementById('header-subtitle').textContent = '新概念英语青少版2A';
+                showNC2AUnits();
+            } else if (bookId === 'mth29') {
+                document.getElementById('header-subtitle').textContent = 'Magic Tree House #29: Christmas in Camelot';
+                showMTHChapters();
+            }
+        }
+
+        // 显示NC2A单元选择
+        function showNC2AUnits() {
+            document.getElementById('book-selection').classList.add('hidden');
+            document.getElementById('unit-selection').classList.remove('hidden');
+            document.getElementById('chapter-selection').classList.add('hidden');
+
+            const list = document.getElementById('unit-list');
+            list.innerHTML = nc2aUnits.map((u, i) => `
+                <div class="unit-item" data-action="selectUnit" data-arg="${i}">
+                    <span class="unit-name">${u.name}</span>
+                    <span class="unit-count">${u.sentences.length}句</span>
+                </div>
+            `).join('');
+        }
+
+        // 显示MTH章节选择
+        function showMTHChapters() {
+            document.getElementById('book-selection').classList.add('hidden');
+            document.getElementById('unit-selection').classList.add('hidden');
+            document.getElementById('chapter-selection').classList.remove('hidden');
+
+            const list = document.getElementById('chapter-list');
+            list.innerHTML = mth29Chapters.map((c, i) => `
+                <div class="unit-item" data-action="selectChapter" data-arg="${i}">
+                    <span class="unit-name">${c.name}</span>
+                    <span class="unit-count">${c.sentences.length}句</span>
+                </div>
+            `).join('');
+        }
+
+        // 选择章节 (MTH)
+        function selectChapter(chapterId) {
+            currentUnit = chapterId;
+            units = mth29Chapters; // 确保使用MTH数据
+            currentSentence = 0;
+            totalPractice = 0;
+            practiceComplete = 0;
+            currentBook = 'mth29'; // 确保book模式正确
+
+            document.getElementById('chapter-selection').classList.add('hidden');
+            document.getElementById('practice-view').classList.remove('hidden');
+            document.getElementById('quiz-view').classList.add('hidden');
+            document.getElementById('completion-view').classList.add('hidden');
+
+            document.getElementById('unit-title').textContent = '🎄 ' + mth29Chapters[chapterId].name;
+            showSentence();
+            loadSavedProgress();  // R12: 跳到上次位置
+        }
+
+        // 选择单元
+        function selectUnit(unitId) {
+            currentUnit = unitId;
+            currentSentence = 0;
+            totalPractice = 0;
+            practiceComplete = 0;
+            units = nc2aUnits;  // 确保使用NC2A数据
+
+            document.getElementById('unit-selection').classList.add('hidden');
+            document.getElementById('practice-view').classList.remove('hidden');
+            document.getElementById('quiz-view').classList.add('hidden');
+            document.getElementById('completion-view').classList.add('hidden');
+
+            document.getElementById('unit-title').textContent = '📖 ' + units[unitId].name;
+            showSentence();
+            loadSavedProgress();  // R12: 跳到上次位置
+        }
+
+        // 显示句子
+        function showSentence() {
+            const sentences = units[currentUnit].sentences;
+            if (currentSentence >= sentences.length) {
+                showQuiz();
+                return;
+            }
+
+            const s = sentences[currentSentence];
+            const sentenceText = typeof s === 'string' ? s : s.text;
+            const sentenceTrans = typeof s === 'string' ? '' : (s.translation || '');
+            const sentenceGrammar = typeof s === 'string' ? '' : (s.grammar || '');
+
+            document.getElementById('sentence-text').textContent = sentenceText;
+            document.getElementById('sentence-translation').textContent = sentenceTrans;
+
+            // NC2A has grammar info, MTH doesn't
+            const grammarEl = document.getElementById('sentence-grammar');
+            if (sentenceGrammar) {
+                grammarEl.textContent = sentenceGrammar;
+                grammarEl.style.display = 'inline-block';
+            } else {
+                grammarEl.style.display = 'none';
+            }
+
+            document.getElementById('progress-text').textContent = `${currentSentence + 1} / ${sentences.length}`;
+            document.getElementById('progress-fill').style.width = `${(currentSentence / sentences.length) * 100}%`;
+
+            // 更新上一个/下一个按钮
+            document.getElementById('btn-prev').style.visibility = currentSentence > 0 ? 'visible' : 'hidden';
+            document.getElementById('btn-next').style.visibility = currentSentence < sentences.length - 1 ? 'visible' : 'hidden';
+
+            document.getElementById('feedback').classList.add('hidden');
+            document.getElementById('record-status').textContent = '点击下方按钮开始录音';
+            document.getElementById('record-status').className = 'record-status record-ready';
+            document.getElementById('btn-record').classList.remove('hidden');
+            document.getElementById('btn-stop').classList.add('hidden');
+            document.getElementById('waveform-comparison').classList.add('hidden');
+
+            // 重置音频
+            currentAudio = null;
+        }
+
+        let currentAudio = null;
+        let currentAudioElement = null;
+        let originalAudioUrl = null;  // 原音URL
+
+        // 播放标准发音 (优先使用微软edge-tts，备用浏览器TTS)
+        async function playSentence() {
+            const sent = units[currentUnit].sentences[currentSentence];
+            const text = typeof sent === 'string' ? sent : sent.text;
+            const btn = document.getElementById('btn-listen');
+            btn.textContent = '🔊 播放中...';
+            btn.disabled = true;
+
+            // 优先使用微软edge-tts（音质更好）
+            try {
+                const res = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                const data = await res.json();
+
+                if (data.success && data.audio_url) {
+                    if (currentAudioElement) {
+                        currentAudioElement.pause();
+                        currentAudioElement = null;
+                    }
+                    originalAudioUrl = data.audio_url;
+                    currentAudioElement = new Audio(data.audio_url);
+                    currentAudioElement.play();
+                    btn.textContent = '🔊 播放中...';
+                    currentAudioElement.onended = () => {
+                        btn.textContent = '🔊 听标准发音';
+                        btn.disabled = false;
+                    };
+                    currentAudioElement.onerror = () => {
+                        btn.textContent = '🔊 听标准发音';
+                        btn.disabled = false;
+                    };
+                    return;
+                }
+            } catch (err) {
+                console.error('Edge TTS error:', err);
+            }
+
+            // 降级：使用浏览器内置TTS
+            if ('speechSynthesis' in window) {
+                try {
+                    speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'en-US';
+                    utterance.rate = 0.9;
+                    utterance.pitch = 1;
+                    const voices = speechSynthesis.getVoices();
+                    const englishVoice = voices.find(v => v.lang.startsWith('en-US')) || voices.find(v => v.lang.startsWith('en')) || null;
+                    if (englishVoice) utterance.voice = englishVoice;
+                    utterance.onend = () => {
+                        btn.textContent = '🔊 听标准发音';
+                        btn.disabled = false;
+                    };
+                    utterance.onerror = () => {
+                        btn.textContent = '🔊 听标准发音';
+                        btn.disabled = false;
+                    };
+                    speechSynthesis.speak(utterance);
+                    return;
+                } catch (e) {
+                    console.log('Browser TTS failed:', e);
+                }
+            }
+
+            btn.textContent = '🔊 听标准发音';
+            btn.disabled = false;
+        }
+
+        // 预生成所有音频
+        async function pregenerateAudio() {
+            if (!confirm('这将下载所有音频文件，可能需要几分钟。确定继续吗？')) return;
+            const btn = document.getElementById('btn-pregenerate');
+            btn.textContent = '🔄 生成中...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/tts/pregenerate', { method: 'POST' });
+                const data = await res.json();
+                alert(data.success ? '所有音频生成完成！' : '生成失败: ' + data.error);
+            } catch (err) {
+                alert('生成失败: ' + err.message);
+            }
+
+            btn.textContent = '📥 预下载音频';
+            btn.disabled = false;
+        }
+
+        // 开始录音
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                // 设置声波可视化
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const analyser = audioContext.createAnalyser();
+                const source = audioContext.createMediaStreamSource(stream);
+                source.connect(analyser);
+                analyser.fftSize = 64;
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+
+                // 显示声波动画
+                const visualizer = document.getElementById('audio-visualizer');
+                const bars = visualizer.querySelectorAll('.audio-bar');
+                visualizer.classList.remove('hidden');
+
+                function drawWave() {
+                    if (!isRecording) return;
+                    requestAnimationFrame(drawWave);
+                    analyser.getByteFrequencyData(dataArray);
+                    const average = dataArray.reduce((a, b) => a + b) / bufferLength;
+                    const height = Math.max(10, (average / 128) * 40);
+                    bars.forEach((bar, i) => {
+                        const value = dataArray[i] || 0;
+                        bar.style.height = Math.max(5, (value / 255) * 40) + 'px';
+                    });
+                }
+                drawWave();
+
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = e => {
+                    audioChunks.push(e.data);
+                };
+                mediaRecorder.onstop = processRecording;
+
+                mediaRecorder.start();
+                isRecording = true;
+
+                document.getElementById('record-status').textContent = '🎤 录音中... 请跟读！';
+                document.getElementById('record-status').className = 'record-status record-recording';
+                document.getElementById('btn-record').classList.add('hidden');
+                document.getElementById('btn-stop').classList.remove('hidden');
+
+            } catch (err) {
+                alert('无法访问麦克风，请检查权限设置: ' + err.message);
+                console.error('Microphone error:', err);
+            }
+        }
+
+        // 停止录音
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+
+                // 隐藏声波动画
+                const visualizer = document.getElementById('audio-visualizer');
+                visualizer.classList.add('hidden');
+
+                document.getElementById('record-status').textContent = '⏳ 正在处理...';
+                document.getElementById('record-status').className = 'record-status record-ready';
+            }
+        }
+
+        // 处理录音
+        function processRecording() {
+            // 释放上一次录音的 blob URL（防止长时间使用 OOM）
+            if (currentAudio) {
+                URL.revokeObjectURL(currentAudio);
+            }
+
+            const blob = new Blob(audioChunks, { type: 'audio/webm' });
+            const url = URL.createObjectURL(blob);
+            currentAudio = url;
+
+            // 显示波形对比
+            showWaveformComparison(url);
+
+            // 播放录音（先停止其他音频）
+            if (currentAudioElement) currentAudioElement.pause();
+            currentAudioElement = new Audio(url);
+            currentAudioElement.play();
+
+            // 显示反馈
+            showFeedback();
+
+            practiceComplete++;
+            // 录音完成后隐藏上一个/下一个，让用户决定是否继续
+            document.getElementById('btn-prev').style.visibility = 'hidden';
+            document.getElementById('btn-next').style.visibility = currentSentence < units[currentUnit].sentences.length - 1 ? 'visible' : 'hidden';
+
+            // 更新统计
+            updateStats({ sentencesPracticed: 1 });
+        }
+
+        // 音频缓存（用于回放）
+        let originalAudioBuffer = null;
+        let recordedAudioBuffer = null;
+
+        // 播放原音
+        function playOriginal() {
+            if (currentAudioElement) {
+                currentAudioElement.currentTime = 0;
+                currentAudioElement.play();
+            }
+        }
+
+        // 播放录音
+        function playRecorded() {
+            if (currentAudio) {
+                const audioEl = new Audio(currentAudio);
+                audioEl.play();
+            }
+        }
+
+        // 显示波形对比
+        async function showWaveformComparison(recordedUrl) {
+            const comparison = document.getElementById('waveform-comparison');
+            comparison.classList.remove('hidden');
+
+            const originalCanvas = document.getElementById('waveform-original');
+            const recordedCanvas = document.getElementById('waveform-recorded');
+
+            // 如果有原音URL，绘制原音波形
+            if (originalAudioUrl) {
+                try {
+                    const response = await fetch(originalAudioUrl);
+                    const arrayBuffer = await response.arrayBuffer();
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    originalAudioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                    drawWaveform(originalCanvas, originalAudioBuffer, '#B86A4E');
+
+                    // 预加载原音用于播放
+                    if (currentAudioElement) currentAudioElement.pause();
+                    currentAudioElement = new Audio(originalAudioUrl);
+                } catch (e) {
+                    console.log('Could not load original audio for waveform');
+                }
+            }
+
+            // 绘制录音波形
+            try {
+                const response = await fetch(recordedUrl);
+                const arrayBuffer = await response.arrayBuffer();
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                recordedAudioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                drawWaveform(recordedCanvas, recordedAudioBuffer, '#6B8A52');
+                // R12: 上报句子熟练度 (用原音 + 录音时长比例算)
+                const origSec = originalAudioBuffer ? originalAudioBuffer.duration : 0;
+                reportMastery(origSec, recordedAudioBuffer.duration);
+            } catch (e) {
+                console.log('Could not load recorded audio for waveform');
+            }
+        }
+
+        // 绘制波形
+        function drawWaveform(canvas, audioBuffer, color) {
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width = canvas.offsetWidth * 2;
+            const height = canvas.height = canvas.offsetHeight * 2;
+            const data = audioBuffer.getChannelData(0);
+            const step = Math.ceil(data.length / width);
+            const amp = height / 2;
+
+            ctx.clearRect(0, 0, width, height);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+
+            for (let i = 0; i < width; i++) {
+                let min = 1.0, max = -1.0;
+                for (let j = 0; j < step; j++) {
+                    const datum = data[(i * step) + j];
+                    if (datum < min) min = datum;
+                    if (datum > max) max = datum;
+                }
+                ctx.moveTo(i, (1 + min) * amp);
+                ctx.lineTo(i, (1 + max) * amp);
+            }
+            ctx.stroke();
+        }
+
+        // 显示反馈
+        function showFeedback() {
+            const feedback = document.getElementById('feedback');
+            const content = document.getElementById('feedback-content');
+
+            // 获取句子信息
+            const sent = units[currentUnit].sentences[currentSentence];
+            const sentence = typeof sent === 'string' ? sent : sent.text;
+            const grammar = typeof sent === 'object' ? sent.grammar : '';
+            const wordCount = sentence.split(' ').length;
+
+            // 多样化的反馈内容
+            const encouragements = [
+                "很棒！继续保持！🎉",
+                "发音不错，再接再厉！💪",
+                "朗读流畅，发音清晰！✨",
+                "完成得很好！🌟",
+                "继续加油！你做得很好！👍"
+            ];
+
+            const tips = [
+                grammar ? `语法重点：${grammar}` : null,
+                wordCount > 10 ? "句子较长，注意换气停顿" : null,
+                sentence.includes('?') ? "疑问句记得语调上扬 ↗️" : null,
+                sentence.includes('!') ? "感叹句要有感情哦！" : null,
+                "注意连读和弱读",
+                "尝试模仿原音的节奏",
+                "注意元音发音饱满",
+                "保持均匀的语速"
+            ].filter(Boolean);
+
+            const randomEncouragement = encouragements[Math.floor(Math.random() * encouragements.length)];
+            const randomTips = tips.sort(() => Math.random() - 0.5).slice(0, 2);
+
+            let html = `<div class="feedback-item">
+                <span class="feedback-icon feedback-good">🎤</span>
+                <span>${randomEncouragement}</span>
+            </div>`;
+
+            randomTips.forEach(tip => {
+                html += `<div class="feedback-item">
+                    <span class="feedback-icon feedback-bad">💡</span>
+                    <span>${tip}</span>
+                </div>`;
+            });
+
+            // 添加鼓励语句
+            const encouragements2 = [
+                "跟读就是多练，熟能生巧！📚",
+                "坚持练习，口语会越来越好！🌈",
+                "每句都跟读一遍试试？🔄",
+                "试着先听再看，发音更准！👂",
+                "小声跟读也可以，主要模仿语调！🔉"
+            ];
+            html += `<div class="feedback-item">
+                <span class="feedback-icon feedback-good">✨</span>
+                <span>${encouragements2[Math.floor(Math.random() * encouragements2.length)]}</span>
+            </div>`;
+
+            content.innerHTML = html;
+            feedback.classList.remove('hidden');
+
+            document.getElementById('record-status').textContent = '✅ 录音完成！';
+            document.getElementById('record-status').className = 'record-status record-done';
+        }
+
+        // 上一个句子
+        function prevSentence() {
+            if (currentSentence > 0) {
+                currentSentence--;
+                showSentence();
+                saveProgress();
+            }
+        }
+
+        // 下一个句子
+        function nextSentence() {
+            const sentences = units[currentUnit].sentences;
+            if (currentSentence < sentences.length - 1) {
+                currentSentence++;
+                showSentence();
+                saveProgress();
+            }
+        }
+
+        // === R12: 阅读位置 + 句子熟练度 (silent, 不阻塞 UI) ===
+        async function saveProgress() {
+            if (!currentBook) return;
+            try {
+                await fetch('/api/progress', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        bookId: currentBook,
+                        chapterIdx: currentUnit,
+                        sentenceIdx: currentSentence,
+                    }),
+                });
+            } catch (e) { /* 离线时静默 */ }
+        }
+
+        async function loadSavedProgress() {
+            if (!currentBook) return;
+            try {
+                const r = await fetch(`/api/progress/${encodeURIComponent(currentBook)}`);
+                const j = await r.json();
+                const p = j.progress;
+                // 只跳到同 chapter, sentence 不能越界
+                if (p && p.chapter_idx === currentUnit && p.sentence_idx > 0) {
+                    const total = units[currentUnit].sentences.length;
+                    if (p.sentence_idx < total) {
+                        currentSentence = p.sentence_idx;
+                        showSentence();
+                        showToast(`📍 上次读到这里 (${currentSentence + 1}/${total})`, 2000);
+                    }
+                }
+            } catch (e) { /* 离线静默 */ }
+        }
+
+        function calcMastery(originalSec, recordedSec) {
+            if (!originalSec || !recordedSec) return 'attempted';
+            const ratio = recordedSec / originalSec;
+            if (ratio < 0.5) return 'attempted';
+            if (ratio >= 0.7 && ratio <= 1.3) return 'fluent';
+            return 'slow';
+        }
+
+        async function reportMastery(originalSec, recordedSec) {
+            if (!currentBook) return;
+            const mastery = calcMastery(originalSec, recordedSec);
+            try {
+                await fetch('/api/sentence/mastery', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        bookId: currentBook,
+                        chapterIdx: currentUnit,
+                        sentenceIdx: currentSentence,
+                        mastery,
+                    }),
+                });
+            } catch (e) { /* 静默 */ }
+        }
+
+        // 轻量 toast 提示 (复用反馈区, 不引入新依赖)
+        function showToast(msg, ms = 2000) {
+            const fb = document.getElementById('feedback');
+            const fbContent = document.getElementById('feedback-content');
+            if (!fb || !fbContent) return;
+            fbContent.innerHTML = `<div class="feedback-item">
+                <span class="feedback-icon feedback-good">📍</span>
+                <span>${msg}</span>
+            </div>`;
+            fb.classList.remove('hidden');
+            setTimeout(() => fb.classList.add('hidden'), ms);
+        }
+
+        // === R12: 间隔重复复习 ===
+        let reviewQueue = [];
+        let reviewIdx = 0;
+
+        async function refreshVocabBadge() {
+            try {
+                const r = await fetch('/api/vocab/stats');
+                const j = await r.json();
+                const badge = document.getElementById('vocab-due-badge');
+                if (badge) {
+                    badge.textContent = j.due_now || 0;
+                    badge.style.display = (j.due_now > 0) ? 'inline-block' : 'none';
+                }
+            } catch (e) { /* 离线静默 */ }
+        }
+
+        async function showVocabReview() {
+            // 拉取到期复习队列 (上限 20)
+            const r = await fetch('/api/vocab/review-queue?limit=20');
+            const j = await r.json();
+            reviewQueue = j.queue || [];
+            reviewIdx = 0;
+
+            // 切到复习视图
+            document.getElementById('book-selection').classList.add('hidden');
+            document.getElementById('practice-view').classList.add('hidden');
+            document.getElementById('quiz-view').classList.add('hidden');
+            document.getElementById('completion-view').classList.add('hidden');
+            document.getElementById('vocab-review-view').classList.remove('hidden');
+            document.getElementById('unit-title-row') && (document.getElementById('unit-title-row').textContent = '');
+            document.getElementById('header-subtitle').textContent = '间隔重复 — 巩固查过的词';
+
+            if (reviewQueue.length === 0) {
+                document.getElementById('vocab-flashcard').innerHTML = `
+                    <div style="text-align:center;padding:60px 20px;">
+                        <div style="font-size:4em;">🎉</div>
+                        <h2>今日复习完成！</h2>
+                        <p style="color:#666;">所有词都复习过啦, 明天再来</p>
+                        <button class="btn btn-primary" data-action="showBooks" style="margin-top:20px;">← 返回</button>
+                    </div>`;
+                return;
+            }
+            showNextCard();
+        }
+
+        function showNextCard() {
+            const card = document.getElementById('vocab-flashcard');
+            if (reviewIdx >= reviewQueue.length) {
+                card.innerHTML = `
+                    <div style="text-align:center;padding:60px 20px;">
+                        <div style="font-size:4em;">🎉</div>
+                        <h2>复习完成！</h2>
+                        <p style="color:#666;">${reviewQueue.length} 词已巩固, 状态自动推进</p>
+                        <button class="btn btn-primary" data-action="showBooks" style="margin-top:20px;">← 返回</button>
+                    </div>`;
+                refreshVocabBadge();
+                return;
+            }
+            const w = reviewQueue[reviewIdx];
+            const stateLabels = {learning: '🆕 学习中', practicing: '📚 练习中', familiar: '👍 熟悉', mastered: '⭐ 已掌握'};
+            card.innerHTML = `
+                <div class="vocab-card" style="text-align:center;padding:30px 10px;">
+                    <div style="color:#999;font-size:0.9em;">${reviewIdx + 1} / ${reviewQueue.length} · ${stateLabels[w.state] || w.state}</div>
+                    <div style="font-size:3em;font-weight:700;margin:30px 0 10px;color:var(--primary,#B86A4E);">${w.word}</div>
+                    <button class="btn btn-secondary" id="vocab-translate-btn" data-action="lookupWord" data-arg="${w.word}">🔍 查词意</button>
+                    <div id="vocab-translate-result" style="margin:20px 0;min-height:60px;color:#444;"></div>
+                    <div style="margin-top:30px;display:flex;gap:15px;justify-content:center;">
+                        <button class="btn btn-danger" data-action="answerVocab" data-arg="false" style="flex:1;max-width:160px;">❌ 忘了</button>
+                        <button class="btn btn-success" data-action="answerVocab" data-arg="true" style="flex:1;max-width:160px;">✅ 记住了</button>
+                    </div>
+                    <button class="btn btn-secondary" data-action="showBooks" style="margin-top:30px;font-size:0.85em;">稍后再来</button>
+                </div>`;
+        }
+
+        async function answerVocab(correct) {
+            const w = reviewQueue[reviewIdx];
+            try {
+                const r = await fetch('/api/vocab/review', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ word: w.word, correct }),
+                });
+                const j = await r.json();
+                if (j.success) {
+                    reviewQueue[reviewIdx].state = j.review.state;
+                }
+            } catch (e) { /* 静默 */ }
+            reviewIdx++;
+            showNextCard();
+        }
+
+        async function lookupWord(word) {
+            const result = document.getElementById('vocab-translate-result');
+            if (!result) return;
+            result.innerHTML = '<span style="color:#999;">查词中...</span>';
+            try {
+                const r = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+                const j = await r.json();
+                let html = '';
+                if (Array.isArray(j) && j[0]?.meanings) {
+                    j[0].meanings.slice(0, 2).forEach(m => {
+                        const def = m.definitions?.[0]?.definition || '';
+                        if (def) html += `<div><b>${m.partOfSpeech || ''}</b>: ${def}</div>`;
+                    });
+                }
+                // 同时拉中文翻译
+                try {
+                    const tr = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=en|zh-CN`);
+                    const tj = await tr.json();
+                    const zh = tj.responseData?.translatedText;
+                    if (zh) html += `<div style="margin-top:10px;color:#666;"><b>中文:</b> ${zh}</div>`;
+                } catch (_) {}
+                result.innerHTML = html || '<span style="color:#999;">没查到, 别灰心, 看下一个</span>';
+            } catch (e) {
+                result.innerHTML = '<span style="color:#999;">查词失败, 可跳到下一题</span>';
+            }
+        }
+
+        // 显示测验
+        function showQuiz() {
+            document.getElementById('practice-view').classList.add('hidden');
+            document.getElementById('quiz-view').classList.remove('hidden');
+            showQuestion();
+        }
+
+        // 测验题库
+        const nc2aQuestions = [
+            { q: "What ___ you ___? - I'm reading.", o: ["are, doing", "do, do", "is, doing"], a: 0 },
+            { q: "She ___ English every day.", o: ["learn", "learns", "learning"], a: 1 },
+            { q: "I go to the cinema ___ a week.", o: ["two times", "once", "one"], a: 1 },
+            { q: "___ are you going to do?", o: ["What", "When", "How"], a: 0 },
+            { q: "I ___ to Beijing last year.", o: ["go", "went", "gone"], a: 1 },
+            { q: "This book is ___.", o: ["my", "mine", "me"], a: 1 },
+            { q: "___ the door, please.", o: ["Open", "Opens", "Opening"], a: 0 },
+            { q: "___ you at school yesterday?", o: ["Was", "Are", "Did"], a: 0 },
+        ];
+
+        // MTH Christmas in Camelot 测验题
+        const mth29Questions = [
+            { q: "Who sent the invitation to Jack and Annie?", o: ["Morgan", "King Arthur", "Merlin"], a: 0 },
+            { q: "What was the white bird?", o: ["A dove", "A sparrow", "An eagle"], a: 0 },
+            { q: "Where did the tree house take them?", o: ["Camelot", "London", "Paris"], a: 0 },
+            { q: "What was wrong with Camelot?", o: ["It was dark and sad", "It was burning", "It was empty"], a: 0 },
+            { q: "Who helped break the spell?", o: ["Jack and Annie", "The knights", "The queen"], a: 0 },
+            { q: "What did Jack use to read the magic rhyme?", o: ["His notebook", "A book", "A scroll"], a: 0 },
+            { q: "What is the magic of the story?", o: ["Kindness", "Power", "Knowledge"], a: 0 },
+            { q: "Where did Jack and Annie live?", o: ["Frog Creek", "London", "Paris"], a: 0 },
+        ];
+
+        function showQuestion() {
+            if (currentQuestion >= 5) { // 每个单元5道题
+                showCompletion();
+                return;
+            }
+
+            // 根据当前书籍选择问题集
+            const questions = currentBook === 'mth29' ? mth29Questions : nc2aQuestions;
+            const q = questions[Math.floor(Math.random() * questions.length)];
+            document.getElementById('question-text').textContent = q.q;
+
+            let html = '';
+            q.o.forEach((opt, i) => {
+                html += `<div class="option" data-action="selectOption" data-arg="${i}" data-arg2="${q.a}">${opt}</div>`;
+            });
+            document.getElementById('options-container').innerHTML = html;
+        }
+
+        function selectOption(selected, correct, _el, ev) {
+            document.querySelectorAll('.option').forEach(o => o.style.pointerEvents = 'none');
+
+            if (selected === correct) {
+                this.classList.add('correct');
+                correctCount++;
+            } else {
+                this.classList.add('wrong');
+                document.querySelectorAll('.option')[correct].classList.add('correct');
+            }
+
+            setTimeout(() => {
+                currentQuestion++;
+                showQuestion();
+            }, 1500);
+        }
+
+        function nextQuestion() {
+            currentQuestion++;
+            showQuestion();
+        }
+
+        function skipQuiz() {
+            showCompletion();
+        }
+
+        // 完成界面
+        function showCompletion() {
+            document.getElementById('quiz-view').classList.add('hidden');
+            document.getElementById('completion-view').classList.remove('hidden');
+
+            const accuracy = totalPractice > 0 ? Math.round((correctCount / Math.max(totalPractice, 5)) * 100) : 0;
+            document.getElementById('completion-stats').innerHTML = `
+                <p>练习句子: ${totalPractice} 句</p>
+                <p>测验正确: ${correctCount} / 5</p>
+            `;
+        }
+
+        // 返回单元/章节选择
+        function showUnits() {
+            if (currentBook === 'mth29') {
+                showMTHChapters();
+            } else {
+                showNC2AUnits();
+            }
+            document.getElementById('practice-view').classList.add('hidden');
+            document.getElementById('quiz-view').classList.add('hidden');
+            document.getElementById('completion-view').classList.add('hidden');
+            currentQuestion = 0;
+            correctCount = 0;
+        }
+
+        // 重新开始本单元/章节
+        function restartUnit() {
+            currentSentence = 0;
+            currentQuestion = 0;
+            correctCount = 0;
+            totalPractice = 0;
+            practiceComplete = 0;
+            if (currentBook === 'mth29') {
+                showMTHChapters();
+            } else {
+                showNC2AUnits();
+            }
+            document.getElementById('practice-view').classList.add('hidden');
+            document.getElementById('quiz-view').classList.add('hidden');
+            document.getElementById('completion-view').classList.add('hidden');
+        }
+
+        // ========== 学习统计 ==========
+        function updateStats(data) {
+            const stats = JSON.parse(localStorage.getItem('shadowStats') || '{}');
+            const today = new Date().toISOString().split('T')[0];
+
+            if (data.sentencesPracticed) stats.sentencesPracticed = (stats.sentencesPracticed || 0) + data.sentencesPracticed;
+            if (data.quizAccuracy !== undefined) stats.quizAccuracy = data.quizAccuracy;
+
+            // 更新每日学习时间
+            if (data.studyTime) {
+                stats.totalStudyTime = (stats.totalStudyTime || 0) + data.studyTime;
+                stats.dailyStudyTime = stats.dailyStudyTime || {};
+                stats.dailyStudyTime[today] = (stats.dailyStudyTime[today] || 0) + data.studyTime;
+            }
+
+            // 更新连续天数
+            const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+            if (stats.lastStudyDate === today) {
+            } else if (stats.lastStudyDate === yesterday) {
+                stats.streakDays = (stats.streakDays || 0) + 1;
+            } else {
+                stats.streakDays = 1;
+            }
+            stats.lastStudyDate = today;
+
+            localStorage.setItem('shadowStats', JSON.stringify(stats));
+            shadowReport({ stats });
+        }
+
+        // PWA 注册
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(() => console.log('SW registered'))
+                .catch(err => console.log('SW registration failed:', err));
+        }
+    

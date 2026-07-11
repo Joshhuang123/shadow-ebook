@@ -1,0 +1,1748 @@
+
+        // 状态
+        let bookData = null;
+        let currentBookId = null;
+        let currentChapterIndex = 0;
+        let currentSentenceIndex = 0;
+        let sentences = [];
+        let audioElement = null;
+        let currentAudioUrl = null;  // 当前 audioElement 的 blob URL, 用于 revoke
+        let isPlaying = false;
+        let ttsRequestSeq = 0;  // 单调递增, 丢弃过期响应, 防止双击叠音
+        let currentWord = null;
+        let vocabulary = JSON.parse(localStorage.getItem('vocabulary') || '[]');
+        let lookedWords = JSON.parse(localStorage.getItem('lookedWords') || '{}');
+
+        // XSS 防御: 字典 API / 翻译 API / 生词本 等所有外部数据用这个转义后再 innerHTML
+        const _escMap = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+        const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => _escMap[c]);
+
+        // TTS音色设置
+        let currentVoice = localStorage.getItem('ttsVoice') || 'en-US-AriaNeural';
+
+        // ==================== IndexedDB TTS 缓存管理 ====================
+        class AudioCacheManager {
+            constructor() {
+                this.dbName = 'ShadowEbookTTS';
+                this.dbVersion = 1;
+                this.storeName = 'audio_cache';
+                this.db = null;
+                this.cacheProgress = {};
+            }
+
+            async open() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(this.dbName, this.dbVersion);
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => { this.db = request.result; resolve(this.db); };
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains(this.storeName)) {
+                            const store = db.createObjectStore(this.storeName, { keyPath: 'id' });
+                            store.createIndex('bookId', 'bookId', { unique: false });
+                            store.createIndex('sentenceIndex', 'sentenceIndex', { unique: false });
+                        }
+                    };
+                });
+            }
+
+            async getSentenceId(bookId, sentenceIndex, text) {
+                const textHash = await this.hashText(text + currentVoice);
+                return `${bookId}_${sentenceIndex}_${textHash}`;
+            }
+
+            async hashText(text) {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(text);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
+            }
+
+            async getAudio(bookId, sentenceIndex, text) {
+                await this.ensureOpen();
+                const id = await this.getSentenceId(bookId, sentenceIndex, text);
+                return new Promise((resolve, reject) => {
+                    const tx = this.db.transaction(this.storeName, 'readonly');
+                    const request = tx.objectStore(this.storeName).get(id);
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => resolve(request.result?.audio || null);
+                });
+            }
+
+            async saveAudio(bookId, sentenceIndex, text, audioBlob) {
+                await this.ensureOpen();
+                const id = await this.getSentenceId(bookId, sentenceIndex, text);
+                return new Promise((resolve, reject) => {
+                    const tx = this.db.transaction(this.storeName, 'readwrite');
+                    const request = tx.objectStore(this.storeName).put({
+                        id, bookId, sentenceIndex, text, audio: audioBlob,
+                        voice: currentVoice, cachedAt: Date.now()
+                    });
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => {
+                        if (!this.cacheProgress[bookId]) this.cacheProgress[bookId] = { cached: 0, total: 0 };
+                        this.cacheProgress[bookId].cached++;
+                        resolve(id);
+                    };
+                });
+            }
+
+            async getBookProgress(bookId) {
+                await this.ensureOpen();
+                return new Promise((resolve, reject) => {
+                    const tx = this.db.transaction(this.storeName, 'readonly');
+                    const request = tx.objectStore(this.storeName).index('bookId').getAll(bookId);
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => {
+                        const cached = request.result || [];
+                        resolve({ cached: cached.length, total: this.cacheProgress[bookId]?.total || 0 });
+                    };
+                });
+            }
+
+            setBookTotal(bookId, total) {
+                if (!this.cacheProgress[bookId]) this.cacheProgress[bookId] = { cached: 0, total: 0 };
+                this.cacheProgress[bookId].total = total;
+            }
+
+            async clearBookCache(bookId) {
+                await this.ensureOpen();
+                return new Promise((resolve, reject) => {
+                    const tx = this.db.transaction(this.storeName, 'readwrite');
+                    const cursor = tx.objectStore(this.storeName).index('bookId').openCursor(bookId);
+                    cursor.onerror = () => reject(cursor.error);
+                    cursor.onsuccess = (event) => {
+                        const cur = event.target.result;
+                        if (cur) { cur.delete(); cur.continue(); }
+                        else { if (this.cacheProgress[bookId]) this.cacheProgress[bookId].cached = 0; resolve(); }
+                    };
+                });
+            }
+
+            async ensureOpen() {
+                if (!this.db) await this.open();
+            }
+        }
+
+        const audioCache = new AudioCacheManager();
+        audioCache.open().catch(console.error);
+
+        // 初始化音色选择器
+        document.getElementById('voice-select').value = currentVoice;
+        document.getElementById('voice-select').addEventListener('change', (e) => changeVoice(e.target.value));
+
+        function changeVoice(voice) {
+            currentVoice = voice;
+            localStorage.setItem('ttsVoice', voice);
+        }
+
+        // 艾宾浩斯复习间隔（天）
+        const REVIEW_INTERVALS = [1, 3, 7, 14, 30];
+
+        // 复习数据
+        let reviewQueue = [];
+        let currentReviewIndex = 0;
+        let reviewCorrect = 0;
+        let reviewWrong = 0;
+
+        // 录音状态
+        let isRecording = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let recognition = null;
+        let currentMode = 'read';  // 'read' 或 'shadow'
+
+        // 初始化
+        updateVocabCount();
+        updateReviewReminder();
+        loadBookList();
+
+        // 显示书籍列表
+        function showBookList() {
+            document.getElementById('book-list-page').classList.remove('hidden');
+            document.getElementById('reader-page').classList.remove('active');
+            loadBookList();
+        }
+
+        // 显示阅读器
+        function showReader() {
+            initFontSize();
+            document.getElementById('book-list-page').classList.add('hidden');
+            document.getElementById('reader-page').classList.add('active');
+            // R10b: 显示 sticky 控制条 (fixed 钉底部)
+            document.querySelector('.reader-controls-sticky')?.classList.add('visible');
+        }
+
+        // R10: 全局缓存家长登录状态, 让 import 卡片显示"需先登录"提示
+        let parentAuthed = false;
+        async function refreshParentAuth() {
+            try {
+                const r = await fetch('/api/parent/check');
+                const d = await r.json();
+                parentAuthed = d.authenticated === true;
+            } catch (e) {
+                parentAuthed = false;
+            }
+        }
+        // 页面加载时查一次, login/logout 之后再查
+        refreshParentAuth();
+
+        // R10: 左侧 TOC 侧边栏折叠 (改 grid 模板让 1fr 占满)
+        function toggleTocSidebar() {
+            const sidebar = document.getElementById('toc-sidebar');
+            const main = document.getElementById('reader-main');
+            const btn = document.getElementById('toc-toggle');
+            const fab = document.getElementById('toc-fab');
+            const collapsed = sidebar.classList.toggle('collapsed');
+            main.classList.toggle('toc-collapsed', collapsed);
+            btn.textContent = collapsed ? '▶' : '◀';
+            btn.title = collapsed ? '展开目录' : '折叠目录';
+            if (fab) fab.classList.toggle('hidden', !collapsed);
+            try { localStorage.setItem('toc-collapsed', collapsed ? '1' : '0'); } catch (e) {}
+        }
+        try {
+            if (localStorage.getItem('toc-collapsed') === '1') {
+                document.getElementById('toc-sidebar').classList.add('collapsed');
+                document.getElementById('reader-main').classList.add('toc-collapsed');
+                const b = document.getElementById('toc-toggle');
+                if (b) { b.textContent = '▶'; b.title = '展开目录'; }
+                const fab = document.getElementById('toc-fab');
+                if (fab) fab.classList.remove('hidden');
+            }
+        } catch (e) {}
+
+        // R10: 右侧控制栏折叠 (改 grid 模板让 1fr 占满)
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const main = document.getElementById('reader-main');
+            const btn = document.getElementById('sidebar-toggle');
+            const fab = document.getElementById('controls-fab');
+            const collapsed = sidebar.classList.toggle('collapsed');
+            main.classList.toggle('sidebar-collapsed', collapsed);
+            btn.textContent = collapsed ? '◀' : '▶';
+            btn.title = collapsed ? '展开控制' : '折叠控制';
+            if (fab) fab.classList.toggle('hidden', !collapsed);
+            try { localStorage.setItem('sidebar-collapsed', collapsed ? '1' : '0'); } catch (e) {}
+        }
+        try {
+            if (localStorage.getItem('sidebar-collapsed') === '1') {
+                document.getElementById('sidebar').classList.add('collapsed');
+                document.getElementById('reader-main').classList.add('sidebar-collapsed');
+                const b = document.getElementById('sidebar-toggle');
+                if (b) { b.textContent = '◀'; b.title = '展开控制'; }
+                const fab = document.getElementById('controls-fab');
+                if (fab) fab.classList.remove('hidden');
+            }
+        } catch (e) {}
+
+        // R10: 简易 toast (章节边界未识别等临时提示用)
+        function showToast(msg, ms) {
+            const t = document.createElement('div');
+            t.textContent = msg;
+            t.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.78);color:white;padding:10px 20px;border-radius:8px;z-index:9999;font-size:0.9em;';
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), ms || 2500);
+        }
+
+        // 加载书籍列表
+        async function loadBookList() {
+            try {
+                const res = await fetch('/api/books');
+                const data = await res.json();
+                const grid = document.getElementById('book-grid');
+
+                if (data.success && data.books.length > 0) {
+                    // 按蓝思值分组
+                    const low = data.books.filter(b => b.lexile >= 500 && b.lexile < 800);
+                    const mid = data.books.filter(b => b.lexile >= 800 && b.lexile <= 1000);
+                    const high = data.books.filter(b => b.lexile > 1000 || b.lexile === 0);
+
+                    let html = '';
+
+                    function getLevelClass(lexile) {
+                        if (lexile >= 500 && lexile < 800) return 'beginner';
+                        if (lexile >= 800 && lexile <= 1000) return 'intermediate';
+                        return 'advanced';
+                    }
+
+                    function getSearchTitle(title) {
+                        // 清理书名用于搜索
+                        return title.replace(/[_-]/g, ' ').replace(/J\. K\./g, 'JK').replace(/Rick Riordan/g, '').replace(/Jeff Kinney/g, '').trim();
+                    }
+
+                    function getCoverUrl(book) {
+                        // 优先使用本地封面
+                        if (book.cover) {
+                            return book.cover;
+                        }
+                        // 降级使用Open Library网络封面
+                        const searchTitle = getSearchTitle(book.title);
+                        return `https://covers.openlibrary.org/b/title/${encodeURIComponent(searchTitle)}-M.jpg`;
+                    }
+
+                    function renderShelf(books, icon, name, level, levelClass) {
+                        if (books.length === 0) return '';
+                        let html = `<div class="bookshelf-section">
+                            <div class="shelf-label ${levelClass}">
+                                <span class="shelf-label-icon">${icon}</span>
+                                <span class="shelf-label-text">${name}</span>
+                                <span class="shelf-label-level">${level}</span>
+                            </div>
+                            <div class="bookshelf">`;
+                        books.forEach((b, i) => {
+                            const levelClass = getLevelClass(b.lexile);
+                            const coverUrl = getCoverUrl(b);
+                            const hasLocalCover = !!b.cover;
+                            const fallbackColor = ['#B86A4E-#9A5238', '#5C7A4A-#3D5A2E', '#C8985F-#A07A45', '#7A3A40-#5A2A30', '#4A6B3A-#2D4A20', '#8B4A2C-#5C2E18', '#A04B47-#7A3530'][i % 7];
+
+                            // R9: 作者显示 — fallback 文本下加一行; tooltip 也带作者
+                            const authorLine = b.author ? `<div class="book-cover-author">${b.author}</div>` : '';
+                            const tooltip = b.author ? `${b.title} — ${b.author}` : b.title;
+
+                            html += `
+                                <div class="book-spine" data-action="loadBook" data-arg="${b.id}" title="${tooltip.replace(/"/g, '&quot;')}">
+                                    <span class="lexile-badge ${levelClass}">${b.lexile > 0 ? b.lexile + 'L' : '?'}</span>
+                                    <span class="cache-badge" id="cache-badge-${b.id}" style="display:none;"></span>
+                                    <button class="book-delete-btn" data-action="clickStopDeleteBook" data-arg="${b.id}" data-arg2="${b.title.replace(/'/g, '&#39;')}" title="删除">×</button>
+                                    <button class="cache-audio-btn" data-action="clickStopCacheAudio" data-arg="${b.id}" title="缓存音频">🔊</button>
+                                    <div class="book-cover" style="background:linear-gradient(135deg,${fallbackColor});">
+                                        <img class="book-cover-img" src="${coverUrl}" alt="${b.title}"
+                                             style="width:100%;height:100%;object-fit:cover;border-radius:6px;opacity:0;">
+                                        <span class="book-cover-fallback" style="position:absolute;color:white;font-size:0.75em;font-weight:600;text-align:center;line-height:1.3;padding:8px;text-shadow:1px 1px 2px rgba(0,0,0,0.5);">${b.title}${authorLine}</span>
+                                    </div>
+                                    <div class="book-spine-base"></div>
+                                </div>
+                            `;
+                        });
+                        html += `</div></div>`;
+                        return html;
+                    }
+
+                    html += renderShelf(low, '🌱', '入门级', '500-800L', 'beginner');
+                    html += renderShelf(mid, '📖', '进阶级', '800-1000L', 'intermediate');
+                    html += renderShelf(high, '🏆', '高级', '1000L+', 'advanced');
+
+                    grid.innerHTML = html;
+                    // R16.x: 封面图淡入 (替代原 onload="this.style.opacity='1'...")
+                    grid.querySelectorAll('img.book-cover-img').forEach(img => {
+                        img.addEventListener('load', () => {
+                            img.style.opacity = '1';
+                            if (img.nextElementSibling) img.nextElementSibling.style.opacity = '0';
+                        });
+                        img.addEventListener('error', () => { img.style.display = 'none'; });
+                    });
+                } else {
+                    grid.innerHTML = '<div style="text-align:center;color:var(--text-secondary);padding:60px;font-size:1.2em;">还没有书籍，请导入 EPUB</div>';
+                }
+
+                // 添加导入卡片 (用 insertAdjacentHTML 避免 innerHTML+= 的 re-parse)
+                // R10: 提示家长"需先登录" 免得点了之后才发现要鉴权
+                const importHint = parentAuthed ? '支持 EPUB 格式' : '需先在 /parent 登录';
+                grid.insertAdjacentHTML('beforeend', `
+                    <div class="import-card" data-action="clickTriggerImportFile">
+                        <div class="icon">➕</div>
+                        <div class="text">导入新书</div>
+                        <div class="hint">${importHint}</div>
+                    </div>
+                `);
+            } catch (err) {
+                console.error('Failed to load book list:', err);
+            }
+
+            // 更新所有书的缓存进度
+            updateAllCacheBadges();
+        }
+
+        // 更新所有书的缓存进度徽章
+        async function updateAllCacheBadges() {
+            const badges = document.querySelectorAll('[id^="cache-badge-"]');
+            for (const badge of badges) {
+                const bookId = badge.id.replace('cache-badge-', '');
+                try {
+                    const progress = await audioCache.getBookProgress(bookId);
+                    if (progress.total > 0 && progress.cached > 0) {
+                        badge.textContent = `🔊 ${progress.cached}/${progress.total}`;
+                        badge.style.display = 'inline-block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                } catch (e) {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+
+        // 缓存整本书的音频（后台执行）
+        async function cacheBookAudio(bookId) {
+            const btn = document.querySelector(`.cache-audio-btn[onclick*="${bookId}"]`);
+            if (btn) {
+                btn.classList.add('caching');
+                btn.textContent = '⏳';
+            }
+
+            try {
+                // 获取书籍数据
+                const res = await fetch(`/api/book/${bookId}`);
+                const data = await res.json();
+                if (!data.success) return;
+
+                const book = data.book;
+                let totalSentences = 0;
+                book.chapters.forEach(ch => totalSentences += ch.sentences.length);
+
+                // 设置总数
+                audioCache.setBookTotal(bookId, totalSentences);
+
+                // 逐句缓存
+                let cached = 0;
+                for (const chapter of book.chapters) {
+                    for (let i = 0; i < chapter.sentences.length; i++) {
+                        const text = chapter.sentences[i];
+                        if (!text || text.length > 500) continue;
+
+                        // 检查是否已缓存
+                        const existing = await audioCache.getAudio(bookId, i, text);
+                        if (existing) continue;
+
+                        // 生成并缓存
+                        try {
+                            const ttsRes = await fetch('/api/tts', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ text, voice: currentVoice })
+                            });
+                            const ttsData = await ttsRes.json();
+                            if (ttsData.success && ttsData.audio_url) {
+                                const audioRes = await fetch(ttsData.audio_url);
+                                const audioBlob = await audioRes.blob();
+                                await audioCache.saveAudio(bookId, i, text, audioBlob);
+                                cached++;
+                            }
+                        } catch (e) {}
+
+                        // 更新进度
+                        const badge = document.getElementById(`cache-badge-${bookId}`);
+                        if (badge) {
+                            badge.textContent = `🔊 ${cached}/${totalSentences}`;
+                            badge.style.display = 'inline-block';
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Cache failed:', e);
+            }
+
+            if (btn) {
+                btn.classList.remove('caching');
+                btn.textContent = '🔊';
+            }
+        }
+
+        // 加载书籍
+        async function loadBook(bookId) {
+            try {
+                const res = await fetch(`/api/book/${bookId}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    bookData = data.book;
+                    currentBookId = bookId;
+                    document.getElementById('reader-title').textContent = bookData.book;
+
+                    // R9: 渲染顶部"关于此书"卡
+                    renderBookInfoCard(bookData);
+
+                    // R9: 渲染左侧真 TOC 侧边栏 (用真 toc 优先, 降级到 chapter 列表)
+                    renderTocSidebar(bookData);
+
+                    // 兼容旧版: 顶部 chapter-tabs 容器已删除, 移除旧渲染
+                    const legacyTabs = document.getElementById('chapter-tabs');
+                    if (legacyTabs) legacyTabs.innerHTML = '';
+
+                    selectChapter(0);
+                    showReader();
+                    calculateAR();
+                }
+            } catch (err) {
+                console.error('Failed to load book:', err);
+            }
+        }
+
+        // R9: 渲染左侧 TOC 侧边栏 — 用真 toc, 没有时降级到 chapter 列表
+        function renderTocSidebar(book) {
+            const list = document.getElementById('toc-list');
+            list.innerHTML = '';
+            const toc = book.toc || [];
+            const chapters = book.chapters || [];
+
+            // 优先用真 toc
+            if (toc.length > 0) {
+                toc.forEach((entry, i) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'toc-item' + (i === 0 ? ' active' : '');
+                    btn.innerHTML = `<div>${entry.title}</div><div class="toc-item-meta">第 ${i + 1} 章</div>`;
+                    btn.onclick = () => {
+                        // 真 toc 的 href 跟 chapters 数组里没严格对应, 但顺序一般对得上
+                        // 找不到匹配的 chapter 时, fall back 到第 i 个
+                        const idx = Math.min(i, chapters.length - 1);
+                        // R10: toc 项数远大于 chapter 数(扫描版/无 h1 的书)时,
+                        // 所有点击都落到 chapter 0, 视觉上"没用"。给个提示告诉家长真相。
+                        if (toc.length > chapters.length * 2) {
+                            showToast('此书未识别章节边界,目录仅供参考');
+                            return;
+                        }
+                        selectChapter(idx);
+                    };
+                    list.appendChild(btn);
+                });
+                // 章节边界未识别时, 在 list 底部再放一次提示
+                if (toc.length > chapters.length * 2) {
+                    list.insertAdjacentHTML('beforeend',
+                        '<div class="toc-empty" style="margin-top:8px">⚠️ 此书未识别章节边界,目录仅供参考</div>');
+                }
+            } else if (chapters.length > 0) {
+                // 降级: 用 chapter.name 当目录项
+                chapters.forEach((ch, i) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'toc-item' + (i === 0 ? ' active' : '');
+                    btn.textContent = ch.name || `第 ${i + 1} 章`;
+                    btn.onclick = () => selectChapter(i);
+                    list.appendChild(btn);
+                });
+            } else {
+                list.innerHTML = '<div class="toc-empty">无目录信息</div>';
+            }
+        }
+
+        // R9: 渲染顶部"关于此书"卡 — 封面 + 标题 + 作者/出版/年份 + 简介 (可展开)
+        function renderBookInfoCard(book) {
+            const card = document.getElementById('book-info-card');
+            card.style.display = 'flex';
+
+            // 封面 (有本地 cover 用本地, 没有显示 fallback 色块)
+            const coverSlot = document.getElementById('book-info-cover-slot');
+            if (book.cover) {
+                const safeTitle = (book.book || '').replace(/'/g, '&#39;');
+                coverSlot.innerHTML = `<img class="book-info-cover" src="${book.cover}" alt="${(book.book || '').replace(/"/g, '&quot;')}">`;
+                const img = coverSlot.querySelector('.book-info-cover');
+                if (img) img.addEventListener('error', () => {
+                    img.outerHTML = `<div class="book-info-cover-fallback">${safeTitle}</div>`;
+                });
+            } else {
+                coverSlot.innerHTML = `<div class="book-info-cover-fallback">${book.book || ''}</div>`;
+            }
+
+            // 标题
+            document.getElementById('book-info-title').textContent = book.book || '';
+
+            // meta 行: 作者 · 出版 · 年份 · 语言 · 标识符
+            const meta = document.getElementById('book-info-meta');
+            const parts = [];
+            if (book.creator) parts.push(`<span>👤 ${book.creator}</span>`);
+            if (book.publisher) parts.push(`<span>📚 ${book.publisher}</span>`);
+            if (book.year) parts.push(`<span>📅 ${book.year}</span>`);
+            if (book.language) parts.push(`<span>🌐 ${book.language}</span>`);
+            if (book.identifier) parts.push(`<span>🆔 ${book.identifier}</span>`);
+            meta.innerHTML = parts.join('') || '<span>无出版信息</span>';
+
+            // 简介 (有描述才显示)
+            const desc = document.getElementById('book-info-description');
+            const toggle = document.getElementById('book-info-toggle');
+            if (book.description) {
+                desc.textContent = book.description;
+                desc.classList.remove('expanded');
+                desc.classList.add('collapsed');
+                // 内容超 4.8em 时显示 "展开"
+                if (desc.scrollHeight > desc.clientHeight + 4) {
+                    toggle.style.display = 'inline';
+                    toggle.textContent = '展开 ↓';
+                    toggle.onclick = () => {
+                        const expanded = desc.classList.toggle('expanded');
+                        desc.classList.toggle('collapsed', !expanded);
+                        toggle.textContent = expanded ? '收起 ↑' : '展开 ↓';
+                    };
+                } else {
+                    toggle.style.display = 'none';
+                }
+            } else {
+                desc.textContent = '';
+                toggle.style.display = 'none';
+            }
+        }
+
+        // 选择章节
+        function selectChapter(index) {
+            currentChapterIndex = parseInt(index);
+            sentences = bookData.chapters[currentChapterIndex].sentences;
+            currentSentenceIndex = 0;
+
+            // R9: 更新左侧 TOC 高亮 (替代旧的 chapter-tab 高亮)
+            document.querySelectorAll('.toc-item').forEach((item, i) => {
+                item.classList.toggle('active', i === currentChapterIndex);
+            });
+
+            // 更新章节导航按钮 (R10: 抽到 sticky bar 后, 这俩 ID 在隐藏 sidebar 里可能不存在 — 防御性判空)
+            const prevBtn = document.getElementById('btn-chapter-prev');
+            const nextBtn = document.getElementById('btn-chapter-next');
+            if (prevBtn) prevBtn.disabled = currentChapterIndex === 0;
+            if (nextBtn) nextBtn.disabled = currentChapterIndex >= bookData.chapters.length - 1;
+
+            updateDisplay();
+            clearTranslation();
+        }
+
+        // 上一章
+        function prevChapter() {
+            if (currentChapterIndex > 0) {
+                selectChapter(currentChapterIndex - 1);
+            }
+        }
+
+        // 下一章
+        function nextChapter() {
+            if (currentChapterIndex < bookData.chapters.length - 1) {
+                selectChapter(currentChapterIndex + 1);
+            }
+        }
+
+        // 跳转到句子
+        function jumpTo(index) {
+            currentSentenceIndex = index;
+            updateDisplay();
+            translateSentence(sentences[index]);
+            scrollToCurrentSentence();
+            playCurrentSentence();
+        }
+
+        // 导航
+        function prevSentence() {
+            if (currentSentenceIndex > 0) {
+                currentSentenceIndex--;
+                updateDisplay();
+                translateSentence(sentences[currentSentenceIndex]);
+                scrollToCurrentSentence();
+            }
+        }
+
+        function nextSentence() {
+            if (currentSentenceIndex < sentences.length - 1) {
+                currentSentenceIndex++;
+                updateDisplay();
+                translateSentence(sentences[currentSentenceIndex]);
+                scrollToCurrentSentence();
+            }
+        }
+
+        // 翻译句子
+        async function translateSentence(sentence) {
+            const el = document.getElementById('translation-content');
+            if (el) el.innerHTML = '<div class="translation-loading">翻译中...</div>';
+
+            // R10: sidebar 折叠时用户看不到 translation-content, 同时弹 toast
+            showToast('翻译中...', 1500);
+
+            try {
+                const res = await fetch(
+                    `https://api.mymemory.translated.net/get?q=${encodeURIComponent(sentence)}&langpair=en|zh-CN`
+                );
+                const data = await res.json();
+
+                if (data.responseStatus === 200 && data.responseData?.translatedText) {
+                    const text = data.responseData.translatedText;
+                    if (el) el.innerHTML = `<div class="sentence-translation-text">${text}</div>`;
+                    showToast(text, 5000);  // 弹 5s, 折叠 sidebar 也能看到
+                } else {
+                    if (el) el.innerHTML = '<div class="translation-content">翻译失败</div>';
+                    showToast('翻译失败: API 未返回结果', 3000);
+                }
+            } catch (err) {
+                if (el) el.innerHTML = '<div class="translation-content">翻译失败</div>';
+                showToast('翻译失败: 网络错误', 3000);
+            }
+        }
+
+        function clearTranslation() {
+            document.getElementById('translation-content').innerHTML = '点击上方句子，查看翻译';
+        }
+
+        // 查词
+        async function lookupWord(word, element, event) {
+            event.stopPropagation();
+            const cleanWord = word.replace(/[^a-zA-Z]/g, '').toLowerCase();
+            if (!cleanWord) return;
+
+            currentWord = cleanWord;
+
+            // 如果已经标记过，则取消标记
+            if (lookedWords[cleanWord]) {
+                element.classList.remove('looked');
+                delete lookedWords[cleanWord];
+                localStorage.setItem('lookedWords', JSON.stringify(lookedWords));
+                shadowReport({ vocabulary: { lookedWords } });
+                return;
+            }
+
+            // 标记为已查
+            element.classList.add('looked');
+            lookedWords[cleanWord] = true;
+            localStorage.setItem('lookedWords', JSON.stringify(lookedWords));
+            shadowReport({ vocabulary: { lookedWords } });
+
+            const modal = document.getElementById('word-modal');
+            document.getElementById('modal-word').textContent = cleanWord;
+            document.getElementById('modal-phonetic').textContent = '加载中...';
+            document.getElementById('modal-meanings').innerHTML = '<div class="translation-loading">查询中...</div>';
+            modal.classList.add('show');
+
+            // 更新生词本按钮状态
+            const vocabBtn = document.getElementById('btn-add-vocab');
+            vocabBtn.textContent = vocabulary.find(v => v.word === cleanWord) ? '✓ 已收录' : '+ 生词本';
+            vocabBtn.disabled = !!vocabulary.find(v => v.word === cleanWord);
+
+            try {
+                const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`);
+                const data = await res.json();
+
+                if (data && data.length > 0) {
+                    const entry = data[0];
+                    document.getElementById('modal-phonetic').textContent = entry.phonetic || '';
+
+                    // 收集所有释义并获取中文翻译
+                    const meanings = [];
+                    entry.meanings.slice(0, 3).forEach(m => {
+                        m.definitions.slice(0, 2).forEach(def => {
+                            meanings.push({ part: m.partOfSpeech, def: def.definition, example: def.example });
+                        });
+                    });
+
+                    // 批量获取中文翻译
+                    const cnPromises = meanings.map(m =>
+                        fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(m.def)}&langpair=en|zh-CN`)
+                            .then(res => res.json())
+                            .then(cnData => cnData?.responseData?.translatedText || '')
+                            .catch(() => '')
+                    );
+
+                    Promise.all(cnPromises).then(cnDefs => {
+                        let html = '';
+                        meanings.forEach((m, i) => {
+                            html += `
+                                <div class="word-meaning-item">
+                                    <div class="word-meaning-part">${escapeHtml(m.part)}</div>
+                                    <div class="word-meaning-def">${escapeHtml(m.def)}</div>
+                                    ${cnDefs[i] ? `<div class="word-meaning-cn">${escapeHtml(cnDefs[i])}</div>` : ''}
+                                    ${m.example ? `<div class="word-meaning-example">"${escapeHtml(m.example)}"</div>` : ''}
+                                </div>
+                            `;
+                        });
+                        document.getElementById('modal-meanings').innerHTML = html || '<div>未找到释义</div>';
+                    });
+                } else {
+                    document.getElementById('modal-meanings').innerHTML = '<div>未找到释义</div>';
+                }
+            } catch (err) {
+                document.getElementById('modal-meanings').innerHTML = '<div>查询失败</div>';
+            }
+        }
+
+        function closeWordModal() {
+            document.getElementById('word-modal').classList.remove('show');
+        }
+
+        // 发音 (使用微软edge-tts)
+        function playPronunciation() {
+            if (!currentWord) return;
+
+            // 优先使用微软edge-tts
+            fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: currentWord, voice: currentVoice })
+            }).then(res => res.json()).then(data => {
+                if (data.success) new Audio(data.audio_url).play();
+            }).catch(err => {
+                // 降级使用浏览器TTS
+                if ('speechSynthesis' in window) {
+                    speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(currentWord);
+                    utterance.lang = 'en-US';
+                    utterance.rate = 0.9;
+                    speechSynthesis.speak(utterance);
+                }
+            });
+        }
+
+        // 生词本
+        function addToVocab() {
+            if (!currentWord) return;
+            if (vocabulary.find(v => v.word === currentWord)) return;
+
+            const meaningEl = document.getElementById('modal-meanings');
+            const parts = meaningEl.querySelectorAll('.word-meaning-part');
+            const defs = meaningEl.querySelectorAll('.word-meaning-def');
+
+            let meaning = '';
+            parts.forEach((p, i) => {
+                if (defs[i]) meaning += `${p.textContent}: ${defs[i].textContent}; `;
+            });
+
+            // 艾宾浩斯：明天复习
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            vocabulary.push({
+                word: currentWord,
+                meaning: meaning || '未找到释义',
+                book: bookData?.book || 'Unknown',
+                chapter: bookData?.chapters[currentChapterIndex]?.name || 'Unknown',
+                date: new Date().toLocaleDateString(),
+                nextReview: tomorrow.toISOString().split('T')[0],
+                level: 0
+            });
+
+            localStorage.setItem('vocabulary', JSON.stringify(vocabulary));
+            shadowReport({ vocabulary: { newWords: vocabulary } });
+            updateVocabCount();
+            renderVocabList();
+            updateReviewReminder();
+            updateStats({ wordsLearned: 1 });
+
+            const vocabBtn = document.getElementById('btn-add-vocab');
+            vocabBtn.textContent = '✓ 已收录';
+            vocabBtn.disabled = true;
+        }
+
+        function updateVocabCount() {
+            document.getElementById('vocab-count').textContent = `(${vocabulary.length})`;
+        }
+
+        function renderVocabList() {
+            const list = document.getElementById('vocab-list');
+            if (vocabulary.length === 0) {
+                list.innerHTML = '<div class="vocab-empty">点击单词加入生词本</div>';
+                return;
+            }
+            list.innerHTML = vocabulary.slice(-10).reverse().map(v => {
+                const m = escapeHtml((v.meaning || '').substring(0, 50)) + (v.meaning && v.meaning.length > 50 ? '...' : '');
+                return `
+                <div class="vocab-item">
+                    <div class="vocab-word">${escapeHtml(v.word)}</div>
+                    <div class="vocab-meaning">${m}</div>
+                </div>
+            `;}).join('');
+        }
+
+        // ========== 艾宾浩斯复习系统 ==========
+
+        // 获取需要复习的单词
+        function getWordsForReview() {
+            const today = new Date().toISOString().split('T')[0];
+            return vocabulary.filter(v => {
+                // 没有复习日期的单词需要复习
+                if (!v.nextReview) return true;
+                // 复习日期 <= 今天需要复习
+                if (v.nextReview <= today) return true;
+                return false;
+            });
+        }
+
+        // 更新复习提醒
+        function updateReviewReminder() {
+            const toReview = getWordsForReview();
+            const badge = document.getElementById('review-badge');
+            const count = document.getElementById('review-count');
+            const btn = document.getElementById('btn-start-review');
+
+            if (toReview.length > 0) {
+                badge.classList.remove('hidden');
+                count.textContent = toReview.length;
+                btn.style.display = 'block';
+            } else {
+                badge.classList.add('hidden');
+                btn.style.display = 'none';
+            }
+        }
+
+        // 开始复习
+        function startReview() {
+            reviewQueue = getWordsForReview();
+            if (reviewQueue.length === 0) {
+                alert('暂无需要复习的单词！');
+                return;
+            }
+            currentReviewIndex = 0;
+            reviewCorrect = 0;
+            reviewWrong = 0;
+            showReviewCard();
+            document.getElementById('review-modal').classList.add('show');
+        }
+
+        // 显示复习卡片
+        function showReviewCard() {
+            if (currentReviewIndex >= reviewQueue.length) {
+                showReviewDone();
+                return;
+            }
+
+            const word = reviewQueue[currentReviewIndex];
+            const content = document.getElementById('review-content');
+            content.innerHTML = `
+                <div class="review-progress">${currentReviewIndex + 1} / ${reviewQueue.length}</div>
+                <div class="review-word">${escapeHtml(word.word)}</div>
+                <div class="review-meaning">${escapeHtml(word.meaning)}</div>
+                <div class="review-buttons">
+                    <button class="review-btn wrong" data-action="reviewAnswer" data-arg="false">不认识</button>
+                    <button class="review-btn correct" data-action="reviewAnswer" data-arg="true">认识 ✓</button>
+                </div>
+            `;
+        }
+
+        // 复习答题
+        function reviewAnswer(correct) {
+            const word = reviewQueue[currentReviewIndex];
+
+            if (correct) {
+                reviewCorrect++;
+                // 答对了，提升复习间隔
+                word.level = (word.level || 0) + 1;
+                const intervalIndex = Math.min(word.level, REVIEW_INTERVALS.length - 1);
+                const days = REVIEW_INTERVALS[intervalIndex];
+                const next = new Date();
+                next.setDate(next.getDate() + days);
+                word.nextReview = next.toISOString().split('T')[0];
+            } else {
+                reviewWrong++;
+                // 答错了，重置间隔
+                word.level = 0;
+                const next = new Date();
+                next.setDate(next.getDate() + 1);
+                word.nextReview = next.toISOString().split('T')[0];
+            }
+
+            // 保存到 localStorage
+            localStorage.setItem('vocabulary', JSON.stringify(vocabulary));
+            shadowReport({ vocabulary: { newWords: vocabulary } });
+
+            currentReviewIndex++;
+            setTimeout(showReviewCard, 300);
+        }
+
+        // 复习完成
+        function showReviewDone() {
+            const content = document.getElementById('review-content');
+            const accuracy = reviewQueue.length > 0 ? Math.round((reviewCorrect / reviewQueue.length) * 100) : 0;
+
+            content.innerHTML = `
+                <div class="review-done">
+                    <div class="review-done-icon">${accuracy >= 80 ? '🎉' : accuracy >= 50 ? '👍' : '💪'}</div>
+                    <h3>${accuracy >= 80 ? '太棒了！' : accuracy >= 50 ? '不错！' : '继续加油！'}</h3>
+                    <p style="color:var(--text-secondary);margin:10px 0;">本次复习完成</p>
+                    <div class="review-stats">
+                        <div class="review-stat">
+                            <div class="review-stat-value correct">${reviewCorrect}</div>
+                            <div>认识</div>
+                        </div>
+                        <div class="review-stat">
+                            <div class="review-stat-value wrong">${reviewWrong}</div>
+                            <div>不认识</div>
+                        </div>
+                    </div>
+                    <p style="color:var(--text-secondary);">正确率: ${accuracy}%</p>
+                    <button class="btn btn-primary" data-action="closeReviewModal" style="margin-top:20px;">完成</button>
+                </div>
+            `;
+
+            // 更新统计
+            updateStats({ wordsMastered: reviewCorrect });
+            updateReviewReminder();
+        }
+
+        // 关闭复习弹窗
+        function closeReviewModal() {
+            document.getElementById('review-modal').classList.remove('show');
+            updateReviewReminder();
+            renderVocabList();
+        }
+
+        // AR 计算
+        function calculateAR() {
+            if (!bookData) return;
+
+            let totalWords = 0, totalSentences = 0, uniqueWords = new Set(), totalSyllables = 0;
+
+            bookData.chapters.forEach(ch => {
+                ch.sentences.forEach(sent => {
+                    const words = sent.split(/\s+/).filter(w => /^[a-zA-Z]+$/.test(w));
+                    totalWords += words.length;
+                    totalSentences++;
+                    words.forEach(w => {
+                        uniqueWords.add(w.toLowerCase());
+                        totalSyllables += countSyllables(w);
+                    });
+                });
+            });
+
+            const avgWordLength = totalWords > 0 ? (totalSyllables / totalWords) : 0;
+            const avgSentenceLength = totalSentences > 0 ? (totalWords / totalSentences) : 0;
+            const ar = 4.86 + (0.12 * avgSentenceLength) + (0.05 * avgWordLength);
+
+            document.getElementById('ar-display').textContent = ar.toFixed(1);
+            document.getElementById('ar-words').textContent = totalWords;
+            document.getElementById('ar-sentences').textContent = totalSentences;
+        }
+
+        function countSyllables(word) {
+            word = word.toLowerCase();
+            if (word.length <= 3) return 1;
+            word = word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, '');
+            word = word.replace(/^y/, '');
+            const matches = word.match(/[aeiouy]{1,2}/g);
+            return matches ? matches.length : 1;
+        }
+
+        function showARPanel() {
+            if (!bookData) return;
+            calculateAR();
+            document.getElementById('modal-ar-value').textContent = document.getElementById('ar-display').textContent;
+            document.getElementById('modal-ar-words').textContent = document.getElementById('ar-words').textContent;
+            document.getElementById('modal-ar-sentences').textContent = document.getElementById('ar-sentences').textContent;
+
+            let totalWords = 0, totalSentences = 0, uniqueWords = new Set(), totalSyllables = 0;
+            bookData.chapters.forEach(ch => {
+                ch.sentences.forEach(sent => {
+                    const words = sent.split(/\s+/).filter(w => /^[a-zA-Z]+$/.test(w));
+                    totalWords += words.length;
+                    totalSentences++;
+                    words.forEach(w => {
+                        uniqueWords.add(w.toLowerCase());
+                        totalSyllables += countSyllables(w);
+                    });
+                });
+            });
+            document.getElementById('modal-ar-unique').textContent = uniqueWords.size;
+            document.getElementById('modal-ar-avg').textContent = (totalWords > 0 ? (totalSyllables / totalWords) : 0).toFixed(1);
+
+            document.getElementById('ar-modal').classList.add('show');
+        }
+
+        function closeARPanel() {
+            document.getElementById('ar-modal').classList.remove('show');
+        }
+
+        // TTS 播放 (优先使用微软edge-tts，备用浏览器TTS)
+        // 使用Web Speech API播放并缓存
+        async function playWithCache(text, onEnd) {
+            const btn = document.getElementById('btn-play');
+            const status = document.getElementById('status-playing');
+
+            // 防双击叠音: 每次调用都生成一个 token, await 后只接受最新的
+            const myToken = ++ttsRequestSeq;
+
+            // 1. 优先从缓存读取
+            const cachedAudio = await audioCache.getAudio(currentBookId, currentSentenceIndex, text);
+            if (myToken !== ttsRequestSeq) return;  // 已被新调用覆盖, 丢弃
+            if (cachedAudio) {
+                if (audioElement) audioElement.pause();
+                if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
+                currentAudioUrl = URL.createObjectURL(cachedAudio);
+                audioElement = new Audio(currentAudioUrl);
+                isPlaying = true;
+
+                audioElement.onended = () => {
+                    isPlaying = false;
+                    btn.disabled = false;
+                    status.classList.add('hidden');
+                    if (onEnd) onEnd();
+                    // 自动缓存下一句
+                    cacheNextSentence();
+                };
+                audioElement.onerror = () => {
+                    // 缓存失效，使用Web Speech API
+                    playWithWebSpeech(text, onEnd);
+                };
+                audioElement.play();
+                return;
+            }
+
+            // 2. 缓存没有，使用Web Speech API
+            playWithWebSpeech(text, onEnd);
+        }
+
+        // 使用Web Speech API播放
+        function playWithWebSpeech(text, onEnd) {
+            const btn = document.getElementById('btn-play');
+            const status = document.getElementById('status-playing');
+
+            if (!('speechSynthesis' in window)) {
+                btn.disabled = false;
+                status.classList.add('hidden');
+                return;
+            }
+
+            speechSynthesis.cancel();
+
+            // 等待音色加载
+            const voices = speechSynthesis.getVoices();
+            const voice = voices.find(v => v.lang.startsWith('en')) || voices[0];
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.9;
+            utterance.voice = voice;
+
+            utterance.onend = () => {
+                isPlaying = false;
+                btn.disabled = false;
+                status.classList.add('hidden');
+                if (onEnd) onEnd();
+                // 缓存这句
+                cacheCurrentSentence();
+                // 自动缓存下一句
+                cacheNextSentence();
+            };
+
+            utterance.onerror = () => {
+                isPlaying = false;
+                btn.disabled = false;
+                status.classList.add('hidden');
+            };
+
+            speechSynthesis.speak(utterance);
+            isPlaying = true;
+        }
+
+        async function playCurrentSentence() {
+            if (!sentences || sentences.length === 0) return;
+
+            const text = sentences[currentSentenceIndex];
+            const btn = document.getElementById('btn-play');
+            const status = document.getElementById('status-playing');
+
+            btn.disabled = true;
+            status.classList.remove('hidden');
+
+            // 滚动到当前句子
+            scrollToCurrentSentence();
+
+            await playWithCache(text);
+        }
+
+        // 缓存当前句子
+        async function cacheCurrentSentence() {
+            if (!sentences || !currentBookId) return;
+            const text = sentences[currentSentenceIndex];
+            if (!text || text.length > 500) return;
+
+            // 检查是否已缓存
+            const existing = await audioCache.getAudio(currentBookId, currentSentenceIndex, text);
+            if (existing) return;
+
+            // 使用Web Speech API生成音频并缓存
+            if ('speechSynthesis' in window) {
+                const voices = speechSynthesis.getVoices();
+                const voice = voices.find(v => v.lang.startsWith('en')) || voices[0];
+
+                // 创建MediaStreamDestination来录制
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.9;
+                utterance.voice = voice;
+
+                // 由于Web Speech API不提供音频数据，我们使用服务器TTS
+                try {
+                    const res = await fetch('/api/tts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text, voice: currentVoice })
+                    });
+                    const data = await res.json();
+                    if (data.success && data.audio_url) {
+                        // 下载音频并保存到IndexedDB
+                        const audioRes = await fetch(data.audio_url);
+                        const audioBlob = await audioRes.blob();
+                        await audioCache.saveAudio(currentBookId, currentSentenceIndex, text, audioBlob);
+                        updateCacheProgressUI();
+                    }
+                } catch (e) {
+                    console.log('Cache failed:', e);
+                }
+            }
+        }
+
+        // 缓存下一句（后台）
+        async function cacheNextSentence() {
+            if (!sentences || !currentBookId) return;
+            const nextIndex = currentSentenceIndex + 1;
+            if (nextIndex >= sentences.length) return;
+
+            const text = sentences[nextIndex];
+            if (!text || text.length > 500) return;
+
+            // 检查是否已缓存
+            const existing = await audioCache.getAudio(currentBookId, nextIndex, text);
+            if (existing) return;
+
+            // 后台缓存下一句
+            setTimeout(async () => {
+                try {
+                    const res = await fetch('/api/tts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text, voice: currentVoice })
+                    });
+                    const data = await res.json();
+                    if (data.success && data.audio_url) {
+                        const audioRes = await fetch(data.audio_url);
+                        const audioBlob = await audioRes.blob();
+                        await audioCache.saveAudio(currentBookId, nextIndex, text, audioBlob);
+                        updateCacheProgressUI();
+                    }
+                } catch (e) {}
+            }, 100);
+        }
+
+        // 更新缓存进度UI
+        async function updateCacheProgressUI() {
+            if (!currentBookId) return;
+            const progress = await audioCache.getBookProgress(currentBookId);
+            const badge = document.getElementById(`cache-badge-${currentBookId}`);
+            if (badge && progress.total > 0) {
+                badge.textContent = `🔊 ${progress.cached}/${progress.total}`;
+                badge.style.display = progress.cached > 0 ? 'inline-block' : 'none';
+            }
+        }
+
+        // 导入书籍 - 绑定文件输入
+        document.getElementById('import-file').addEventListener('change', (e) => importBook(e.target.files[0]));
+
+        async function importBook(file) {
+            if (!file || !file.name.endsWith('.epub')) {
+                alert('请选择 EPUB 格式文件');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('epub', file);
+
+            const grid = document.getElementById('book-grid');
+            const importCard = grid.querySelector('.import-card');
+            if (importCard) importCard.querySelector('.text').textContent = '导入中...';
+
+            try {
+                const res = await fetch('/api/book/import', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if (data.success) {
+                    loadBookList();
+                    alert(`导入成功！${data.book_title}`);
+                } else if (res.status === 401) {
+                    // R10: 之前 401 之后只 alert "未授权", 家长不知道去哪儿登录
+                    if (confirm('导入需要家长登录。\n\n是否现在跳转到登录页? (默认 PIN: 0000)')) {
+                        window.location.href = '/parent';
+                    }
+                    loadBookList();
+                } else if (res.status === 409) {
+                    alert('导入失败 (重复):\n\n' + data.error + '\n\n建议: 重命名文件后重试, 或先去 /parent 删除旧书');
+                    loadBookList();
+                } else {
+                    alert('导入失败: ' + (data.error || `HTTP ${res.status}`));
+                    loadBookList();
+                }
+            } catch (err) {
+                alert('导入失败 (网络错误)');
+                loadBookList();
+            }
+        }
+
+        // 删除书籍
+        async function deleteBook(bookId, bookTitle) {
+            if (!confirm(`确定删除《${bookTitle}》？`)) return;
+
+            try {
+                await fetch(`/api/book/${bookId}`, { method: 'DELETE' });
+                loadBookList();
+            } catch (err) {
+                alert('删除失败');
+            }
+        }
+
+        // 渲染单页（iPad 横屏用单页滚动 + 固定 sidebar，67d5df2 的设计）
+        function updateDisplay() {
+            const container = document.getElementById('sentence-display');
+            let html = '';
+            sentences.forEach((sent, i) => {
+                html += formatSentence(sent, i);
+            });
+            container.innerHTML = html;
+
+            // 更新进度
+            const total = sentences.length;
+            const current = currentSentenceIndex + 1;
+            const percent = total > 0 ? Math.round((currentSentenceIndex / total) * 100) : 0;
+            document.getElementById('progress-fill').style.width = percent + '%';
+            document.getElementById('progress-text').textContent = `第 ${current} 页 / 共 ${total} 页`;
+            const curPageEl = document.getElementById('current-page');
+            const totPageEl = document.getElementById('total-pages');
+            if (curPageEl) curPageEl.textContent = current;
+            if (totPageEl) totPageEl.textContent = total;
+            // R10: sticky bar 用 page-info 同步显示 (替代旧 #page-info 之外的 btn-prev/btn-next 钩子)
+            const pageInfo = document.getElementById('page-info');
+            if (pageInfo) pageInfo.textContent = `${current} / ${total}`;
+
+            // 更新按钮状态 (R10: 抽到 sticky bar 后, 这些 ID 可能不存在 — 防御性判空)
+            const prevBtn = document.getElementById('btn-prev');
+            const nextBtn = document.getElementById('btn-next');
+            if (prevBtn) prevBtn.disabled = currentSentenceIndex === 0;
+            if (nextBtn) nextBtn.disabled = currentSentenceIndex >= sentences.length - 1;
+        }
+
+        // 格式化句子
+        function formatSentence(sent, index) {
+            if (!sent) return '';
+            let className = 'sentence-item';
+            if (index < currentSentenceIndex) className += ' read';
+            if (index === currentSentenceIndex) className += ' active';
+
+            const words = sent.split(/(\s+)/);
+            const processedWords = words.map(w => {
+                if (/^[a-zA-Z][a-zA-Z'\-.,!?;:"']*$/.test(w)) {
+                    const cleanW = w.replace(/[^a-zA-Z]/g, '').toLowerCase();
+                    const isLooked = lookedWords[cleanW];
+                    const safeW = w.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                    return `<span class="word-inline ${isLooked ? 'looked' : ''}" data-action="lookupWord" data-arg="${safeW}" >${w}</span>`;
+                }
+                return w;
+            }).join('');
+
+            return `<span class="${className}" id="sentence-${index}" data-action="jumpTo" data-arg="${index}">${processedWords} </span>`;
+        }
+
+        // 滚动到当前句子（朗读时）
+        function scrollToCurrentSentence() {
+            const activeEl = document.querySelector('.sentence-item.active');
+            if (activeEl) {
+                activeEl.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                    inline: 'nearest'
+                });
+            }
+        }
+
+        // 键盘快捷键
+        document.addEventListener('keydown', (e) => {
+            if (document.getElementById('reader-page').classList.contains('active')) {
+                if (e.key === 'ArrowLeft') {
+                    prevSentence();
+                }
+                else if (e.key === 'ArrowRight') {
+                    nextSentence();
+                }
+                else if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    playCurrentSentence();
+                }
+                else if (e.key === 'Escape') {
+                    closeWordModal();
+                    closeARPanel();
+                }
+            }
+        });
+
+        // 窗口大小变化时重新渲染
+        window.addEventListener('resize', () => {
+            if (bookData && sentences.length > 0) {
+                updateDisplay();
+            }
+        });
+
+        // 点击弹窗外部关闭
+        document.getElementById('word-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'word-modal') closeWordModal();
+        });
+
+        // ========== 跟读评分功能 ==========
+
+        let audioContext = null;
+        let analyser = null;
+        let audioStream = null;
+
+        // 切换阅读/跟读模式
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('mode-read').classList.toggle('active', mode === 'read');
+            document.getElementById('mode-shadow').classList.toggle('active', mode === 'shadow');
+            document.getElementById('record-hint').textContent = mode === 'read'
+                ? '阅读模式下跳过评分'
+                : '点击麦克风，录音跟读';
+            document.getElementById('score-display').style.display = 'none';
+        }
+
+        // 切换录音
+        async function toggleRecord() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                await startRecording();
+            }
+        }
+
+        // 开始录音
+        async function startRecording() {
+            if (!sentences || sentences.length === 0) return;
+
+            // 检查浏览器支持
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                document.getElementById('record-hint').textContent = '❌ 浏览器不支持语音识别';
+                return;
+            }
+
+            try {
+                // 获取麦克风
+                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+
+                // 设置音频分析（用于可视化）
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                const source = audioContext.createMediaStreamSource(audioStream);
+                source.connect(analyser);
+                analyser.fftSize = 256;
+
+                // 播放参考音频
+                await playReferenceAudio();
+
+            } catch (err) {
+                console.error('麦克风错误:', err);
+                document.getElementById('record-hint').textContent = '❌ 无法访问麦克风';
+                return;
+            }
+
+            isRecording = true;
+            document.getElementById('btn-record').classList.add('recording');
+            document.getElementById('btn-record').textContent = '⏹';
+            document.getElementById('record-hint').textContent = '🎤 正在听，请说话...';
+
+            // 开始语音识别
+            recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.continuous = true;
+            recognition.interimResults = true;
+
+            let finalTranscript = '';
+            let silenceCount = 0;
+            let lastResultIndex = -1;
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                // 更新提示
+                if (interimTranscript) {
+                    document.getElementById('record-hint').textContent = '🎤 听到: ' + interimTranscript;
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error('识别错误:', event.error);
+                if (event.error === 'no-speech') {
+                    silenceCount++;
+                    if (silenceCount > 3) {
+                        document.getElementById('record-hint').textContent = '⚠️ 没听到声音，请靠近麦克风';
+                    }
+                } else if (event.error === 'not-allowed') {
+                    document.getElementById('record-hint').textContent = '❌ 请允许麦克风权限';
+                    stopRecording();
+                } else if (event.error !== 'aborted') {
+                    document.getElementById('record-hint').textContent = '❌ 错误: ' + event.error;
+                    stopRecording();
+                }
+            };
+
+            recognition.onend = () => {
+                stopRecording();
+                if (finalTranscript.trim()) {
+                    const original = sentences[currentSentenceIndex];
+                    showPronunciationScore(original, finalTranscript.trim());
+                } else {
+                    document.getElementById('record-hint').textContent = '⚠️ 没听清，请重试';
+                }
+            };
+
+            try {
+                recognition.start();
+            } catch (err) {
+                console.error('启动识别失败:', err);
+                document.getElementById('record-hint').textContent = '❌ 无法启动识别';
+                stopRecording();
+            }
+
+            // 可选：自动停止（15秒）
+            setTimeout(() => {
+                if (isRecording) {
+                    recognition.stop();
+                }
+            }, 15000);
+        }
+
+        // 停止录音
+        function stopRecording() {
+            isRecording = false;
+            document.getElementById('btn-record').classList.remove('recording');
+            document.getElementById('btn-record').textContent = '🎙️';
+
+            if (recognition) {
+                try { recognition.stop(); } catch(e) {}
+            }
+            if (audioStream) {
+                audioStream.getTracks().forEach(track => track.stop());
+            }
+            if (audioContext) {
+                audioContext.close();
+            }
+        }
+
+        // 播放参考音频
+        async function playReferenceAudio() {
+            if (!sentences || sentences.length === 0) return;
+            try {
+                const ttsRes = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: sentences[currentSentenceIndex] })
+                });
+                const data = await ttsRes.json();
+                if (data.success) {
+                    const audio = new Audio(data.audio_url);
+                    audio.play();
+                }
+            } catch (err) {
+                console.error('TTS error:', err);
+            }
+        }
+
+        // 显示发音评分
+        function showPronunciationScore(original, transcribed) {
+            const score = calculateSimilarity(original, transcribed);
+            const level = getScoreLevel(score);
+
+            document.getElementById('score-display').style.display = 'block';
+            document.getElementById('score-value').textContent = score;
+            document.getElementById('score-level').textContent = level.text;
+            document.getElementById('score-level').className = 'score-level ' + level.class;
+
+            // 更新圆形进度
+            const degrees = (score / 100) * 360;
+            document.getElementById('score-circle').style.background =
+                `conic-gradient(${level.color} ${degrees}deg, var(--bg-dark) ${degrees}deg)`;
+
+            // 显示识别结果
+            document.getElementById('transcription-result').style.display = 'block';
+            document.getElementById('transcription-text').textContent = transcribed;
+
+            document.getElementById('record-hint').textContent = '点击麦克风再读一遍';
+        }
+
+        // 计算相似度
+        function calculateSimilarity(original, transcribed) {
+            const orig = original.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+            const trans = transcribed.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+
+            if (!trans) return 0;
+            if (orig === trans) return 100;
+
+            const origWords = orig.split(/\s+/);
+            const transWords = trans.split(/\s+/);
+
+            let matchCount = 0;
+            transWords.forEach(w => {
+                if (origWords.includes(w)) matchCount++;
+            });
+
+            const matchRate = matchCount / transWords.length;
+            const coverage = matchCount / origWords.length;
+            const score = Math.round((matchRate * 0.6 + coverage * 0.4) * 100);
+
+            return Math.min(100, score);
+        }
+
+        // 获取评分等级
+        function getScoreLevel(score) {
+            if (score >= 90) return { text: '🌟 非常棒！', class: 'excellent', color: '#6B8A52' };
+            if (score >= 75) return { text: '👍 很棒！', class: 'great', color: '#6B8A52' };
+            if (score >= 60) return { text: '📚 不错！', class: 'good', color: '#D4A574' };
+            if (score >= 40) return { text: '💪 继续加油', class: 'practice', color: '#D4A574' };
+            return { text: '📖 多读几遍', class: 'try', color: '#C25B56' };
+        }
+
+        // ========== 学习统计 ==========
+        function updateStats(data) {
+            const stats = JSON.parse(localStorage.getItem('shadowStats') || '{}');
+            const today = new Date().toISOString().split('T')[0];
+
+            // 更新每日学习时间
+            if (data.studyTime) {
+                stats.totalStudyTime = (stats.totalStudyTime || 0) + data.studyTime;
+                stats.dailyStudyTime = stats.dailyStudyTime || {};
+                stats.dailyStudyTime[today] = (stats.dailyStudyTime[today] || 0) + data.studyTime;
+            }
+            if (data.wordsLearned) stats.wordsLearned = (stats.wordsLearned || 0) + data.wordsLearned;
+            if (data.wordsMastered) stats.wordsMastered = (stats.wordsMastered || 0) + data.wordsMastered;
+            if (data.sentencesPracticed) stats.sentencesPracticed = (stats.sentencesPracticed || 0) + data.sentencesPracticed;
+            if (data.chapterRead) stats.chapterRead = (stats.chapterRead || 0) + data.chapterRead;
+
+            // 更新连续天数
+            const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+            if (stats.lastStudyDate === today) {
+                // 今天已学习
+            } else if (stats.lastStudyDate === yesterday) {
+                stats.streakDays = (stats.streakDays || 0) + 1;
+            } else {
+                stats.streakDays = 1;
+            }
+            stats.lastStudyDate = today;
+
+            localStorage.setItem('shadowStats', JSON.stringify(stats));
+            shadowReport({ stats });
+        }
+
+        // ========== 阅读理解题 ==========
+        // 示例阅读理解题目（实际应用中可以从后端加载）
+        const comprehensionQuestions = {
+            // 通用题目示例
+            'default': [
+                { q: "What is the main topic of this passage?", o: ["Adventure", "Cooking", "Sports", "Music"], a: 0 },
+                { q: "Who are the main characters mentioned?", o: ["The author and friends", "A family", "Students and teachers", "Not clearly mentioned"], a: 3 },
+                { q: "Where does the story take place?", o: ["In a city", "In a school", "Not clearly specified", "In a forest"], a: 2 },
+                { q: "What happened at the end of this chapter?", o: ["A surprise", "Characters reunited", "Not enough information", "A conflict"], a: 2 },
+                { q: "What can we learn from this passage?", o: ["Teamwork", "Courage", "Both are possible", "Neither"], a: 2 }
+            ]
+        };
+
+        let compQuestions = [];
+        let compIndex = 0;
+        let compCorrect = 0;
+
+        function showComprehensionModal() {
+            const bookId = currentBookId || 'default';
+            compQuestions = comprehensionQuestions[bookId] || comprehensionQuestions['default'];
+            compIndex = 0;
+            compCorrect = 0;
+            document.getElementById('comp-modal').classList.add('show');
+            showCompQuestion();
+        }
+
+        // 字体大小调节
+        function changeFontSize(delta) {
+            const root = document.documentElement;
+            const current = parseInt(getComputedStyle(root).getPropertyValue('--sentence-font-size')) || 20;
+            const newSize = Math.max(12, Math.min(36, current + delta));
+            root.style.setProperty('--sentence-font-size', newSize + 'px');
+            localStorage.setItem('sentenceFontSize', newSize);
+            document.getElementById('font-size-display').textContent = newSize + 'px';
+        }
+
+        function initFontSize() {
+            const saved = localStorage.getItem('sentenceFontSize');
+            if (saved) {
+                const size = parseInt(saved, 10);
+                if (Number.isFinite(size) && size >= 12 && size <= 36) {
+                    document.documentElement.style.setProperty('--sentence-font-size', size + 'px');
+                    document.getElementById('font-size-display').textContent = size + 'px';
+                }
+            }
+        }
+
+        function showCompQuestion() {
+            const content = document.getElementById('comp-content');
+            if (compIndex >= compQuestions.length) {
+                showCompResult();
+                return;
+            }
+            const q = compQuestions[compIndex];
+            content.innerHTML = `
+                <div class="comp-progress">${compIndex + 1} / ${compQuestions.length}</div>
+                <div class="comp-question">${q.q}</div>
+                <div class="comp-options">
+                    ${q.o.map((opt, i) => `<div class="comp-option" data-action="selectCompAnswer" data-arg="${i}" data-arg2="${q.a}">${opt}</div>`).join('')}
+                </div>
+            `;
+        }
+
+        function selectCompAnswer(selected, correct) {
+            document.querySelectorAll('.comp-option').forEach(o => o.style.pointerEvents = 'none');
+            if (selected === correct) {
+                document.querySelectorAll('.comp-option')[selected].classList.add('correct');
+                compCorrect++;
+            } else {
+                document.querySelectorAll('.comp-option')[selected].classList.add('wrong');
+                document.querySelectorAll('.comp-option')[correct].classList.add('correct');
+            }
+            setTimeout(() => {
+                compIndex++;
+                showCompQuestion();
+            }, 1200);
+        }
+
+        function showCompResult() {
+            const content = document.getElementById('comp-content');
+            const total = compQuestions.length;
+            const accuracy = Math.round((compCorrect / total) * 100);
+
+            content.innerHTML = `
+                <div class="comp-done">
+                    <div class="comp-done-icon">${accuracy >= 80 ? '🎉' : accuracy >= 60 ? '👍' : '📚'}</div>
+                    <h3>${accuracy >= 80 ? '太棒了！' : accuracy >= 60 ? '还不错！' : '继续加油！'}</h3>
+                    <p style="color:var(--text-secondary);">本章理解测验完成</p>
+                    <div class="comp-stats">
+                        <div class="comp-stat">
+                            <div class="comp-stat-value correct">${compCorrect}</div>
+                            <div>正确</div>
+                        </div>
+                        <div class="comp-stat">
+                            <div class="comp-stat-value wrong">${total - compCorrect}</div>
+                            <div>错误</div>
+                        </div>
+                    </div>
+                    <p style="color:var(--text-secondary);">正确率: ${accuracy}%</p>
+                    <button class="btn btn-primary" data-action="closeCompModal" style="margin-top:20px;">完成</button>
+                </div>
+            `;
+
+            // 更新统计
+            updateStats({ chapterRead: 1 });
+        }
+
+        function closeCompModal() {
+            document.getElementById('comp-modal').classList.remove('show');
+        }
+
+        // PWA 注册
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .catch(err => console.log('SW registration failed:', err));
+        }
+
+        // ========== 儿童模式切换 ==========
+        const kidModeToggle = document.createElement('button');
+        kidModeToggle.className = 'kid-mode-toggle';
+        kidModeToggle.innerHTML = '👦';
+        kidModeToggle.title = '切换儿童模式';
+        kidModeToggle.onclick = () => {
+            document.body.classList.toggle('kid-mode');
+            localStorage.setItem('kidMode', document.body.classList.contains('kid-mode'));
+        };
+        document.body.appendChild(kidModeToggle);
+
+        // 恢复儿童模式状态
+        if (localStorage.getItem('kidMode') === 'true') {
+            document.body.classList.add('kid-mode');
+        }
+    
