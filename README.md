@@ -250,7 +250,7 @@ shadow-learning/
 │   ├── pwa.py              # PWA 壳 (theme.js / sync.js / manifest / SW)
 │   └── tts.py              # edge-tts 朗读 + LRU 缓存 + 预生成后台线程
 ├── web/
-│   ├── ebook.html          # 电子书阅读器
+│   ├── index.html          # 电子书阅读器(同时为 Capacitor Android 入口)
 │   ├── tutor.html          # 跟读辅导界面
 │   ├── grammar.html        # 语法学习
 │   ├── stats.html          # 学习统计
@@ -262,8 +262,9 @@ shadow-learning/
 │   ├── service-worker.js   # 离线缓存
 │   └── kid-touch.css       # 触摸优化样式
 ├── android/                # Capacitor Android 壳工程（npm run sync 后可编译 APK）
+│                           # 注: android/app/src/main/assets/public/ 由 cap sync 生成,已 gitignore
 ├── capacitor.config.json   # Capacitor 配置（webDir=web）
-├── package.json            # npm 依赖（@capacitor/core/cli/android）
+├── package.json            # npm 依赖 + scripts (sync / android)
 ├── scripts/
 │   └── gen_https_cert.sh   # 自签名 HTTPS 证书生成
 ├── certs/                  # HTTPS 证书（已 gitignore）
@@ -292,8 +293,8 @@ npm install
 
 # 2. 把 web/ 同步到 android/app/src/main/assets/public/
 #    注意：android/app/src/main/assets/public/ 已经在 android/.gitignore 里被排除，
-#    不要手动 commit 这个目录。
-npx cap sync android
+#    不要手动 commit 这个目录。每次改完 web/ 都要跑一次。
+npm run sync     # 等价于: npx cap sync android
 
 # 3. 在 Android Studio 中打开 android/ 目录构建 APK：
 #    - Open → 选择 android/
@@ -304,7 +305,7 @@ npx cap sync android
 cd android && ./gradlew assembleDebug
 ```
 
-> **更新 web 后的重新打包**：改完 `web/` 里的文件，跑一次 `npx cap sync android`，然后重新构建 APK。`web/fonts/` 字体文件会跟着一起打包进 APK，离线可用。
+> **更新 web 后的重新打包**：改完 `web/` 里的文件，跑一次 `npm run sync`，然后重新构建 APK。`web/fonts/` 字体文件会跟着一起打包进 APK，离线可用。
 
 ---
 

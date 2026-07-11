@@ -127,7 +127,7 @@ def _add_security_headers(resp):
 # === HTML 页面路由 (壳页面,无业务逻辑) ===
 @app.route('/')
 def index():
-    return _send_html('ebook.html')
+    return _send_html('index.html')
 
 @app.route('/tutor')
 def tutor_page():
@@ -147,7 +147,7 @@ def grammar_page(page):
 @app.route('/ebook')
 def ebook_page():
     """电子书阅读页面"""
-    return _send_html('ebook.html')
+    return _send_html('index.html')
 
 @app.route('/parent')
 def parent_page():

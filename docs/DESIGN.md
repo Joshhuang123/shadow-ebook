@@ -257,7 +257,7 @@ transition: box-shadow 200ms var(--ease-out);
 
 每页只能有**一个焦点**(视觉引导):
 
-- ebook.html → 当前章节标题
+- index.html(原 ebook.html)→ 当前章节标题
 - tutor.html → 当前句子 + 录音按钮
 - parent.html → 今日学习时长 + 单词数(主指标)
 - stats.html → 连续打卡天数
