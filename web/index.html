@@ -32,7 +32,7 @@
             <a href="/grammar" class="nav-link">语法学习</a>
             <a href="/stats" class="nav-link">📊 统计</a>
             <a href="/parent" class="nav-link" style="color:var(--warning)">🔐 家长</a>
-            <select class="voice-select" id="voice-select" onchange="changeVoice(this.value)">
+            <select class="voice-select" id="voice-select">
                 <option value="en-US-AriaNeural">🔊 Aria (女声)</option>
                 <option value="en-US-JennyNeural">🔊 Jenny (女声)</option>
                 <option value="en-US-EmmaNeural">🔊 Emma (女声)</option>
@@ -57,7 +57,7 @@
                 <!-- 动态加载 -->
             </div>
 
-            <input type="file" id="import-file" accept=".epub" style="display:none" onchange="importBook(this.files[0])">
+            <input type="file" id="import-file" accept=".epub" style="display:none">
         </div>
 
         <!-- 阅读器页 -->
@@ -442,6 +442,7 @@
 
         // 初始化音色选择器
         document.getElementById('voice-select').value = currentVoice;
+        document.getElementById('voice-select').addEventListener('change', (e) => changeVoice(e.target.value));
 
         function changeVoice(voice) {
             currentVoice = voice;
@@ -618,10 +619,8 @@
                                     <button class="book-delete-btn" data-action="clickStopDeleteBook" data-arg="${b.id}" data-arg2="${b.title.replace(/'/g, '&#39;')}" title="删除">×</button>
                                     <button class="cache-audio-btn" data-action="clickStopCacheAudio" data-arg="${b.id}" title="缓存音频">🔊</button>
                                     <div class="book-cover" style="background:linear-gradient(135deg,${fallbackColor});">
-                                        <img src="${coverUrl}" alt="${b.title}"
-                                             style="width:100%;height:100%;object-fit:cover;border-radius:6px;opacity:0;"
-                                             onload="this.style.opacity='1';this.nextElementSibling.style.opacity='0';"
-                                             onerror="this.style.display='none';">
+                                        <img class="book-cover-img" src="${coverUrl}" alt="${b.title}"
+                                             style="width:100%;height:100%;object-fit:cover;border-radius:6px;opacity:0;">
                                         <span class="book-cover-fallback" style="position:absolute;color:white;font-size:0.75em;font-weight:600;text-align:center;line-height:1.3;padding:8px;text-shadow:1px 1px 2px rgba(0,0,0,0.5);">${b.title}${authorLine}</span>
                                     </div>
                                     <div class="book-spine-base"></div>
@@ -637,6 +636,14 @@
                     html += renderShelf(high, '🏆', '高级', '1000L+', 'advanced');
 
                     grid.innerHTML = html;
+                    // R16.x: 封面图淡入 (替代原 onload="this.style.opacity='1'...")
+                    grid.querySelectorAll('img.book-cover-img').forEach(img => {
+                        img.addEventListener('load', () => {
+                            img.style.opacity = '1';
+                            if (img.nextElementSibling) img.nextElementSibling.style.opacity = '0';
+                        });
+                        img.addEventListener('error', () => { img.style.display = 'none'; });
+                    });
                 } else {
                     grid.innerHTML = '<div style="text-align:center;color:var(--text-secondary);padding:60px;font-size:1.2em;">还没有书籍，请导入 EPUB</div>';
                 }
@@ -828,7 +835,12 @@
             // 封面 (有本地 cover 用本地, 没有显示 fallback 色块)
             const coverSlot = document.getElementById('book-info-cover-slot');
             if (book.cover) {
-                coverSlot.innerHTML = `<img class="book-info-cover" src="${book.cover}" alt="${(book.book || '').replace(/"/g, '&quot;')}" onerror="this.outerHTML='<div class=\\'book-info-cover-fallback\\'>${(book.book || '').replace(/'/g, "\\'")}</div>'">`;
+                const safeTitle = (book.book || '').replace(/'/g, '&#39;');
+                coverSlot.innerHTML = `<img class="book-info-cover" src="${book.cover}" alt="${(book.book || '').replace(/"/g, '&quot;')}">`;
+                const img = coverSlot.querySelector('.book-info-cover');
+                if (img) img.addEventListener('error', () => {
+                    img.outerHTML = `<div class="book-info-cover-fallback">${safeTitle}</div>`;
+                });
             } else {
                 coverSlot.innerHTML = `<div class="book-info-cover-fallback">${book.book || ''}</div>`;
             }
@@ -1513,7 +1525,9 @@
             }
         }
 
-        // 导入书籍
+        // 导入书籍 - 绑定文件输入
+        document.getElementById('import-file').addEventListener('change', (e) => importBook(e.target.files[0]));
+
         async function importBook(file) {
             if (!file || !file.name.endsWith('.epub')) {
                 alert('请选择 EPUB 格式文件');
