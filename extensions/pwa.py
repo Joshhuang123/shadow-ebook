@@ -22,6 +22,16 @@ _ROOT_STATIC = [
     ('/manifest.json',    WEB_DIR,  'manifest.json'),
 ]
 
+# R16: 新增样式目录根路径暴露(templates 用 <link rel=stylesheet href=/styles/...>)
+# key 是目录(暴露为 /styles/、/js/),filename 是文件
+_STYLES_DIR = WEB_DIR / 'styles'
+_JS_DIR = WEB_DIR / 'js'
+
+_ROOT_DIRS = [
+    ('/styles', _STYLES_DIR),
+    ('/js',     _JS_DIR),
+]
+
 
 def register_routes(app):
     for url, directory, filename in _ROOT_STATIC:
@@ -33,6 +43,14 @@ def register_routes(app):
     @app.route('/fonts/<path:filename>')
     def font_file(filename):
         return send_from_directory(str(FONTS_DIR), filename)
+
+    @app.route('/styles/<path:filename>')
+    def style_file(filename):
+        return send_from_directory(str(_STYLES_DIR), filename)
+
+    @app.route('/js/<path:filename>')
+    def js_file(filename):
+        return send_from_directory(str(_JS_DIR), filename)
 
     @app.route('/service-worker.js')
     def service_worker():

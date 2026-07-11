@@ -99,8 +99,11 @@ def _refresh_session_expiry():
 # 真上 Let's Encrypt 反代后再加。
 _CSP = '; '.join([
     "default-src 'self'",
+    # R16 之前 style / script 都允许 'unsafe-inline', 因为 5 个 HTML 都有 inline <style>+onclick
+    # R16 把所有 inline <style> 抽到 web/styles/pages/*.css,style-src 已可收紧
+    # script-src 仍保留 'unsafe-inline' 是为了 127 个 onclick,留 R16.x 改 addEventListener
     "script-src 'self' 'unsafe-inline'",
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self'",
     "img-src 'self' data: blob:",
     "font-src 'self'",
     "connect-src 'self' https://api.mymemory.translated.net https://api.dictionaryapi.dev",

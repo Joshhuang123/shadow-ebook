@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design Tokens Preview — Shadow Ebook</title>
+    <link rel="stylesheet" href="/styles/tokens.css">
+    <link rel="stylesheet" href="/styles/base.css">
+    <link rel="stylesheet" href="/styles/components.css">
+    <style>
+        /* Demo-only styles:不在生产 CSS 里 */
+        .demo-section { padding: var(--space-6) 0; border-bottom: 1px solid var(--divider); }
+        .demo-section h2 { margin-bottom: var(--space-4); color: var(--color-primary); }
+        .swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--space-3); }
+        .swatch { border-radius: var(--radius-md); padding: var(--space-4); border: 1px solid var(--border); }
+        .swatch-color { height: 48px; border-radius: var(--radius-sm); margin-bottom: var(--space-2); }
+        .swatch-name { font-size: var(--text-sm); font-weight: var(--font-medium); }
+        .swatch-hex { font-size: var(--text-xs); color: var(--text-secondary); font-family: var(--font-mono); }
+        .type-row { display: flex; align-items: baseline; gap: var(--space-4); padding: var(--space-2) 0; border-bottom: 1px dashed var(--divider); }
+        .type-label { width: 100px; font-size: var(--text-sm); color: var(--text-secondary); flex-shrink: 0; }
+        .shadow-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--space-5); padding: var(--space-4); background: var(--bg-dark); border-radius: var(--radius-lg); }
+        .shadow-box { background: var(--bg-card); border-radius: var(--radius-md); padding: var(--space-5); text-align: center; font-size: var(--text-sm); color: var(--text-secondary); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎨 Shadow Ebook Design Tokens</h1>
+            <p>R16 设计语言预览 · 基于 docs/DESIGN.md</p>
+        </header>
+
+        <!-- 色板 -->
+        <section class="demo-section">
+            <h2>色板 · Brand</h2>
+            <div class="swatch-grid">
+                <div class="swatch"><div class="swatch-color" style="background: var(--color-primary)"></div><div class="swatch-name">primary</div><div class="swatch-hex">#B86A4E</div></div>
+                <div class="swatch"><div class="swatch-color" style="background: var(--color-primary-light)"></div><div class="swatch-name">primary-light</div><div class="swatch-hex">#D89B7E</div></div>
+                <div class="swatch"><div class="swatch-color" style="background: var(--color-primary-dark)"></div><div class="swatch-name">primary-dark</div><div class="swatch-hex">#A55A40</div></div>
+                <div class="swatch"><div class="swatch-color" style="background: var(--color-secondary)"></div><div class="swatch-name">secondary</div><div class="swatch-hex">#6B8A52</div></div>
+                <div class="swatch"><div class="swatch-color" style="background: var(--color-accent)"></div><div class="swatch-name">accent</div><div class="swatch-hex">#D4A574</div></div>
+            </div>
+        </section>
+
+        <section class="demo-section">
+            <h2>色板 · 文字 / 背景 / 语义</h2>
+            <div class="swatch-grid">
+                <div class="swatch"><div class="swatch-color" style="background: var(--text-primary); border:1px solid var(--border)"></div><div class="swatch-name">text-primary</div><div class="swatch-hex">#2D2A26</div></div>
+                <div class="swatch"><div class="swatch-color" style="background: var(--text-secondary); border:1px solid var(--border)"></div><div class="swatch-name">text-secondary</div><div class="swatch-hex">#5A544C</div></div>
+                <div class="swatch"><div class="swatch-color" style="background: var(--bg-card); border:1px solid var(--border)"></div><div class="swatch-name">bg-card</div><div class="swatch-hex">#FFFFFF</div></div>
+                <div class="swatch"><div class="swatch-color" style="background: var(--bg-dark); border:1px solid var(--border)"></div><div class="swatch-name">bg-dark</div><div class="swatch-hex">#F5F2EC</div></div>
+                <div class="swatch"><div class="swatch-color" style="background: var(--danger)"></div><div class="swatch-name">danger</div><div class="swatch-hex">#C25B56</div></div>
+                <div class="swatch"><div class="swatch-color" style="background: var(--info)"></div><div class="swatch-name">info</div><div class="swatch-hex">#7A8B9F</div></div>
+            </div>
+        </section>
+
+        <!-- 字号 -->
+        <section class="demo-section">
+            <h2>字号系统</h2>
+            <div class="type-row"><span class="type-label">xs / 12</span><span style="font-size:var(--text-xs)">学而时习之,不亦说乎</span></div>
+            <div class="type-row"><span class="type-label">sm / 14</span><span style="font-size:var(--text-sm)">有朋自远方来,不亦乐乎</span></div>
+            <div class="type-row"><span class="type-label">base / 16</span><span style="font-size:var(--text-base)">人不知而不愠,不亦君子乎</span></div>
+            <div class="type-row"><span class="type-label">lg / 18</span><span style="font-size:var(--text-lg)">三省吾身</span></div>
+            <div class="type-row"><span class="type-label">xl / 22</span><span style="font-size:var(--text-xl)">温故而知新</span></div>
+            <div class="type-row"><span class="type-label">2xl / 28</span><span style="font-size:var(--text-2xl)">学而不思则罔</span></div>
+            <div class="type-row"><span class="type-label">3xl / 36</span><span style="font-size:var(--text-3xl)">思而不学则殆</span></div>
+            <div class="type-row"><span class="type-label">display / 48</span><span style="font-size:var(--text-display)">42 DAYS</span></div>
+        </section>
+
+        <!-- 按钮 -->
+        <section class="demo-section">
+            <h2>按钮</h2>
+            <div style="display:flex; gap:var(--space-3); flex-wrap:wrap; margin-bottom: var(--space-4)">
+                <button class="btn btn-primary btn-md">Primary</button>
+                <button class="btn btn-secondary btn-md">Secondary</button>
+                <button class="btn btn-ghost btn-md">Ghost</button>
+                <button class="btn btn-danger btn-md">Danger</button>
+                <button class="btn btn-primary btn-md" disabled>Disabled</button>
+            </div>
+            <div style="display:flex; gap:var(--space-3); flex-wrap:wrap; align-items:center">
+                <button class="btn btn-primary btn-sm">Small</button>
+                <button class="btn btn-primary btn-md">Medium</button>
+                <button class="btn btn-primary btn-lg">Large</button>
+                <button class="btn btn-primary btn-md"><span class="spinner"></span> Loading</button>
+            </div>
+        </section>
+
+        <!-- 卡片 -->
+        <section class="demo-section">
+            <h2>卡片</h2>
+            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-4)">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">基础卡片</h3>
+                        <p class="card-subtitle">用于内容容器</p>
+                    </div>
+                    <p>卡片描述文字,展示默认排版。</p>
+                </div>
+                <div class="card card-clickable">
+                    <div class="card-header">
+                        <h3 class="card-title">可点击卡片</h3>
+                        <p class="card-subtitle">hover 时 shadow 增强</p>
+                    </div>
+                    <p>点击或 hover 时,阴影从 sm 升到 md。</p>
+                </div>
+                <div class="stat-card">
+                    <div class="value">42</div>
+                    <div class="label">连续打卡 (天)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" style="font-size: var(--text-3xl)">1,248</div>
+                    <div class="label">已学单词</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 输入框 -->
+        <section class="demo-section">
+            <h2>输入框 / 表单</h2>
+            <div style="max-width: 400px; display: grid; gap: var(--space-4)">
+                <div>
+                    <label style="display:block; margin-bottom: var(--space-2); font-size: var(--text-sm); color: var(--text-secondary)">PIN 码</label>
+                    <input type="password" placeholder="4 位数字">
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom: var(--space-2); font-size: var(--text-sm); color: var(--text-secondary)">错误状态</label>
+                    <input type="text" value="abc" class="has-error">
+                    <div class="input-error-msg">PIN 必须为 4 位数字</div>
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom: var(--space-2); font-size: var(--text-sm); color: var(--text-secondary)">禁用</label>
+                    <input type="text" value="locked" disabled>
+                </div>
+            </div>
+        </section>
+
+        <!-- 进度条 -->
+        <section class="demo-section">
+            <h2>进度条</h2>
+            <div style="display: grid; gap: var(--space-4)">
+                <div><div class="progress"><div class="progress-bar" style="width: 30%"></div></div><small>30%</small></div>
+                <div><div class="progress progress-primary"><div class="progress-bar" style="width: 65%"></div></div><small>65% (primary)</small></div>
+                <div><div class="progress progress-warning"><div class="progress-bar" style="width: 80%"></div></div><small>80% (warning)</small></div>
+            </div>
+        </section>
+
+        <!-- Tag -->
+        <section class="demo-section">
+            <h2>Tag / Badge</h2>
+            <div style="display:flex; gap:var(--space-3); flex-wrap:wrap">
+                <span class="tag tag-learning">学习中</span>
+                <span class="tag tag-review">待复习</span>
+                <span class="tag tag-mastered">已掌握</span>
+                <span class="badge">12</span>
+                <span class="badge badge-secondary">99+</span>
+                <span class="badge badge-accent">NEW</span>
+            </div>
+        </section>
+
+        <!-- 阴影 -->
+        <section class="demo-section">
+            <h2>阴影</h2>
+            <div class="shadow-grid">
+                <div class="shadow-box" style="box-shadow: var(--shadow-sm)">shadow-sm</div>
+                <div class="shadow-box" style="box-shadow: var(--shadow-md)">shadow-md</div>
+                <div class="shadow-box" style="box-shadow: var(--shadow-lg)">shadow-lg</div>
+                <div class="shadow-box" style="box-shadow: var(--shadow-xl)">shadow-xl</div>
+            </div>
+        </section>
+
+        <!-- Alert -->
+        <section class="demo-section">
+            <h2>反馈 (Alert / Spinner)</h2>
+            <div style="display:grid; gap:var(--space-3)">
+                <div class="alert alert-success">✓ 复习完成,本轮 5 个单词已掌握</div>
+                <div class="alert alert-warning">⚠ 还剩 12 个待复习,建议今天清完</div>
+                <div class="alert alert-danger">✗ PIN 错误,还剩 3 次尝试</div>
+                <div class="alert alert-info">ℹ 当前章节有 23 个新单词</div>
+                <div><span class="spinner spinner-lg"></span> <small>加载中...</small></div>
+            </div>
+        </section>
+
+        <p style="text-align:center; color: var(--text-secondary); font-size: var(--text-sm); padding: var(--space-7) 0">
+            还有疑问?看 <a href="/docs/DESIGN.md">docs/DESIGN.md</a> 或告诉我
+        </p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,117 @@
+/* ============================================================================
+   tokens.css — Design tokens (R16)
+   唯一来源: docs/DESIGN.md
+   任何颜色/字号/间距/圆角/阴影/动效改动,先改这里,再改组件。
+   ============================================================================ */
+
+:root {
+    /* ===== 色板·品牌 ===== */
+    --color-primary:       #B86A4E;
+    --color-primary-light: #D89B7E;
+    --color-primary-dark:  #A55A40;
+    --color-secondary:     #6B8A52;
+    --color-accent:        #D4A574;
+
+    /* ===== 色板·背景 ===== */
+    --bg:            #FAF9F6;
+    --bg-card:       #FFFFFF;
+    --bg-dark:       #F5F2EC;
+    --bg-overlay:    rgba(45, 42, 38, 0.5);
+
+    /* ===== 色板·文字 ===== */
+    --text-primary:   #2D2A26;
+    --text-secondary: #5A544C;
+    --text-disabled:  #A39E94;
+    --text-on-primary:#FFFFFF;
+
+    /* ===== 色板·边框 / 分隔 ===== */
+    --border:        #D6CFC0;
+    --border-strong: #A39E94;
+    --divider:       #EBE5D8;
+
+    /* ===== 色板·语义 ===== */
+    --danger:  #C25B56;
+    --warning: #D4A574;
+    --success: #6B8A52;
+    --info:    #7A8B9F;
+
+    /* ===== 软色(tint)===== 用于 Tag/Badge 等需要淡化背景色场合 ===== */
+    --tint-primary:   rgba(184, 106, 78, 0.10);
+    --tint-secondary: rgba(107, 138, 82, 0.10);
+    --tint-accent:    rgba(212, 165, 116, 0.15);
+    --tint-danger:    rgba(194, 91, 86, 0.10);
+    --tint-info:      rgba(122, 139, 159, 0.10);
+
+    /* ===== 字体栈 ===== */
+    --font-sans: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue',
+                 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'SF Mono', Menlo, Consolas, monospace;
+
+    /* ===== 字号 + 行高 ===== */
+    --text-xs:      12px;   line-height: 16px;
+    --text-sm:      14px;   line-height: 20px;
+    --text-base:    16px;   line-height: 24px;
+    --text-lg:      18px;   line-height: 28px;
+    --text-xl:      22px;   line-height: 30px;
+    --text-2xl:     28px;   line-height: 36px;
+    --text-3xl:     36px;   line-height: 44px;
+    --text-display: 48px;   line-height: 56px;
+
+    /* ===== 字重 ===== */
+    --font-regular:   400;
+    --font-medium:    500;
+    --font-semibold:  600;
+    --font-bold:      700;
+
+    /* ===== 间距(8 进制 + 4 微调)===== */
+    --space-0: 0;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --space-7: 48px;
+    --space-8: 64px;
+    --space-9: 96px;
+
+    /* ===== 圆角 ===== */
+    --radius-none: 0;
+    --radius-sm:   4px;
+    --radius-md:   8px;
+    --radius-lg:   12px;
+    --radius-xl:   16px;
+    --radius-2xl:  24px;
+    --radius-pill: 9999px;
+
+    /* ===== 阴影 ===== */
+    --shadow-sm: 0 1px 2px rgba(45, 42, 38, 0.06);
+    --shadow-md: 0 2px 8px rgba(45, 42, 38, 0.08);
+    --shadow-lg: 0 4px 16px rgba(45, 42, 38, 0.10);
+    --shadow-xl: 0 8px 32px rgba(45, 42, 38, 0.12);
+
+    /* ===== 动效·时长 ===== */
+    --duration-fast:   100ms;
+    --duration-base:   200ms;
+    --duration-slow:   300ms;
+    --duration-slower: 500ms;
+
+    /* ===== 动效·缓动 ===== */
+    --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in:     cubic-bezier(0.4, 0, 1, 1);
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    /* ===== 容器最大宽度 ===== */
+    --container-sm: 480px;
+    --container-md: 800px;
+    --container-lg: 1200px;
+}
+
+/* ===== 暗色模式预留(R17+ 启用)===== */
+@media (prefers-color-scheme: dark) {
+    :root[data-theme="auto"],
+    :root[data-theme="dark"] {
+        /* 待 R17 实施;本期占位,确保 var() 链不断 */
+    }
+}

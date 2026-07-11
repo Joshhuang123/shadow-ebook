@@ -1,0 +1,678 @@
+/* grammar.html 的页面专属样式(R16 从 inline 抽取)
+   含 R13 polish 等通用样式 — 后续从本文件删除,改由 tokens.css/base.css 接管 */
+
+* { touch-action: manipulation; }
+        /* R13: macOS 字重更黑, antialiased 让文字更细更清晰 */
+        html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        /* R13: 标题均衡断行, 段落避免孤儿词 */
+        h1, h2, h3, h4 { text-wrap: balance; }
+        p, li, figcaption { text-wrap: pretty; }
+        :root {
+            --primary: #B86A4E;
+            --primary-light: #D89B7E;
+            --secondary: #6B8A52;
+            --bg: #FAF9F6;
+            --bg-dark: #F5F2EC;
+            --bg-card: #FFFFFF;
+            --text-primary: #2D2A26;
+            --text-secondary: #5A544C;
+            --border: #D6CFC0;
+            --accent: #D4A574;
+            --danger: #C25B56;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .top-nav {
+            background: var(--bg-card);
+            box-shadow: 0 2px 10px rgba(115,99,78,0.15);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .nav-brand .logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 8px;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+            background: var(--bg-card);
+        }
+
+        .nav-link.active {
+            color: var(--text-primary);
+            background: var(--primary);
+        }
+
+        .main-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .hero-title {
+            font-size: 2.2em;
+            font-weight: 700;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--primary-light), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+
+        /* 语法卡片 */
+        .grammar-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+        }
+
+        .grammar-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            cursor: pointer;
+            transition: transform 300ms ease-out, background-color 300ms ease-out, color 300ms ease-out, box-shadow 300ms ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .grammar-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .grammar-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(204, 120, 92, 0.2);
+        }
+
+        .grammar-card:hover::before {
+            opacity: 1;
+        }
+
+        .grammar-card-icon {
+            font-size: 2em;
+            margin-bottom: 12px;
+        }
+
+        .grammar-card-title {
+            font-weight: 600;
+            font-size: 1.1em;
+            margin-bottom: 8px;
+        }
+
+        .grammar-card-desc {
+            color: var(--text-secondary);
+            font-size: 0.85em;
+        }
+
+        .grammar-card.units {
+            background: transparent;
+            border: 2px dashed var(--border);
+        }
+
+        .grammar-card.units:hover {
+            border-color: var(--primary);
+            background: rgba(204, 120, 92, 0.1);
+        }
+
+        /* 考试板块头部 */
+        .exam-header {
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(204, 120, 92, 0.1) 100%);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 32px;
+            margin-bottom: 32px;
+            text-align: center;
+        }
+
+        .exam-header h2 {
+            font-size: 1.6em;
+            margin-bottom: 8px;
+        }
+
+        .exam-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .exam-tab {
+            padding: 10px 24px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
+        }
+
+        .exam-tab:hover {
+            border-color: var(--primary);
+            color: var(--text-primary);
+        }
+
+        .exam-tab.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .exam-section {
+            display: none;
+        }
+
+        .exam-section.active {
+            display: block;
+        }
+
+        /* 级别标签 */
+        .level-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75em;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .level-badge.ket {
+            background: rgba(122, 154, 101, 0.2);
+            color: #6B8A52;
+        }
+
+        .level-badge.pet {
+            background: rgba(212, 165, 116, 0.2);
+            color: #D4A574;
+        }
+
+        .grammar-card[data-level="ket"] {
+            border-color: rgba(122, 154, 101, 0.3);
+        }
+
+        .grammar-card[data-level="ket"]:hover {
+            border-color: #6B8A52;
+            box-shadow: 0 12px 40px rgba(122, 154, 101, 0.2);
+        }
+
+        .grammar-card[data-level="pet"] {
+            border-color: rgba(212, 165, 116, 0.3);
+        }
+
+        .grammar-card[data-level="pet"]:hover {
+            border-color: #D4A574;
+            box-shadow: 0 12px 40px rgba(212, 165, 116, 0.2);
+        }
+
+        .grammar-card[data-level="ket"]::before,
+        .grammar-card[data-level="pet"]::before {
+            background: linear-gradient(90deg, var(--secondary), var(--accent));
+        }
+
+        /* 语法详情弹窗 */
+        .grammar-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(45, 42, 38, 0.9);
+            z-index: 1000;
+            display: none;
+            overflow-y: auto;
+        }
+
+        .grammar-modal.show {
+            display: block;
+        }
+
+        .grammar-modal-content {
+            max-width: 800px;
+            margin: 40px auto;
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 32px;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--bg-dark);
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .modal-title {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--primary-light);
+        }
+
+        .modal-subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            font-size: 0.95em;
+        }
+
+        .grammar-section {
+            margin-bottom: 28px;
+        }
+
+        .grammar-section h3 {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--accent);
+        }
+
+        .formula-box {
+            background: var(--bg-dark);
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-family: 'Noto Serif SC', serif;
+            font-size: 1.1em;
+            color: var(--primary-light);
+            margin: 12px 0;
+            border-left: 4px solid var(--primary);
+        }
+
+        .example-list {
+            list-style: none;
+        }
+
+        .example-list li {
+            padding: 10px 16px;
+            background: var(--bg-dark);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        .example-list li .en {
+            color: var(--text-primary);
+            font-family: 'Noto Serif SC', serif;
+        }
+
+        .example-list li .zh {
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            margin-top: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            color: var(--primary-light);
+            font-weight: 600;
+        }
+
+        td {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+
+        .highlight {
+            color: var(--primary-light);
+            font-weight: 600;
+        }
+
+        .tip-box {
+            background: rgba(122, 154, 101, 0.1);
+            border: 1px solid var(--secondary);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+
+        .tip-box .tip-title {
+            color: var(--secondary);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .tip-box .tip-content {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+
+        .rule-list {
+            list-style: none;
+        }
+
+        .rule-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .rule-list li:last-child {
+            border-bottom: none;
+        }
+
+        .tense-compare {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 16px 0;
+        }
+
+        .tense-box {
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        .tense-box.blue {
+            background: rgba(212, 165, 116, 0.1);
+            border: 1px solid rgba(212, 165, 116, 0.3);
+        }
+
+        .tense-box.green {
+            background: rgba(122, 154, 101, 0.1);
+            border: 1px solid rgba(122, 154, 101, 0.3);
+        }
+
+        .tense-box h4 {
+            margin-bottom: 12px;
+            font-size: 1em;
+        }
+
+        .tense-box.blue h4 { color: var(--accent); }
+        .tense-box.green h4 { color: #6B8A52; }
+
+        .tense-box .formula {
+            background: var(--bg-dark);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            margin-bottom: 12px;
+        }
+
+        /* 练习按钮样式 */
+        .grammar-card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .practice-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
+            background: var(--secondary);
+            color: white;
+        }
+
+        .practice-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        /* 进度徽章 */
+        .progress-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .progress-badge.not-started {
+            background: var(--border);
+            color: var(--text-secondary);
+        }
+
+        .progress-badge.in-progress {
+            background: rgba(212, 165, 116, 0.2);
+            color: #D4A574;
+        }
+
+        .progress-badge.mastered {
+            background: rgba(122, 154, 101, 0.2);
+            color: #6B8A52;
+        }
+
+        /* 练习弹窗 */
+        .practice-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(45, 42, 38, 0.9);
+            z-index: 2000;
+            display: none;
+            overflow-y: auto;
+        }
+
+        .practice-modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .practice-modal-content {
+            max-width: 600px;
+            width: 90%;
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 32px;
+            position: relative;
+        }
+
+        .practice-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .practice-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: var(--primary-light);
+        }
+
+        .practice-progress {
+            background: var(--bg-dark);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            color: var(--text-secondary);
+        }
+
+        .practice-question {
+            font-size: 1.2em;
+            color: var(--text-primary);
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .practice-options {
+            display: grid;
+            gap: 12px;
+        }
+
+        .practice-option {
+            padding: 16px 20px;
+            background: var(--bg-dark);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
+            font-size: 1em;
+            color: var(--text-primary);
+            text-align: left;
+        }
+
+        .practice-option:hover:not(.disabled) {
+            border-color: var(--primary);
+            background: rgba(204, 120, 92, 0.1);
+        }
+
+        .practice-option.correct {
+            border-color: var(--secondary);
+            background: rgba(122, 154, 101, 0.2);
+        }
+
+        .practice-option.incorrect {
+            border-color: #C25B56;
+            background: rgba(194, 91, 86, 0.2);
+        }
+        /* 对/错不仅用颜色, 加 ✓/✗ 图标 (色盲友好) */
+        .practice-option.correct::after { content: ' ✓'; color: var(--secondary); font-weight: 700; margin-left: 6px; }
+        .practice-option.incorrect::after { content: ' ✗'; color: #C25B56; font-weight: 700; margin-left: 6px; }
+
+        .practice-option.disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .practice-result {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .practice-result-icon {
+            font-size: 4em;
+            margin-bottom: 16px;
+        }
+
+        .practice-result-text {
+            font-size: 1.3em;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .practice-result-score {
+            font-size: 1.1em;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .practice-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        @media (max-width: 768px) {
+            .tense-compare {
+                grid-template-columns: 1fr;
+            }
+            .grammar-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    
+        /* Theme fallback vars */
+        --primary: var(--primary, #B86A4E);
+        --primary-light: var(--primary-light, #D89B7E);
+        --secondary: var(--secondary, #6B8A52);
+        --bg: var(--bg, #FAF9F6);
+        --card: var(--card, #FFFFFF);
+        --text: var(--text, #352F28);
+        --sub: var(--sub, #5A544C);
+        --border: var(--border, #D6CFC0);
+        --nav: var(--nav, #FFFFFF);
+        --accent: var(--accent, #D4A574);
+        --shadow: var(--shadow, 0 4px 20px rgba(115,99,78,0.15));
+        --body: var(--body, linear-gradient(135deg, #F5EDE5 0%, #EDE3D6 100%));
+        --input: var(--input, #F5F2EC);
+        --btn-hover: var(--btn-hover, #B86F4D);
+        /* R13: 按钮按下时缩一下, 像真按钮 */
+        button:active:not(:disabled),
+        .btn:active:not(:disabled),
+        [class*="-btn"]:active:not(:disabled) {
+            transform: scale(0.96);
+        }
