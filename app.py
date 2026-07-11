@@ -92,17 +92,17 @@ def _refresh_session_expiry():
 
 
 # === Round 3: Security headers ===
-# CSP 用 lenient 版 (允许 inline script/style),因为前端 5 个 HTML 大量用 onclick + <style>。
-# 严格 CSP 需要前端重构 (move-to-external + addEventListener),留给以后单独项目做。
-# 即便如此, 'self' 限制下外部脚本注入仍被挡。
-# HSTS 故意不加: 自签名 HTTPS + HSTS = 浏览器锁住该 origin 1 年, LAN 切回 HTTP 会失败。
+# R16 → R16.x: 全 5 HTML inline <style> / onclick / <script> 都搬到外部 CSS / JS,
+# 现在 CSP 严格到 'self' 即可 — 不需要 'unsafe-inline' (script) 也不需要 (style)。
+# 这是 4 阶段渐进式收紧的最后一步 (R3→R7 加 header → R16 抽 style → R16.x 加 dispatcher)。
+# HSTS 故意不加: 自签名 HTTPS + HSTS = 浏览器锁住该 origin 1 年,LAN 切回 HTTP 会失败。
 # 真上 Let's Encrypt 反代后再加。
 _CSP = '; '.join([
     "default-src 'self'",
-    # R16 之前 style / script 都允许 'unsafe-inline', 因为 5 个 HTML 都有 inline <style>+onclick
     # R16 把所有 inline <style> 抽到 web/styles/pages/*.css,style-src 已可收紧
-    # script-src 仍保留 'unsafe-inline' 是为了 127 个 onclick,留 R16.x 改 addEventListener
-    "script-src 'self' 'unsafe-inline'",
+    # R16.x 把 127 个 onclick + 5 个 inline <script> 全部外置 (events → data-action
+    # + dispatcher.js,scripts → web/js/{page}.js),script-src 可严格到 'self'
+    "script-src 'self'",
     "style-src 'self'",
     "img-src 'self' data: blob:",
     "font-src 'self'",
