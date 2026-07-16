@@ -7,20 +7,6 @@
         /* R13: 标题均衡断行, 段落避免孤儿词 */
         h1, h2, h3, h4 { text-wrap: balance; }
         p, li, figcaption { text-wrap: pretty; }
-        :root {
-            --primary: #B86A4E;
-            --primary-light: #D89B7E;
-            --secondary: #6B8A52;
-            --bg: #FAF9F6;
-            --bg-dark: #F5F2EC;
-            --bg-card: #FFFFFF;
-            --text-primary: #2D2A26;
-            --text-secondary: #5A544C;
-            --border: #D6CFC0;
-            --accent: #D4A574;
-            --danger: #C25B56;
-        }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
@@ -51,7 +37,7 @@
         .nav-brand .logo {
             width: 32px;
             height: 32px;
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
             border-radius: 8px;
             display: flex;
             align-items: center;
@@ -79,7 +65,7 @@
 
         .nav-link.active {
             color: var(--text-primary);
-            background: var(--primary);
+            background: var(--color-primary);
         }
 
         .main-container {
@@ -127,7 +113,7 @@
         .stat-value {
             font-size: 2.2em;
             font-weight: 700;
-            color: var(--primary-light);
+            color: var(--color-primary-light);
             margin-bottom: 4px;
         }
 
@@ -139,11 +125,11 @@
         /* 连续打卡 */
         .streak-card {
             background: linear-gradient(135deg, var(--bg-card), rgba(212, 165, 116, 0.1));
-            border: 1px solid var(--accent);
+            border: 1px solid var(--color-accent);
         }
 
         .streak-card .stat-value {
-            color: var(--accent);
+            color: var(--color-accent);
         }
 
         /* 图表区域 */
@@ -184,7 +170,7 @@
 
         .bar {
             width: 100%;
-            background: linear-gradient(180deg, var(--primary), var(--primary-light));
+            background: linear-gradient(180deg, var(--color-primary), var(--color-primary-light));
             border-radius: 8px 8px 0 0;
             transition: height 0.5s ease;
             min-height: 4px;
@@ -262,7 +248,7 @@
             text-align: center;
         }
         .vocab-test-option:hover {
-            border-color: var(--primary);
+            border-color: var(--color-primary);
             background: rgba(204, 120, 92, 0.1);
         }
         .vocab-test-option.correct {
@@ -277,7 +263,7 @@
         /* 书单推荐 */
         .book-rec-level {
             text-align: center;
-            color: var(--primary-light);
+            color: var(--color-primary-light);
             margin-bottom: 20px;
             font-size: 1.1em;
         }
@@ -308,7 +294,7 @@
         .book-rec-level-tag {
             padding: 4px 10px;
             background: rgba(204, 120, 92, 0.2);
-            color: var(--primary-light);
+            color: var(--color-primary-light);
             border-radius: 20px;
             font-size: 0.8em;
         }
@@ -331,12 +317,12 @@
             color: var(--text-secondary);
         }
         .interest-tag:hover {
-            border-color: var(--primary);
-            color: var(--primary-light);
+            border-color: var(--color-primary);
+            color: var(--color-primary-light);
         }
         .interest-tag.active {
-            background: var(--primary);
-            border-color: var(--primary);
+            background: var(--color-primary);
+            border-color: var(--color-primary);
             color: white;
         }
 
@@ -394,7 +380,7 @@
 
         .bottom-nav-item:hover,
         .bottom-nav-item.active {
-            color: var(--primary-light);
+            color: var(--color-primary-light);
         }
 
         .bottom-nav-item .icon {
@@ -418,20 +404,20 @@
             font-family: inherit;
         }
         .btn-primary {
-            background: var(--primary);
+            background: var(--color-primary);
             color: white;
         }
         .btn-primary:hover {
-            background: var(--btn-hover);
+            background: var(--color-primary-dark);
             transform: translateY(-1px);
         }
         .btn-secondary {
             background: var(--bg-card);
-            color: var(--primary);
+            color: var(--color-primary);
             border: 1px solid var(--border);
         }
         .btn-secondary:hover {
-            border-color: var(--primary);
+            border-color: var(--color-primary);
             background: rgba(204, 120, 92, 0.05);
         }
         .btn-danger {
@@ -447,22 +433,7 @@
             cursor: not-allowed;
         }
 
-        /* Theme fallback vars */
-        --primary: var(--primary, #B86A4E);
-        --primary-light: var(--primary-light, #D89B7E);
-        --secondary: var(--secondary, #6B8A52);
-        --bg: var(--bg, #FAF9F6);
-        --card: var(--card, #FFFFFF);
-        --text: var(--text, #352F28);
-        --sub: var(--sub, #5A544C);
-        --border: var(--border, #D6CFC0);
-        --nav: var(--nav, #FFFFFF);
-        --accent: var(--accent, #D4A574);
-        --shadow: var(--shadow, 0 4px 20px rgba(115,99,78,0.15));
-        --body: var(--body, linear-gradient(135deg, #F5EDE5 0%, #EDE3D6 100%));
-        --input: var(--input, #F5F2EC);
-        --btn-hover: var(--btn-hover, #B86F4D);
-        /* R13: 按钮按下时缩一下, 像真按钮 */
+/* R13: 按钮按下时缩一下, 像真按钮 */
         button:active:not(:disabled),
         .btn:active:not(:disabled),
         [class*="-btn"]:active:not(:disabled) {

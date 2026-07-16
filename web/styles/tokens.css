@@ -17,6 +17,8 @@
     --bg-card:       #FFFFFF;
     --bg-dark:       #F5F2EC;
     --bg-overlay:    rgba(45, 42, 38, 0.5);
+    --bg-gradient-start: #F5EDE5;   /* body 渐变起点 */
+    --bg-gradient-end:   #EDE3D6;   /* body 渐变终点 */
 
     /* ===== 色板·文字 ===== */
     --text-primary:   #2D2A26;
@@ -108,10 +110,88 @@
     --container-lg: 1200px;
 }
 
-/* ===== 暗色模式预留(R17+ 启用)===== */
+/* ===== 暗色模式 (R17) =========================================
+   三种触发方式:
+     [data-theme="dark"]  手动开启
+     [data-theme="light"] 手动开启浅色
+     不设置 / [data-theme="auto"]  → 跟随 prefers-color-scheme
+   ============================================================== */
+
+/* 手动 dark */
+:root[data-theme="dark"] {
+    --bg:            #1A1714;
+    --bg-card:       #252220;
+    --bg-dark:       #1F1C18;
+    --bg-overlay:    rgba(0, 0, 0, 0.65);
+    --bg-gradient-start: #1F1B17;
+    --bg-gradient-end:   #15110D;
+
+    --text-primary:   #EDE6DA;
+    --text-secondary: #A39A8E;
+    --text-disabled:  #5A544C;
+    --text-on-primary:#FFFFFF;
+
+    --border:        #3D372F;
+    --border-strong: #5A544C;
+    --divider:       #2D2A26;
+
+    /* 暖棕主色亮一档,在深色背景上保持识别度 */
+    --color-primary:       #D89B7E;
+    --color-primary-light: #E8C4B0;
+    --color-primary-dark:  #B86A4E;
+    --color-secondary:     #8FAA7A;
+    --color-accent:        #D4A574;
+
+    --tint-primary:   rgba(216, 155, 126, 0.16);
+    --tint-secondary: rgba(143, 170, 122, 0.16);
+    --tint-accent:    rgba(212, 165, 116, 0.20);
+    --tint-danger:    rgba(194, 91, 86, 0.18);
+    --tint-info:      rgba(122, 139, 159, 0.18);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.40);
+    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.50);
+    --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.60);
+}
+
+/* 浅色不变(可选,显式声明浅色) */
+:root[data-theme="light"] {
+    /* 等同于 :root 的默认值;列出是为了语义清晰 */
+}
+
+/* 跟随系统:auto / 无属性 → 用 prefers-color-scheme */
 @media (prefers-color-scheme: dark) {
-    :root[data-theme="auto"],
-    :root[data-theme="dark"] {
-        /* 待 R17 实施;本期占位,确保 var() 链不断 */
+    :root:not([data-theme="light"]):not([data-theme="dark"]) {
+        --bg:            #1A1714;
+        --bg-card:       #252220;
+        --bg-dark:       #1F1C18;
+        --bg-overlay:    rgba(0, 0, 0, 0.65);
+        --bg-gradient-start: #1F1B17;
+        --bg-gradient-end:   #15110D;
+
+        --text-primary:   #EDE6DA;
+        --text-secondary: #A39A8E;
+        --text-disabled:  #5A544C;
+
+        --border:        #3D372F;
+        --border-strong: #5A544C;
+        --divider:       #2D2A26;
+
+        --color-primary:       #D89B7E;
+        --color-primary-light: #E8C4B0;
+        --color-primary-dark:  #B86A4E;
+        --color-secondary:     #8FAA7A;
+        --color-accent:        #D4A574;
+
+        --tint-primary:   rgba(216, 155, 126, 0.16);
+        --tint-secondary: rgba(143, 170, 122, 0.16);
+        --tint-accent:    rgba(212, 165, 116, 0.20);
+        --tint-danger:    rgba(194, 91, 86, 0.18);
+        --tint-info:      rgba(122, 139, 159, 0.18);
+
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
+        --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.40);
+        --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.50);
+        --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.60);
     }
 }

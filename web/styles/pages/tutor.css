@@ -10,23 +10,10 @@
         .stat-card .value, #vocab-due-badge, #progress-text, .completion-stats {
             font-variant-numeric: tabular-nums;
         }
-        :root {
-            --primary: #B86A4E;
-            --primary-light: #D89B7E;
-            --secondary: #6B8A52;
-            --bg: #FAF9F6;
-            --bg-card: #FFFFFF;
-            --bg-dark: #F5F2EC;
-            --text-primary: #2D2A26;
-            --text-secondary: #5A544C;
-            --border: #D6CFC0;
-            --accent: #D4A574;
-            --danger: #C25B56;
-        }
         * { margin: 0; padding: 0; box-sizing: border-box; touch-action: manipulation; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #F5EDE5 0%, #EDE3D6 100%);
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
             min-height: 100vh;
             color: var(--text-primary);
         }
@@ -45,7 +32,7 @@
             margin: 15px 0;
             box-shadow: 0 10px 40px rgba(115,99,78,0.15);
         }
-        .card h2 { color: var(--primary); margin-bottom: 15px; font-size: 1.3em; }
+        .card h2 { color: var(--color-primary); margin-bottom: 15px; font-size: 1.3em; }
 
         /* 单元选择 */
         .unit-list { display: grid; gap: 10px; }
@@ -294,8 +281,8 @@
             font-size: 0.85em;
             transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
         }
-        .nav-link:hover { color: var(--primary); background: #F5EDE5; }
-        .nav-link.active { color: white; background: var(--primary); }
+        .nav-link:hover { color: var(--color-primary); background: #F5EDE5; }
+        .nav-link.active { color: white; background: var(--color-primary); }
 
         /* ==================== 平板适配 ==================== */
         /* 平板竖屏 (600px - 768px) */
@@ -417,18 +404,3 @@
             transform: scale(0.96);
         }
 
-        /* Theme fallback vars */
-        --primary: var(--primary, #B86A4E);
-        --primary-light: var(--primary-light, #D89B7E);
-        --secondary: var(--secondary, #6B8A52);
-        --bg: var(--bg, #FAF9F6);
-        --card: var(--card, #FFFFFF);
-        --text: var(--text, #2D2A26);
-        --sub: var(--sub, #5A544C);
-        --border: var(--border, #D6CFC0);
-        --nav: var(--nav, #FFFFFF);
-        --accent: var(--accent, #D4A574);
-        --shadow: var(--shadow, 0 4px 20px rgba(115,99,78,0.15));
-        --body: var(--body, linear-gradient(135deg, #F5EDE5 0%, #EDE3D6 100%));
-        --input: var(--input, #F5F2EC);
-        --btn-hover: var(--btn-hover, #B86F4D);

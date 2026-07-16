@@ -1,38 +1,91 @@
-/*
-  Shadow Ebook - 主题系统
-  统一管理日/夜/跟随系统主题
-*/
-(function(){
-  var T={
-    day:  {'--primary':'#B86A4E','--primary-light':'#D89B7E','--secondary':'#6B8A52','--bg':'#FAF9F6','--card':'#FFFFFF','--text':'#2D2A26','--sub':'#5A544C','--border':'#D6CFC0','--accent':'#D4A574','--nav':'#FFFFFF','--shadow':'0 4px 20px rgba(115,99,78,0.15)','--body':'linear-gradient(135deg,#F5EDE5 0%,#EDE3D6 100%)','--input':'#F5F2EC','--btn-hover':'#A55E42'},
-    night:{'--primary':'#D89B7E','--primary-light':'#E8C4B0','--secondary':'#8FAA7A','--bg':'#2A2520','--card':'#352F28','--text':'#F5F2EC','--sub':'#A39A8E','--border':'#5A5048','--accent':'#D4A574','--nav':'#352F28','--shadow':'0 4px 20px rgba(0,0,0,0.5)','--body':'linear-gradient(135deg,#2A2520 0%,#1F1B17 100%)','--input':'#352F28','--btn-hover':'#CC785C'}
-  };
-  var apply=function(m){
-    if(m==='system'){document.documentElement.removeAttribute('data-theme');localStorage.removeItem('shTheme');}
-    else if(T[m]){Object.entries(T[m]).forEach(function(e){document.documentElement.style.setProperty(e[0],e[1]);});localStorage.setItem('shTheme',m);}
-    updateBtn(m||'system');
-  };
-  var updateBtn=function(m){
-    var b=document.getElementById('themeBtn');
-    if(b){
-      var icons={day:'☀',night:'☾',system:'◐'};
-      b.textContent=icons[m]||'◐';
-      b.title={day:'日间模式',night:'夜间模式',system:'跟随系统'}[m]||'跟随系统';
-      b.style.minWidth='36px';
-      b.style.textAlign='center';
+/**
+ * theme.js (R17) — 主题切换
+ *
+ * 三种模式:
+ *   day   - 浅色 (硬覆盖)
+ *   night - 深色 (硬覆盖)
+ *   auto  - 不设 data-theme,跟随 prefers-color-scheme (默认)
+ *
+ * 持久化: localStorage.shTheme ∈ {day, night, auto}
+ * 实际生效: document.documentElement.dataset.theme ∈ {light, dark} | (空)
+ *   - 'day'  → dataset.theme = 'light'  → 强制浅色
+ *   - 'night'→ dataset.theme = 'dark'   → 强制深色
+ *   - 'auto'→ 移除 dataset.theme        → CSS 走 prefers-color-scheme
+ *
+ * 切换: cycleTheme() day → night → auto → day,图标 ☀/☾/◐
+ */
+
+(function () {
+    'use strict';
+
+    var STORAGE_KEY = 'shTheme';
+    var VALID_MODES = ['day', 'night', 'auto'];
+    var ICONS = { day: '☀', night: '☾', auto: '◐' };
+    var TITLES = { day: '日间模式', night: '夜间模式', auto: '跟随系统' };
+
+    function apply(mode) {
+        var root = document.documentElement;
+        if (mode === 'day') {
+            root.dataset.theme = 'light';
+        } else if (mode === 'night') {
+            root.dataset.theme = 'dark';
+        } else {
+            // 'auto' 或未知: 删除属性,让 @media (prefers-color-scheme) 接管
+            delete root.dataset.theme;
+        }
+        updateBtn(mode);
     }
-  };
-  window.setTheme=apply;
-  window.cycleTheme=function(){
-    var s=localStorage.getItem('shTheme')||'system';
-    var order=['day','night','system'];
-    var idx=(order.indexOf(s)+1)%3;
-    apply(order[idx]);
-  };
-  window.addEventListener('DOMContentLoaded',function(){
-    var s=localStorage.getItem('shTheme')||'system';
-    apply(s);
-    var mq=window.matchMedia('(prefers-color-scheme:dark)');
-    mq.addEventListener('change',function(){if(!localStorage.getItem('shTheme'))apply('system');});
-  });
+
+    function getStored() {
+        var m = localStorage.getItem(STORAGE_KEY);
+        return VALID_MODES.indexOf(m) >= 0 ? m : 'auto';
+    }
+
+    function setStored(mode) {
+        if (mode === 'auto') {
+            localStorage.removeItem(STORAGE_KEY);
+        } else {
+            localStorage.setItem(STORAGE_KEY, mode);
+        }
+    }
+
+    function updateBtn(mode) {
+        var b = document.getElementById('themeBtn');
+        if (!b) return;
+        b.textContent = ICONS[mode] || ICONS.auto;
+        b.title = TITLES[mode] || TITLES.auto;
+        b.setAttribute('aria-label', TITLES[mode] || TITLES.auto);
+        b.style.minWidth = '36px';
+        b.style.textAlign = 'center';
+    }
+
+    function cycleTheme() {
+        var current = getStored();
+        var idx = VALID_MODES.indexOf(current);
+        var next = VALID_MODES[(idx + 1) % VALID_MODES.length];
+        setStored(next);
+        apply(next);
+    }
+
+    function init() {
+        var m = getStored();
+        apply(m);
+        // auto 模式下,系统主题切换 → 重新 apply 以刷新按钮图标(实际 CSS 已经 responsive)
+        var mq = window.matchMedia('(prefers-color-scheme: dark)');
+        if (mq.addEventListener) {
+            mq.addEventListener('change', function () {
+                if (getStored() === 'auto') apply('auto');
+            });
+        }
+    }
+
+    window.cycleTheme = cycleTheme;
+    window.setTheme = apply;
+    window.getTheme = getStored;
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();

@@ -121,10 +121,10 @@ small, .text-sm { font-size: var(--text-sm); color: var(--text-secondary); }
     }
 }
 
-/* ===== 全局页面底色(渐变背景,保留 R7 风格)===== */
+/* ===== 全局页面底色(渐变背景,深浅双主题走 token)===== */
 body {
     background:
-        linear-gradient(135deg, #F5EDE5 0%, #EDE3D6 100%);
+        linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
     background-attachment: fixed;
     min-height: 100vh;
 }

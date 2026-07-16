@@ -6,26 +6,11 @@
         /* R13: 标题均衡断行, 段落避免孤儿词 */
         h1, h2, h3, h4 { text-wrap: balance; }
         p, li, figcaption { text-wrap: pretty; }
-        :root {
-            --primary: #B86A4E;
-            --primary-light: #D89B7E;
-            --secondary: #6B8A52;
-            --bg-dark: #FAF9F6;
-            --bg-card: #FFFFFF;
-            --text-primary: #2D2A26;
-            --text-secondary: #5A544C;
-            --border: #D6CFC0;
-            --accent: #D4A574;
-            --danger: #C25B56;
-            --shadow: 0 4px 20px rgba(115,99,78,0.15);
-            --sentence-font-size: 20px;
-        }
-
         * { margin: 0; padding: 0; box-sizing: border-box; touch-action: manipulation; }
 
         body {
             font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #F5EDE5 0%, #EDE3D6 100%);
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
             min-height: 100vh;
             color: var(--text-primary);
             line-height: 1.6;
@@ -52,13 +37,13 @@
             gap: 10px;
             font-weight: 700;
             font-size: 1.3em;
-            color: var(--primary);
+            color: var(--color-primary);
         }
 
         .nav-brand .logo {
             width: 40px;
             height: 40px;
-            background: linear-gradient(135deg, var(--primary), #D89B7E);
+            background: linear-gradient(135deg, var(--color-primary), #D89B7E);
             border-radius: 12px;
             display: flex;
             align-items: center;
@@ -82,13 +67,13 @@
         }
 
         .nav-link:hover {
-            color: var(--primary);
+            color: var(--color-primary);
             background: #F5EDE5;
         }
 
         .nav-link.active {
             color: white;
-            background: var(--primary);
+            background: var(--color-primary);
         }
 
         /* 音色选择 */
@@ -104,7 +89,7 @@
             font-family: inherit;
         }
         .voice-select:hover {
-            border-color: var(--primary);
+            border-color: var(--color-primary);
         }
 
         /* 主容器 */
@@ -133,7 +118,7 @@
             font-size: 2.5em;
             font-weight: 700;
             margin-bottom: 10px;
-            background: linear-gradient(135deg, var(--primary), #D89B7E);
+            background: linear-gradient(135deg, var(--color-primary), #D89B7E);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -165,7 +150,7 @@
             font-size: 2.5em;
             font-weight: 700;
             margin-bottom: 12px;
-            background: linear-gradient(135deg, var(--primary-light), var(--accent));
+            background: linear-gradient(135deg, var(--color-primary-light), var(--color-accent));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -208,13 +193,13 @@
             left: 0;
             right: 0;
             height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
             opacity: 0;
             transition: opacity 0.3s;
         }
 
         .book-card:hover {
-            border-color: var(--primary);
+            border-color: var(--color-primary);
             transform: translateY(-4px);
             box-shadow: 0 12px 40px rgba(204, 120, 92, 0.2);
         }
@@ -284,7 +269,7 @@
             margin-bottom: 26px;
             padding: 10px 18px;
             border-radius: 14px;
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
             color: white;
             box-shadow: 0 4px 12px rgba(184, 106, 78, 0.3);
         }
@@ -414,7 +399,7 @@
             position: absolute;
             top: -8px;
             left: -8px;
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
             color: white;
             padding: 4px 10px;
             border-radius: 12px;
@@ -531,7 +516,7 @@
             width: 90px;
             min-height: 140px;
             background: white;
-            border: 3px dashed var(--primary-light);
+            border: 3px dashed var(--color-primary-light);
             border-radius: 16px;
             padding: 10px 6px;
             cursor: pointer;
@@ -545,7 +530,7 @@
         }
 
         .import-card:hover {
-            border-color: var(--primary);
+            border-color: var(--color-primary);
             background: rgba(204, 120, 92, 0.1);
             transform: translateY(-4px);
         }
@@ -696,12 +681,12 @@
         }
         .toc-item:hover {
             background: var(--bg-dark);
-            border-left-color: var(--primary-light);
+            border-left-color: var(--color-primary-light);
         }
         .toc-item.active {
             background: var(--bg-dark);
-            border-left-color: var(--primary);
-            color: var(--primary);
+            border-left-color: var(--color-primary);
+            color: var(--color-primary);
             font-weight: 600;
         }
         .toc-item-meta {
@@ -748,7 +733,7 @@
             width: 96px;
             height: 132px;
             border-radius: 8px;
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
             color: white;
             display: flex;
             align-items: center;
@@ -796,7 +781,7 @@
         .book-info-toggle {
             background: none;
             border: none;
-            color: var(--primary);
+            color: var(--color-primary);
             font-size: 0.85em;
             cursor: pointer;
             padding: 4px 0;
@@ -969,12 +954,12 @@
             transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
         }
         .chapter-tab:hover {
-            border-color: var(--primary);
-            color: var(--primary);
+            border-color: var(--color-primary);
+            color: var(--color-primary);
         }
         .chapter-tab.active {
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
-            border-color: var(--primary);
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+            border-color: var(--color-primary);
             color: white;
         }
 
@@ -1014,8 +999,8 @@
             transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
         }
         .page-btn:hover {
-            border-color: var(--primary);
-            color: var(--primary);
+            border-color: var(--color-primary);
+            color: var(--color-primary);
             transform: translateY(-2px);
         }
         .page-btn-icon {
@@ -1025,7 +1010,7 @@
             width: 64px;
             height: 64px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
             border: none;
             color: white;
             font-size: 24px;
@@ -1067,8 +1052,8 @@
             transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
         }
         .chapter-nav-btn:hover {
-            background: var(--primary);
-            border-color: var(--primary);
+            background: var(--color-primary);
+            border-color: var(--color-primary);
             color: white;
         }
 
@@ -1078,7 +1063,7 @@
             padding: 14px;
             font-size: 1em;
             border-radius: 16px;
-            background: linear-gradient(135deg, var(--secondary), #9DB87F);
+            background: linear-gradient(135deg, var(--color-secondary), #9DB87F);
             border: none;
             color: white;
             font-weight: 600;
@@ -1110,7 +1095,7 @@
         }
 
         .sentence-item.active {
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
             color: white;
         }
 
@@ -1120,18 +1105,18 @@
 
         .word-inline {
             cursor: pointer;
-            border-bottom: 1px dashed var(--primary-light);
+            border-bottom: 1px dashed var(--color-primary-light);
             transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
         }
 
         .word-inline:hover {
             background: rgba(204, 120, 92, 0.2);
-            border-bottom-color: var(--primary);
+            border-bottom-color: var(--color-primary);
         }
 
         .word-inline.looked {
             background: rgba(212, 165, 116, 0.2);
-            border-bottom-color: var(--accent);
+            border-bottom-color: var(--color-accent);
         }
 
         /* 播放控制 */
@@ -1146,7 +1131,7 @@
             width: 64px;
             height: 64px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
             border: none;
             color: white;
             font-size: 24px;
@@ -1240,7 +1225,7 @@
             width: 72px;
             height: 72px;
             border-radius: 50%;
-            background: conic-gradient(var(--secondary) 0deg, var(--bg-dark) 0deg);
+            background: conic-gradient(var(--color-secondary) 0deg, var(--bg-dark) 0deg);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1260,7 +1245,7 @@
             position: relative;
             font-size: 1.4em;
             font-weight: 700;
-            color: var(--secondary);
+            color: var(--color-secondary);
         }
 
         .score-label {
@@ -1276,9 +1261,9 @@
             text-align: center;
         }
 
-        .score-level.excellent { color: var(--secondary); }
+        .score-level.excellent { color: var(--color-secondary); }
         .score-level.great { color: #6B8A52; }
-        .score-level.good { color: var(--accent); }
+        .score-level.good { color: var(--color-accent); }
         .score-level.practice { color: var(--text-secondary); }
         .score-level.try { color: #C25B56; }
 
@@ -1328,14 +1313,14 @@
         }
 
         .mode-btn.active {
-            background: var(--primary);
-            border-color: var(--primary);
+            background: var(--color-primary);
+            border-color: var(--color-primary);
             color: white;
         }
 
         .nav-btn:hover:not(:disabled) {
-            background: var(--primary);
-            border-color: var(--primary);
+            background: var(--color-primary);
+            border-color: var(--color-primary);
         }
 
         .nav-btn:disabled {
@@ -1357,7 +1342,7 @@
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
             transition: width 0.3s;
         }
 
@@ -1431,7 +1416,7 @@
 
         .vocab-word {
             font-weight: 600;
-            color: var(--primary-light);
+            color: var(--color-primary-light);
         }
 
         .vocab-meaning {
@@ -1441,7 +1426,7 @@
         }
 
         .review-badge {
-            background: var(--accent);
+            background: var(--color-accent);
             color: var(--bg-dark);
             padding: 2px 8px;
             border-radius: 10px;
@@ -1468,7 +1453,7 @@
         .review-word {
             font-size: 2em;
             font-weight: 600;
-            color: var(--primary-light);
+            color: var(--color-primary-light);
             margin-bottom: 20px;
         }
 
@@ -1576,7 +1561,7 @@
             transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
         }
         .comp-option:hover {
-            border-color: var(--primary);
+            border-color: var(--color-primary);
             background: rgba(204, 120, 92, 0.1);
         }
         .comp-option.correct {
@@ -1633,7 +1618,7 @@
         .ar-stat-value {
             font-size: 1.4em;
             font-weight: 700;
-            color: var(--primary-light);
+            color: var(--color-primary-light);
         }
 
         .ar-stat-label {
@@ -1650,7 +1635,7 @@
         .ar-level-value {
             font-size: 2.5em;
             font-weight: 700;
-            background: linear-gradient(135deg, var(--primary-light), var(--secondary));
+            background: linear-gradient(135deg, var(--color-primary-light), var(--color-secondary));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -1696,7 +1681,7 @@
         .word-modal-word {
             font-size: 1.8em;
             font-weight: 700;
-            color: var(--primary-light);
+            color: var(--color-primary-light);
         }
 
         .word-modal-phonetic {
@@ -1736,7 +1721,7 @@
         }
 
         .word-meaning-part {
-            color: var(--secondary);
+            color: var(--color-secondary);
             font-weight: 600;
             font-size: 0.85em;
             margin-bottom: 6px;
@@ -1770,12 +1755,12 @@
         }
 
         .btn-translate {
-            background: var(--primary);
+            background: var(--color-primary);
             color: white;
         }
 
         .btn-translate:hover {
-            background: var(--primary-light);
+            background: var(--color-primary-light);
         }
 
         .btn-vocab {
@@ -1785,8 +1770,8 @@
         }
 
         .btn-vocab:hover {
-            border-color: var(--secondary);
-            color: var(--secondary);
+            border-color: var(--color-secondary);
+            color: var(--color-secondary);
         }
 
         /* 句子翻译弹窗 */
@@ -1799,7 +1784,7 @@
 
         .sentence-translation-label {
             font-size: 0.8em;
-            color: var(--secondary);
+            color: var(--color-secondary);
             margin-bottom: 8px;
             font-weight: 600;
         }
@@ -1820,7 +1805,7 @@
             background: rgba(204, 120, 92, 0.2);
             border-radius: 10px;
             margin-bottom: 16px;
-            color: var(--primary-light);
+            color: var(--color-primary-light);
             font-size: 0.9em;
         }
 
@@ -1833,7 +1818,7 @@
 
         .audio-bar {
             width: 3px;
-            background: var(--primary-light);
+            background: var(--color-primary-light);
             border-radius: 2px;
             animation: audioWave 0.8s ease infinite;
         }
@@ -1882,25 +1867,10 @@
             cursor: pointer;
         }
         .voice-select:hover {
-            border-color: var(--primary);
+            border-color: var(--color-primary);
         }
-    
-        /* Theme fallback vars */
-        --primary: var(--primary, #B86A4E);
-        --primary-light: var(--primary-light, #D89B7E);
-        --secondary: var(--secondary, #6B8A52);
-        --bg: var(--bg, #FAF9F6);
-        --card: var(--card, #FFFFFF);
-        --text: var(--text, #2D2A26);
-        --sub: var(--sub, #5A544C);
-        --border: var(--border, #D6CFC0);
-        --nav: var(--nav, #FFFFFF);
-        --accent: var(--accent, #D4A574);
-        --shadow: var(--shadow, 0 4px 20px rgba(115,99,78,0.18));
-        --body: var(--body, linear-gradient(135deg, #F5EDE5 0%, #EDE3D6 100%));
-        --input: var(--input, #F5F2EC);
-        --btn-hover: var(--btn-hover, #B86F4D);
-        /* R13: 按钮按下时缩一下, 像真按钮 */
+
+/* R13: 按钮按下时缩一下, 像真按钮 */
         button:active:not(:disabled),
         .btn:active:not(:disabled),
         [class*="-btn"]:active:not(:disabled) {

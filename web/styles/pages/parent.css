@@ -11,24 +11,11 @@
         .stat-card .value, #vocabDueNow, .chart-bar .time-label {
             font-variant-numeric: tabular-nums;
         }
-        :root {
-            --primary: #B86A4E;
-            --primary-light: #D89B7E;
-            --secondary: #6B8A52;
-            --warning: #D4A574;
-            --danger: #C25B56;
-            --bg: #FAF9F6;
-            --bg-card: #FFFFFF;
-            --text-primary: #2D2A26;
-            --text-secondary: #5A544C;
-            --border: #D6CFC0;
-        }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #F5EDE5 0%, #EDE3D6 100%);
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
             min-height: 100vh;
             color: var(--text-primary);
             line-height: 1.6;
@@ -54,7 +41,7 @@
             gap: 10px;
             font-weight: 700;
             font-size: 1.3em;
-            color: var(--primary);
+            color: var(--color-primary);
         }
 
         .lock-icon {
@@ -131,7 +118,7 @@
         }
 
         .pwd-digit:focus {
-            border-color: var(--primary);
+            border-color: var(--color-primary);
         }
 
         .pwd-error {
@@ -162,7 +149,7 @@
         }
 
         .stat-card {
-            background: linear-gradient(135deg, #F5EDE5 0%, #EDE3D6 100%);
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
             border-radius: 16px;
             padding: 20px;
             text-align: center;
@@ -176,7 +163,7 @@
         .stat-card .value {
             font-size: 2.2em;
             font-weight: 700;
-            color: var(--primary);
+            color: var(--color-primary);
         }
 
         .stat-card .label {
@@ -189,7 +176,7 @@
         }
 
         .stat-card.success .value {
-            color: var(--secondary);
+            color: var(--color-secondary);
         }
 
         /* Activity Chart */
@@ -204,7 +191,7 @@
 
         .chart-bar {
             flex: 1;
-            background: linear-gradient(180deg, var(--primary) 0%, var(--primary-light) 100%);
+            background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
             border-radius: 8px 8px 0 0;
             min-width: 30px;
             position: relative;
@@ -275,7 +262,7 @@
 
         .activity-item .duration {
             font-weight: 600;
-            color: var(--primary);
+            color: var(--color-primary);
         }
 
         /* Vocabulary Progress */
@@ -301,11 +288,11 @@
         }
 
         .vocab-bar .segment.practicing {
-            background: var(--primary);
+            background: var(--color-primary);
         }
 
         .vocab-bar .segment.familiar {
-            background: var(--secondary);
+            background: var(--color-secondary);
         }
 
         .vocab-bar .segment.mastered {
@@ -401,7 +388,7 @@
         }
 
         .toggle input:checked + .slider {
-            background: var(--primary);
+            background: var(--color-primary);
         }
 
         .toggle input:checked + .slider:before {
@@ -429,7 +416,7 @@
         }
 
         .btn-primary {
-            background: var(--primary);
+            background: var(--color-primary);
             color: white;
         }
 
@@ -478,7 +465,7 @@
         }
 
         .time-input input:focus {
-            border-color: var(--primary);
+            border-color: var(--color-primary);
         }
 
         /* Responsive */
