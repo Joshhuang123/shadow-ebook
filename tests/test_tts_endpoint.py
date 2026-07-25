@@ -65,7 +65,7 @@ def test_cache_hit_returns_audio_url(client):
 
 
 # === 真实合成 (mock edge_tts.save 写文件) ===
-def test_synthesize_writes_file(client):
+def test_synthesize_writes_file(client, monkeypatch):
     import extensions.tts as tts_mod
 
     async def fake_save(self, path):
@@ -73,17 +73,15 @@ def test_synthesize_writes_file(client):
     class FakeComm:
         def __init__(self, text, voice): pass
         save = fake_save
-    tts_mod.edge_tts.Communicate = FakeComm
-    try:
-        r = client.post('/api/tts', json={'text': 'unique-text-1'})
-        assert r.status_code == 200
-        assert r.json['success'] is True
-        # 文件真的写了
-        audio_path = tts.TTS_DIR / f'{_hash("unique-text-1")}.mp3'
-        assert audio_path.exists()
-        assert audio_path.read_bytes() == b'fake-mp3-bytes'
-    finally:
-        tts_mod.edge_tts.Communicate = tts_mod.edge_tts.communicate_orig if hasattr(tts_mod.edge_tts, 'communicate_orig') else tts_mod.edge_tts.Communicate
+    monkeypatch.setattr(tts_mod.edge_tts, 'Communicate', FakeComm)
+
+    r = client.post('/api/tts', json={'text': 'unique-text-1'})
+    assert r.status_code == 200
+    assert r.json['success'] is True
+    # 文件真的写了
+    audio_path = tts.TTS_DIR / f'{_hash("unique-text-1")}.mp3'
+    assert audio_path.exists()
+    assert audio_path.read_bytes() == b'fake-mp3-bytes'
 
 
 # === 空文本 ===
@@ -197,7 +195,7 @@ def test_status_rate_limited(client):
 
 
 # === voice 参数生效 ===
-def test_custom_voice_creates_distinct_cache(client):
+def test_custom_voice_creates_distinct_cache(client, monkeypatch):
     """同一 text 不同 voice → 不同 hash 文件"""
     import extensions.tts as tts_mod
 
@@ -206,11 +204,30 @@ def test_custom_voice_creates_distinct_cache(client):
     class FakeComm:
         def __init__(self, text, voice): pass
         save = fake_save
-    tts_mod.edge_tts.Communicate = FakeComm
+    monkeypatch.setattr(tts_mod.edge_tts, 'Communicate', FakeComm)
 
     r1 = client.post('/api/tts', json={'text': 'hello', 'voice': 'voice-a'})
     r2 = client.post('/api/tts', json={'text': 'hello', 'voice': 'voice-b'})
     assert r1.json['audio_url'] != r2.json['audio_url']
+
+
+def test_in_progress_audio_survives_cache_eviction(client, monkeypatch):
+    import extensions.tts as tts_mod
+
+    async def fake_save(self, path):
+        with Path(path).open('wb') as audio:
+            tts_mod._evict_tts_cache(tts_mod.TTS_DIR)
+            audio.write(b'complete-audio')
+
+    class FakeComm:
+        def __init__(self, text, voice): pass
+        save = fake_save
+
+    monkeypatch.setattr(tts_mod.edge_tts, 'Communicate', FakeComm)
+    response = client.post('/api/tts', json={'text': 'eviction-race'})
+
+    assert response.status_code == 200
+    assert response.json['success'] is True
 
 
 # === /audio/<path:filename> ===

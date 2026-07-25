@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import threading
+import uuid
 from pathlib import Path
 import edge_tts
 from flask import jsonify, request, send_from_directory
@@ -217,12 +218,16 @@ def register_routes(app):
             _touch_atime(audio_path)
             return jsonify({"success": True, "audio_url": f"/audio/tts/{text_hash}.mp3"})
 
+        temp_path = audio_path.with_name(f'.{audio_path.name}.{uuid.uuid4().hex}.tmp')
+
         async def generate():
-            # 加 15s 超时: 网络抖动时 edge-tts 可能挂 30s+, 拖死整个 worker
+            # 临时文件不匹配 *.mp3,避免后台 LRU 删除仍在写入的音频。
             await asyncio.wait_for(
-                edge_tts.Communicate(text, voice=voice).save(str(audio_path)),
+                edge_tts.Communicate(text, voice=voice).save(str(temp_path)),
                 timeout=TTS_TIMEOUT_SEC,
             )
+            if temp_path.exists() and temp_path.stat().st_size > 0:
+                os.replace(temp_path, audio_path)
 
         try:
             asyncio.run(generate())
@@ -243,6 +248,11 @@ def register_routes(app):
                 "retryable": True,
                 "retry_after": 3,
             }), 502
+        finally:
+            try:
+                temp_path.unlink(missing_ok=True)
+            except OSError:
+                pass
 
         if audio_path.exists():
             # 异步触发 LRU 淘汰 (不阻塞响应)

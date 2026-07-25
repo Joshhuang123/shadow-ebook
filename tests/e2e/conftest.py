@@ -58,23 +58,17 @@ def app_url() -> str:
         [sys.executable, '-c',
          f'import sys; sys.path.insert(0, "{ROOT}"); '
          f'from app import app; '
+         f'import logging; logging.getLogger("werkzeug").setLevel(logging.WARNING); '
          f'app.run(host="127.0.0.1", port={port}, debug=False, use_reloader=False)'],
         cwd=str(ROOT),
         env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
     )
     base = f'http://127.0.0.1:{port}'
     try:
         _wait_ready(f'{base}/healthz')
     except Exception:
         proc.terminate()
-        # 暴露子进程输出方便排错
-        try:
-            out, _ = proc.communicate(timeout=2)
-            sys.stderr.write(f'[e2e] flask child output:\n{out.decode(errors="replace")}\n')
-        except Exception:
-            pass
+        proc.wait(timeout=2)
         raise
 
     yield base

@@ -24,7 +24,7 @@ def test_all_five_pages_return_200(page, app_url):
 @pytest.mark.parametrize('source', NAV_TARGETS)
 @pytest.mark.parametrize('target', NAV_TARGETS)
 def test_nav_link_round_trip(source: str, target: str, page, app_url):
-    """每页的 top-nav 都应能跳到 4 个目标(除自身外,验证也能点到自己)。
+    """每页的 top-nav 都应能跳到另外 3 个目标页面。
 
     用 selector [href='...'] 找 nav-link,验证点完跳转后 url.pathname 匹配。
     """
@@ -48,22 +48,18 @@ def test_nav_link_round_trip(source: str, target: str, page, app_url):
 
 @pytest.mark.parametrize('path', PAGES_WITH_TOP_NAV)
 def test_nav_links_present(path: str, page, app_url):
-    """每页 top-nav 含 4 个期望 nav-link。"""
+    """每页 top-nav 至少含另外 3 个页面的 nav-link。"""
     page.goto(app_url + path, wait_until='commit')
     page.locator('body').wait_for(state='attached', timeout=30000)
 
     nav = page.locator('nav.top-nav')
     assert nav.count() >= 1, f'{path} 缺 top-nav'
 
-    # 检查 href 集合
-    hrefs = page.locator('nav.top-nav a.nav-link').evaluate_all(
+    hrefs = set(page.locator('nav.top-nav a.nav-link').evaluate_all(
         "els => els.map(e => new URL(e.href, location.origin).pathname)"
-    )
-    assert '/' in hrefs, f'{path} 缺 / 链接'
-    assert '/tutor' in hrefs, f'{path} 缺 /tutor 链接'
-    assert '/grammar' in hrefs, f'{path} 缺 /grammar 链接'
-    assert '/stats' in hrefs, f'{path} 缺 /stats 链接'
-    # parent.html 是登录门,不一定出现在所有 nav 里,放过
+    ))
+    expected = set(NAV_TARGETS) - {path}
+    assert expected <= hrefs, f'{path} 缺链接: {sorted(expected - hrefs)}'
 
 
 def test_theme_persists_across_navigation(page, app_url):

@@ -107,14 +107,23 @@ def test_arg_parsing_numeric(page, app_url):
     page.locator('body').wait_for(state='attached', timeout=30000)
     page.wait_for_timeout(300)
 
-    # 取点击前的字号数据 (存在 localStorage 里)
-    before = page.evaluate("() => parseFloat(localStorage.getItem('shFontSize') || '16')")
+    page.evaluate("""() => {
+        document.documentElement.style.setProperty('--sentence-font-size', '20px');
+        localStorage.removeItem('sentenceFontSize');
+    }""")
+    before = page.evaluate(
+        "() => parseInt(getComputedStyle(document.documentElement)"
+        ".getPropertyValue('--sentence-font-size'))"
+    )
 
-    page.locator('[data-action="changeFontSize"][data-arg="-2"]').first.click()
+    font_size_button = page.locator('[data-action="changeFontSize"][data-arg="-2"]').first
+    font_size_button.evaluate("el => el.click()")
     page.wait_for_timeout(100)
 
-    after = page.evaluate("() => parseFloat(localStorage.getItem('shFontSize') || '16')")
-    assert after < before, f'changeFontSize(-2) 没缩字号:before={before} after={after}'
+    after = page.evaluate("() => parseInt(localStorage.getItem('sentenceFontSize'))")
+    assert after == before - 2, (
+        f'changeFontSize(-2) 参数解析错误: before={before} after={after}'
+    )
 
 
 def test_dispatch_via_child_element(page, app_url):

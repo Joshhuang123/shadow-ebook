@@ -123,7 +123,7 @@ python -m pytest tests/e2e/ -v --tb=short -x
 ### test_navigation.py
 - `test_all_five_pages_return_200` — `/` `/tutor` `/grammar` `/parent` `/stats` 全部 200 + body
 - `test_nav_link_round_trip[source→target]`(参数化 4×4) — 每页 nav-link 真能跳到目标
-- `test_nav_links_present[path]`(参数化 4 页) — top-nav href 集合 = `[/ /tutor /grammar /stats]`
+- `test_nav_links_present[path]`(参数化 4 页) — top-nav 至少包含另外 3 个核心页链接(当前页自链接可省略)
 - `test_theme_persists_across_navigation` — 切 dark 后跳 `/grammar`,theme 仍是 dark
 - `test_parent_requires_login` — `/parent` 返回 200,且 body 含「家长/登录/PIN/密码」关键字
 
