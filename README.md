@@ -344,22 +344,41 @@ cd android && ./gradlew assembleDebug
 
 ## 🧪 测试与 CI
 
+### 单元测试(guard tests,~0.2s)
+
 ```bash
-# 跑全 guard test (~0.2s)
 source venv/bin/activate
-python -m pytest -v
+python -m pytest -q --ignore=tests/e2e
 ```
 
-**87 个 test, 8 个文件**(R8/R9 加了 rate_limit + epub_helpers 套件),覆盖：
+**87 个 test, 8 个文件**(R8/R9 加了 rate_limit + epub_helpers 套件),覆盖:
 
-- 路径遍历防御（合法 / 非法 book_id 矩阵）
-- 家长 PIN（默认 0000 / 错 PIN / 5 次锁 15 分钟 / 改 PIN 后旧 PIN 失效 / 同值拒绝 / 剩余次数）
-- TTS LRU 缓存淘汰（最旧 atime / 0 字节优先 / 容量触发）
-- TTS 失败模式（空文本 / 限流 / edge-tts 异常 / 超时 / 静默失败）
-- EPUB 解析（分句缩写 / 数字小数 / 标题误判 / container.xml 三种情况 / 封面 meta）
-- Security header（CSP / XFO / nosniff / Referrer-Policy，HTML 路由也走）
+- 路径遍历防御(合法 / 非法 book_id 矩阵)
+- 家长 PIN(默认 0000 / 错 PIN / 5 次锁 15 分钟 / 改 PIN 后旧 PIN 失效 / 同值拒绝 / 剩余次数)
+- TTS LRU 缓存淘汰(最旧 atime / 0 字节优先 / 容量触发)
+- TTS 失败模式(空文本 / 限流 / edge-tts 异常 / 超时 / 静默失败)
+- EPUB 解析(分句缩写 / 数字小数 / 标题误判 / container.xml 三种情况 / 封面 meta)
+- Security header(CSP / XFO / nosniff / Referrer-Policy,HTML 路由也走)
 
-**CI**：`.github/workflows/test.yml` 在 push / PR 时跑全 test（macos-latest + Python 3.12）。改 `auth.py` / `tts.py` / `books.py` 漏掉测试会被 CI 拦住。
+### E2E 测试(Playwright,~30+ 用例,ubuntu-latest)
+
+测"真浏览器里跑出来的行为":5 页跳转、`data-action` 路由分发、防 inline onclick 回归、主题切换亮度验证。
+
+```bash
+pip install pytest playwright
+playwright install --with-deps chromium   # Linux 加 --with-deps
+python -m pytest tests/e2e/ -v
+```
+
+**完整文档**:`docs/E2E.md`(架构 / 写新测试 / 故障排查 / 已知 skip)
+
+### CI
+
+`.github/workflows/test.yml` 在 push / PR 时跑**两个并行 job**:
+- `unit` 跑 guard tests(macos-latest + Python 3.12)
+- `e2e` 跑 Playwright 套件(ubuntu-latest + Python 3.12 + Chromium)
+
+改 `auth.py` / `tts.py` / `books.py` 漏掉测试会被 CI 拦住。改页面 HTML / 加新路由,建议在 `tests/e2e/` 加对应浏览器回归。
 
 ---
 
