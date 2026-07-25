@@ -46,8 +46,9 @@ def test_resolve_all_routes(page, app_url):
     """
     pages_with_actions = ['/', '/tutor', '/grammar', '/stats']
     for path in pages_with_actions:
-        page.goto(app_url + path)
-        page.wait_for_load_state('networkidle')
+        page.goto(app_url + path, wait_until='commit')
+        page.locator('body').wait_for(state='attached', timeout=30000)
+        page.wait_for_timeout(200)
 
         names = page.evaluate(
             "() => Array.from(document.querySelectorAll('[data-action]'))"
@@ -68,8 +69,9 @@ def test_resolve_all_routes(page, app_url):
 @pytest.mark.parametrize('action', sorted(SAFE_CLICKS)) if SAFE_CLICKS else []
 def test_safe_click_dispatches(action: str, page, app_url):
     """对 SAFE_CLICKS 里每个 action,点第一个可见的 [data-action] 元素,不应报 pageerror。"""
-    page.goto(app_url + '/')
-    page.wait_for_load_state('networkidle')
+    page.goto(app_url + '/', wait_until='commit')
+    page.locator('body').wait_for(state='attached', timeout=30000)
+    page.wait_for_timeout(300)
 
     # 先清 console 监听
     errors = []
@@ -101,8 +103,9 @@ def test_arg_parsing_numeric(page, app_url):
 
     changeFontSize 是为数不多 data-arg=数字且点击立刻反映在 DOM 的 action。
     """
-    page.goto(app_url + '/')
-    page.wait_for_load_state('networkidle')
+    page.goto(app_url + '/', wait_until='commit')
+    page.locator('body').wait_for(state='attached', timeout=30000)
+    page.wait_for_timeout(300)
 
     # 取点击前的字号数据 (存在 localStorage 里)
     before = page.evaluate("() => parseFloat(localStorage.getItem('shFontSize') || '16')")
@@ -119,8 +122,9 @@ def test_dispatch_via_child_element(page, app_url):
 
     验证 closest('[data-action]') 的逻辑 — R16.x 从 127 个 onclick 迁移时这个行为要稳。
     """
-    page.goto(app_url + '/')
-    page.wait_for_load_state('networkidle')
+    page.goto(app_url + '/', wait_until='commit')
+    page.locator('body').wait_for(state='attached', timeout=30000)
+    page.wait_for_timeout(300)
 
     # themeBtn 是个 button 带文字 '日'/'☾' — 点文字节点
     rect = page.evaluate("() => { const b = document.getElementById('themeBtn'); const r = b.getBoundingClientRect(); return [r.x + 2, r.y + 2]; }")

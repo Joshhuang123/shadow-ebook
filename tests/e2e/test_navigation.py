@@ -31,15 +31,15 @@ def test_nav_link_round_trip(source: str, target: str, page, app_url):
     if source == target:
         pytest.skip(f'同一页面({source})不用测跳转')
 
-    page.goto(app_url + source)
-    page.wait_for_load_state('networkidle')
+    page.goto(app_url + source, wait_until='commit')
+    page.locator('body').wait_for(state='attached', timeout=30000)
 
     # target 已是 nav-link 的 href,过滤掉同页 self-link
     link = page.locator(f'nav.top-nav a.nav-link[href="{target}"]').first
     link.wait_for(state='visible')
     link.click()
 
-    page.wait_for_load_state('networkidle')
+    page.wait_for_url(f'**{target}', timeout=15000)
     # 用 URL 不带 query 比较
     from urllib.parse import urlparse
     got = urlparse(page.url).path
@@ -49,8 +49,8 @@ def test_nav_link_round_trip(source: str, target: str, page, app_url):
 @pytest.mark.parametrize('path', PAGES_WITH_TOP_NAV)
 def test_nav_links_present(path: str, page, app_url):
     """每页 top-nav 含 4 个期望 nav-link。"""
-    page.goto(app_url + path)
-    page.wait_for_load_state('networkidle')
+    page.goto(app_url + path, wait_until='commit')
+    page.locator('body').wait_for(state='attached', timeout=30000)
 
     nav = page.locator('nav.top-nav')
     assert nav.count() >= 1, f'{path} 缺 top-nav'
@@ -68,21 +68,23 @@ def test_nav_links_present(path: str, page, app_url):
 
 def test_theme_persists_across_navigation(page, app_url):
     """切换 dark theme 后跳到另一页,新页面仍是 dark。"""
-    page.goto(app_url + '/')
-    page.wait_for_load_state('networkidle')
+    page.goto(app_url + '/', wait_until='commit')
+    page.locator('body').wait_for(state='attached', timeout=30000)
 
     # 切到 night
     page.evaluate("localStorage.setItem('shTheme', 'night')")
-    page.goto(app_url + '/grammar')
-    page.wait_for_load_state('networkidle')
+    page.goto(app_url + '/grammar', wait_until='commit')
+    page.locator('body').wait_for(state='attached', timeout=30000)
+    page.wait_for_timeout(300)  # 等 client JS 应用 theme
 
     theme = page.evaluate("() => document.documentElement.dataset.theme")
     assert theme == 'dark', f'切 dark 后跳 /grammar,实际 theme={theme!r}'
 
     # 切回去
     page.evaluate("localStorage.setItem('shTheme', 'day')")
-    page.goto(app_url + '/')
-    page.wait_for_load_state('networkidle')
+    page.goto(app_url + '/', wait_until='commit')
+    page.locator('body').wait_for(state='attached', timeout=30000)
+    page.wait_for_timeout(300)
     theme = page.evaluate("() => document.documentElement.dataset.theme")
     assert theme == 'light', f'切 day 后回 /,实际 theme={theme!r}'
 
