@@ -194,3 +194,181 @@ def test_endpoint_rate_limited(client, monkeypatch, clear_api_rate):
     resp = client.get("/api/grammar/question/ket-present-simple")
     assert resp.status_code == 429
     assert resp.get_json()["retryable"] is True
+
+# === R21: generated_questions 缓存 ===
+def test_first_request_misses_cache_then_saves(client, monkeypatch):
+    """第一次请求某个 (user, key) → cache miss → LLM 被调 → 题目被存进缓存。"""
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    fake_question = {
+        "q": "She ___ to school. (go)",
+        "o": ["go", "goes", "going"],
+        "a": 1,
+    }
+    fake_client = MagicMock(spec=llm.BaseLLMClient)
+    fake_client.chat_json.return_value = fake_question
+    with patch("extensions.grammar_quiz.get_llm_client", return_value=fake_client):
+        resp = client.get("/api/grammar/question/ket-present-simple")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["source"] == "llm"
+
+    # 验证已落库
+    from extensions.db import get_db
+    row = get_db().execute(
+        "SELECT * FROM generated_questions WHERE user_id='default' AND grammar_key='ket-present-simple'"
+    ).fetchone()
+    assert row is not None
+    assert row['used_count'] == 0  # 刚存的还没被用过
+
+
+def test_second_request_hits_cache_no_llm_call(client, monkeypatch):
+    """第二次同 key 请求 → cache hit → LLM 不被调,used_count +1。"""
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    fake_client = MagicMock(spec=llm.BaseLLMClient)
+    fake_client.chat_json.return_value = {
+        "q": "Q1", "o": ["a", "b"], "a": 0,
+    }
+    with patch("extensions.grammar_quiz.get_llm_client", return_value=fake_client):
+        # 第一次:cache miss
+        client.get("/api/grammar/question/ket-present-simple")
+        fake_client.chat_json.reset_mock()
+
+        # 第二次:cache hit
+        resp = client.get("/api/grammar/question/ket-present-simple")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["source"] == "cache"
+    assert data["question"]["q"] == "Q1"
+    assert not fake_client.chat_json.called, 'cache hit 时不应再调 LLM'
+
+    # used_count 应该 +1
+    from extensions.db import get_db
+    row = get_db().execute(
+        "SELECT used_count FROM generated_questions WHERE question_text='Q1'"
+    ).fetchone()
+    assert row['used_count'] == 1
+
+
+def test_cache_excludes_seen_questions(client, monkeypatch):
+    """exclude 列表里的题不会被缓存返回。"""
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    fake_client = MagicMock(spec=llm.BaseLLMClient)
+    # LLM 返回唯一题
+    fake_client.chat_json.return_value = {
+        "q": "Only question", "o": ["a", "b"], "a": 0,
+    }
+    with patch("extensions.grammar_quiz.get_llm_client", return_value=fake_client):
+        client.get("/api/grammar/question/ket-present-simple")
+        # 第二次:exclude 这道题 → 缓存命中但应被跳过,fallback 到 LLM
+        fake_client.chat_json.reset_mock()
+        fake_client.chat_json.return_value = {
+            "q": "Second question", "o": ["a", "b"], "a": 0,
+        }
+        resp = client.get("/api/grammar/question/ket-present-simple?exclude=" + json.dumps(["Only question"]))
+    assert resp.get_json()["source"] == "llm"
+    assert fake_client.chat_json.called, '缓存全被 exclude 时应回退到 LLM'
+
+
+def test_cache_save_failure_doesnt_break_response(client, monkeypatch):
+    """_save_question 失败时,用户依然拿到题目。"""
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    fake_client = MagicMock(spec=llm.BaseLLMClient)
+    fake_client.chat_json.return_value = {
+        "q": "X", "o": ["a"], "a": 0,
+    }
+    # mock _save_question 抛错
+    with patch("extensions.grammar_quiz.get_llm_client", return_value=fake_client):
+        with patch("extensions.grammar_quiz._save_question", side_effect=RuntimeError("db down")):
+            resp = client.get("/api/grammar/question/ket-present-simple")
+    assert resp.status_code == 200
+    assert resp.get_json()["success"] is True
+
+
+# === 缓存 helpers 单元测试 ===
+def test_save_then_get_returns_cached_question(tmp_db):
+    question = {"q": "Test Q", "o": ["a", "b", "c"], "a": 1}
+    assert grammar_quiz._save_question("user1", "ket-x", question) is True
+
+    cached = grammar_quiz._get_cached_question("user1", "ket-x", [])
+    assert cached is not None
+    assert cached['question']['q'] == "Test Q"
+
+
+def test_get_cached_returns_none_when_empty(tmp_db):
+    assert grammar_quiz._get_cached_question("nobody", "nothing", []) is None
+
+
+def test_get_cached_skips_excluded(tmp_db):
+    q = {"q": "Q1", "o": ["a"], "a": 0}
+    grammar_quiz._save_question("u", "k", q)
+    assert grammar_quiz._get_cached_question("u", "k", ["Q1"]) is None
+    assert grammar_quiz._get_cached_question("u", "k", ["other"]) is not None
+
+
+def test_get_cached_skips_mastered_questions(tmp_db, monkeypatch):
+    """used_count >= MASTERED_THRESHOLD 的题不应被返回(视为已掌握)。"""
+    monkeypatch.setattr(grammar_quiz, 'MASTERED_THRESHOLD', 2)
+    grammar_quiz._save_question("u", "k", {"q": "Q1", "o": ["a"], "a": 0})
+
+    # 用 2 次
+    grammar_quiz._increment_usage(1)
+    grammar_quiz._increment_usage(1)
+
+    # 再次查 → 应该拿不到这道(已毕业)
+    cached = grammar_quiz._get_cached_question("u", "k", [])
+    assert cached is None
+
+
+def test_unique_constraint_prevents_duplicates(tmp_db):
+    """同一 (user, key, q_text) 不能存两次。"""
+    q = {"q": "Same Q", "o": ["a"], "a": 0}
+    assert grammar_quiz._save_question("u", "k", q) is True
+    # 第二次写应该被 UNIQUE 拦住,返回 False
+    assert grammar_quiz._save_question("u", "k", q) is False
+
+
+def test_eviction_when_over_max(tmp_db, monkeypatch):
+    """超过 MAX_QUESTIONS_PER_KEY 时淘汰 used_count 最高 + 最老的。"""
+    monkeypatch.setattr(grammar_quiz, 'MAX_QUESTIONS_PER_KEY', 3)
+    # 存 4 道,每道 used_count 不同
+    for i in range(4):
+        grammar_quiz._save_question("u", "k", {"q": f"Q{i}", "o": ["a"], "a": 0})
+    grammar_quiz._increment_usage(1)  # Q0 used 1 次
+    grammar_quiz._increment_usage(1)
+    grammar_quiz._increment_usage(1)  # Q0 used 3 次(最多)
+
+    # 现在应该有 3 道 (Q1, Q2, Q3),Q0 被淘汰
+    from extensions.db import get_db
+    count = get_db().execute(
+        "SELECT COUNT(*) c FROM generated_questions WHERE user_id='u' AND grammar_key='k'"
+    ).fetchone()['c']
+    assert count == 3
+    # Q0 应该没了
+    q0 = get_db().execute(
+        "SELECT * FROM generated_questions WHERE question_text='Q0'"
+    ).fetchone()
+    assert q0 is None
+
+
+def test_increment_usage_idempotent_on_missing_id(tmp_db):
+    """不存在的 id 不应崩。"""
+    grammar_quiz._increment_usage(99999)  # 没异常就是通过
+
+
+def test_different_users_have_independent_caches(tmp_db):
+    """user1 的缓存不影响 user2。"""
+    grammar_quiz._save_question("user1", "k", {"q": "Q1", "o": ["a"], "a": 0})
+    grammar_quiz._save_question("user2", "k", {"q": "Q2", "o": ["a"], "a": 0})
+    c1 = grammar_quiz._get_cached_question("user1", "k", [])
+    c2 = grammar_quiz._get_cached_question("user2", "k", [])
+    assert c1['question']['q'] == "Q1"
+    assert c2['question']['q'] == "Q2"
+
+
+def test_different_keys_have_independent_caches(tmp_db):
+    grammar_quiz._save_question("u", "ket-x", {"q": "Q1", "o": ["a"], "a": 0})
+    grammar_quiz._save_question("u", "ket-y", {"q": "Q2", "o": ["a"], "a": 0})
+    cx = grammar_quiz._get_cached_question("u", "ket-x", [])
+    cy = grammar_quiz._get_cached_question("u", "ket-y", [])
+    assert cx['question']['q'] == "Q1"
+    assert cy['question']['q'] == "Q2"

@@ -1,17 +1,28 @@
 """
-Owns: dynamic grammar practice question generation via LLM, with static-question fallback.
+Owns: dynamic grammar practice question generation via LLM, with static-question fallback
+       and SQLite-backed per-user question cache (R21).
 Does NOT own: static comprehension question bank (courses.py), practice progress persistence (parent_data.py),
               grammar topic content / explanations (grammarData in web/js/grammar.js).
 """
 import json
 import logging
 import random
+import time
+
 from flask import jsonify, request
 
 from extensions.auth import _api_rate_limit_ok
+from extensions.db import get_db
 from extensions.llm import get_llm_client
 
 logger = logging.getLogger(__name__)
+
+
+# === R21: 缓存策略常量 ===
+MAX_QUESTIONS_PER_KEY = 20   # 同一 (user_id, grammar_key) 最多缓存 20 道,超了触发淘汰
+MASTERED_THRESHOLD = 5        # 被用过 5 次视为"已掌握",不再从缓存返回
+DEFAULT_USER_ID = 'default'   # 单租户版本,所有孩子共享 'default' 这个 cache bucket
+                              # TODO(多租户): 从 session 取 user_id
 
 
 # === 语法 key → 提示用描述 (key 必须和 web/js/grammar.js 的 grammarQuestions dict 对得上) ===
@@ -231,6 +242,115 @@ def _try_static_fallback(key: str, exclude_questions: list[str]):
     return random.choice(available)
 
 
+# === R21: SQLite 缓存 ===
+def _get_cached_question(user_id: str, key: str, exclude_questions: list[str]) -> dict | None:
+    """从缓存拿一道还没被 exclude 且没"毕业"的题。
+
+    返回 dict: {id, question} 或 None(缓存没货或全被排除)。
+    排序:used_count 升序(让"被用过少"的题优先),同 used_count 时 created_at 降序(新的优先)。
+    """
+    conn = get_db()
+    if exclude_questions:
+        # 用占位符动态构造 IN (...) 子句,避免 SQL 注入
+        placeholders = ','.join('?' * len(exclude_questions))
+        sql = f"""
+            SELECT id, question_json FROM generated_questions
+            WHERE user_id = ? AND grammar_key = ?
+              AND used_count < ?
+              AND question_text NOT IN ({placeholders})
+            ORDER BY used_count ASC, created_at DESC
+            LIMIT 1
+        """
+        params = [user_id, key, MASTERED_THRESHOLD] + list(exclude_questions)
+    else:
+        sql = """
+            SELECT id, question_json FROM generated_questions
+            WHERE user_id = ? AND grammar_key = ?
+              AND used_count < ?
+            ORDER BY used_count ASC, created_at DESC
+            LIMIT 1
+        """
+        params = [user_id, key, MASTERED_THRESHOLD]
+
+    try:
+        row = conn.execute(sql, params).fetchone()
+    except Exception as e:
+        logger.warning(f"缓存查询失败: {type(e).__name__}: {e}")
+        return None
+    if not row:
+        return None
+    try:
+        question = json.loads(row['question_json'])
+    except (json.JSONDecodeError, KeyError) as e:
+        logger.warning(f"缓存 question_json 解析失败: {e}")
+        return None
+    return {'id': row['id'], 'question': question}
+
+
+def _save_question(user_id: str, key: str, question: dict) -> bool:
+    """保存 LLM 生成的新题到缓存。失败只 warn,不抛(用户优先)。"""
+    conn = get_db()
+    now = int(time.time() * 1000)
+    q_text = question.get('q', '').strip()
+    if not q_text:
+        return False
+    try:
+        conn.execute(
+            'INSERT INTO generated_questions '
+            '(user_id, grammar_key, question_json, question_text, used_count, created_at) '
+            'VALUES (?, ?, ?, ?, 0, ?)',
+            (user_id, key, json.dumps(question, ensure_ascii=False), q_text, now),
+        )
+    except Exception as e:
+        # IntegrityError (UNIQUE 冲突) 也算 ok — 说明已经存过这道题
+        logger.debug(f"缓存保存跳过 ({type(e).__name__}): {e}")
+        return False
+    _evict_old_questions(user_id, key)
+    return True
+
+
+def _increment_usage(qid: int) -> None:
+    """命中缓存后,题目的 used_count +1。失败 warn 不抛。"""
+    try:
+        get_db().execute(
+            'UPDATE generated_questions SET used_count = used_count + 1 WHERE id = ?',
+            (qid,),
+        )
+    except Exception as e:
+        logger.warning(f"used_count 自增失败 (qid={qid}): {e}")
+
+
+def _evict_old_questions(user_id: str, key: str) -> None:
+    """缓存超 MAX_QUESTIONS_PER_KEY 时,优先淘汰 used_count 最高 + 最老的。
+
+    逻辑:被用过最多次(说明孩子已经在反复做,可能已经掌握)+ 最久没更新 = 优先淘汰。
+    实现:先单独查 count,再决定删几个 — 避免在 DELETE 子查询里用 LIMIT 子查询
+    时 SQLite 优化器走错索引导致排序结果不符合预期。
+    最后加 id ASC 兜底:同毫秒写入的多条题,id 小的就是更早插入的,避免 SQLite
+    在 used_count + created_at 都相同时返回任意行导致淘汰不稳定。
+    """
+    try:
+        conn = get_db()
+        count = conn.execute(
+            'SELECT COUNT(*) AS c FROM generated_questions WHERE user_id = ? AND grammar_key = ?',
+            (user_id, key),
+        ).fetchone()['c']
+        if count <= MAX_QUESTIONS_PER_KEY:
+            return
+        to_delete = count - MAX_QUESTIONS_PER_KEY
+        conn.execute("""
+            DELETE FROM generated_questions
+            WHERE id IN (
+              SELECT id FROM generated_questions
+              WHERE user_id = ? AND grammar_key = ?
+              ORDER BY used_count DESC, created_at ASC, id ASC
+              LIMIT ?
+            )
+        """, (user_id, key, to_delete))
+    except Exception as e:
+        logger.warning(f"缓存淘汰失败: {type(e).__name__}: {e}")
+
+
 def register_routes(app):
     @app.route('/api/grammar/question/<key>')
     def get_grammar_question(key):
@@ -254,7 +374,17 @@ def register_routes(app):
         except json.JSONDecodeError:
             exclude_questions = []
 
-        # 优先走 LLM
+        # R21: 优先查缓存 (避免每次都打 LLM)
+        cached = _get_cached_question(DEFAULT_USER_ID, key, exclude_questions)
+        if cached:
+            _increment_usage(cached['id'])
+            return jsonify({
+                "success": True,
+                "question": cached['question'],
+                "source": "cache",
+            })
+
+        # 缓存没货 → 调 LLM
         system, user = _build_prompt(key, exclude_questions)
         if user:
             try:
@@ -263,6 +393,8 @@ def register_routes(app):
                     [{"role": "user", "content": user}],
                     schema=GRAMMAR_QUESTION_JSON_SCHEMA,
                 )
+                # 缓存写失败不影响响应
+                _save_question(DEFAULT_USER_ID, key, obj)
                 return jsonify({
                     "success": True,
                     "question": obj,
@@ -271,7 +403,7 @@ def register_routes(app):
             except Exception as e:
                 logger.warning(f"LLM 出题失败,降级到静态题库: {type(e).__name__}: {e}")
 
-        # LLM 失败 → 静态题库
+        # LLM 失败 → 静态题库 (不进缓存,因为静态本身就不耗钱,没必要再缓存一遍)
         static_q = _try_static_fallback(key, exclude_questions)
         if static_q:
             return jsonify({
