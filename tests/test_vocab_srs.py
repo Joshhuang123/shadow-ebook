@@ -320,3 +320,58 @@ def test_load_old_data_backfills_new_sections(tmp_db):
     assert 'bookProgress' in data
     assert 'sentenceMastery' in data
     assert data['stats']['x'] == 1, '老数据应该保留'
+
+# === R20: get_weak_words (错词喂回 prompt) ===
+def _seed_word(word: str, correct: int, total: int):
+    """辅助:建一个词,复习 total 次对 correct 次。"""
+    parent_data._record_vocab_lookup(word)
+    for _ in range(total):
+        parent_data._record_vocab_review(word, correct=(correct > 0))
+        correct = max(0, correct - 1)
+
+
+def test_get_weak_words_excludes_mastered(tmp_db):
+    # mastered 词不算薄弱
+    parent_data._record_vocab_lookup('mastered_word')
+    for _ in range(8):
+        parent_data._record_vocab_review('mastered_word', correct=True)
+    assert parent_data.get_weak_words() == [], '没非 mastered 词应返回空'
+
+
+def test_get_weak_words_excludes_no_review_data(tmp_db):
+    # 只 lookup 没 review 的词不应该出现在薄弱词里(没数据)
+    parent_data._record_vocab_lookup('fresh_word')
+    assert parent_data.get_weak_words() == []
+
+
+def test_get_weak_words_sorts_by_error_rate_desc(tmp_db):
+    # high_error: 错误率高
+    _seed_word('high_error', correct=1, total=5)   # 错误率 80%
+    # low_error: 错误率低
+    _seed_word('low_error', correct=4, total=5)    # 错误率 20%
+
+    weak = parent_data.get_weak_words()
+    assert weak == ['high_error', 'low_error']
+
+
+def test_get_weak_words_breaks_tie_by_review_count(tmp_db):
+    # 同错误率下,复习次数多的优先(数据更可信)
+    _seed_word('few_reviews', correct=0, total=2)   # 100% 错误, 2 次
+    _seed_word('many_reviews', correct=0, total=10) # 100% 错误, 10 次
+
+    weak = parent_data.get_weak_words()
+    assert weak == ['many_reviews', 'few_reviews']
+
+
+def test_get_weak_words_respects_limit(tmp_db):
+    _seed_word('w1', correct=0, total=3)
+    _seed_word('w2', correct=0, total=3)
+    _seed_word('w3', correct=0, total=3)
+    _seed_word('w4', correct=0, total=3)
+
+    weak = parent_data.get_weak_words(limit=2)
+    assert len(weak) == 2
+
+
+def test_get_weak_words_empty_data_returns_empty(tmp_db):
+    assert parent_data.get_weak_words() == []

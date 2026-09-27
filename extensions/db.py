@@ -26,6 +26,7 @@ BOOKS_JSON_DIR = DATA_DIR / 'books'
 # === SQLite schema ===
 # books (Phase 3a): 单内容列 data_json 保留 book/author/description/chapters/cover 全部字段
 # parent_data / parent_pin (Phase 3b): 单行表 (id=1),parent_data 存完整 stats/vocab/settings JSON
+# generated_questions (R21): LLM 出题的缓存,防重复 + 自动毕业已掌握题
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS books (
   id TEXT PRIMARY KEY,
@@ -45,6 +46,19 @@ CREATE TABLE IF NOT EXISTS parent_pin (
   pin_hash TEXT NOT NULL,
   updated_at INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS generated_questions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  grammar_key TEXT NOT NULL,
+  question_json TEXT NOT NULL,
+  question_text TEXT NOT NULL,
+  used_count INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  UNIQUE(user_id, grammar_key, question_text)
+);
+CREATE INDEX IF NOT EXISTS idx_gen_q_lookup
+  ON generated_questions(user_id, grammar_key, used_count, created_at DESC);
 """
 
 

@@ -474,6 +474,98 @@
             }
         }
 
+        // R19: 显示 AI 反馈 (whisper ASR + LLM 生成)
+        function renderAIFeedback(data) {
+            const feedback = document.getElementById('feedback');
+            const content = document.getElementById('feedback-content');
+
+            const fb = data.feedback || {};
+            const errors = (data.errors || []).filter(e => e.expected && e.got);
+            const simPct = Math.round((data.similarity || 0) * 100);
+
+            let html = '';
+
+            // 总体评价 + 相似度
+            html += `<div class="feedback-item">
+                <span class="feedback-icon feedback-good">🎯</span>
+                <span><strong>${escapeHtml(fb.overall || '录音完成')}</strong> · 相似度 ${simPct}%</span>
+            </div>`;
+
+            // 错词列表
+            errors.forEach(err => {
+                html += `<div class="feedback-item">
+                    <span class="feedback-icon feedback-bad">💡</span>
+                    <span>把 <code>${escapeHtml(err.got)}</code> 读成 <code>${escapeHtml(err.expected)}</code>${err.tip ? ' — ' + escapeHtml(err.tip) : ''}</span>
+                </div>`;
+            });
+
+            // 建议
+            if (fb.suggestion) {
+                html += `<div class="feedback-item">
+                    <span class="feedback-icon feedback-good">📝</span>
+                    <span>${escapeHtml(fb.suggestion)}</span>
+                </div>`;
+            }
+
+            // 鼓励
+            if (fb.encouragement) {
+                html += `<div class="feedback-item">
+                    <span class="feedback-icon feedback-good">✨</span>
+                    <span>${escapeHtml(fb.encouragement)}</span>
+                </div>`;
+            }
+
+            // 转写文本(给家长看)
+            if (data.transcript) {
+                html += `<div class="feedback-item" style="opacity:0.6; font-size:0.85em;">
+                    <span class="feedback-icon">📝</span>
+                    <span>识别: "${escapeHtml(data.transcript)}"</span>
+                </div>`;
+            }
+
+            content.innerHTML = html;
+            feedback.classList.remove('hidden');
+
+            document.getElementById('record-status').textContent = data.ai_unavailable ? '✅ 录音完成 (AI 反馈暂不可用)' : '✅ 录音完成 + AI 反馈';
+            document.getElementById('record-status').className = 'record-status record-done';
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // R19: 调用 /api/recording/feedback 拿 AI 反馈
+        async function fetchAIFeedback(blob, sentence) {
+            try {
+                const fd = new FormData();
+                fd.append('audio', blob, 'recording.webm');
+                fd.append('sentence', sentence);
+                const resp = await fetch('/api/recording/feedback', {
+                    method: 'POST',
+                    body: fd,
+                });
+                if (!resp.ok) {
+                    console.warn('AI feedback HTTP', resp.status);
+                    return null;
+                }
+                const data = await resp.json();
+                if (!data.success) {
+                    console.warn('AI feedback failed:', data.error);
+                    return null;
+                }
+                return data;
+            } catch (e) {
+                console.warn('AI feedback fetch error:', e);
+                return null;
+            }
+        }
+
         // 处理录音
         function processRecording() {
             // 释放上一次录音的 blob URL（防止长时间使用 OOM）
@@ -493,8 +585,26 @@
             currentAudioElement = new Audio(url);
             currentAudioElement.play();
 
-            // 显示反馈
-            showFeedback();
+            // R19: 先显示"AI 分析中...",再异步加载反馈
+            const fbEl = document.getElementById('feedback');
+            const fbContent = document.getElementById('feedback-content');
+            fbContent.innerHTML = `<div class="feedback-item">
+                <span class="feedback-icon feedback-good">🤖</span>
+                <span>正在分析发音…</span>
+            </div>`;
+            fbEl.classList.remove('hidden');
+
+            const sent = units[currentUnit].sentences[currentSentence];
+            const sentenceText = typeof sent === 'string' ? sent : sent.text;
+
+            fetchAIFeedback(blob, sentenceText).then(data => {
+                if (data && data.feedback) {
+                    renderAIFeedback(data);
+                } else {
+                    // AI 不可用 → 降级到静态反馈
+                    showFeedback();
+                }
+            });
 
             practiceComplete++;
             // 录音完成后隐藏上一个/下一个，让用户决定是否继续

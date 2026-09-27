@@ -262,6 +262,38 @@ def _vocab_state_counts() -> dict:
     return {**counts, 'due_now': due_now, 'total': len(reviews)}
 
 
+# === R20: 薄弱词查询(供 feedback.py 喂回 LLM prompt) ===
+def get_weak_words(limit: int = 10) -> list:
+    """返回孩子历史薄弱词列表,按"错误率降序 + 复习次数降序"排。
+
+    用途:feedback.py 拿到原句 + ASR 转写后,把孩子的薄弱词列表喂给 LLM,
+    让反馈能针对性建议 ("你在 'th' 上一直有困难,这次原句里就有 'the',注意...")
+
+    规则:
+      - 排除已 mastered 的词(已掌握不算薄弱)
+      - 排除 review_count=0 的词(没数据,没法算错误率)
+      - 错误率 = 1 - correct_count / review_count
+      - review_count 越大,排序越靠前(数据更可信,胜过只看过 1 次的"高错误率")
+    """
+    data = _load_parent_data()
+    reviews = data.get('vocabReviews', {})
+
+    weak = []
+    for word, r in reviews.items():
+        if r.get('state') == 'mastered':
+            continue
+        review_count = r.get('review_count', 0)
+        correct_count = r.get('correct_count', 0)
+        if review_count == 0:
+            continue
+        error_rate = 1 - (correct_count / review_count)
+        weak.append((word, error_rate, review_count))
+
+    # 错误率降序,review_count 降序(同错误率下复习多的优先)
+    weak.sort(key=lambda x: (-x[1], -x[2]))
+    return [w for w, _, _ in weak[:limit]]
+
+
 def _save_book_progress(book_id: str, chapter_idx: int, sentence_idx: int) -> dict:
     """保存孩子最近读到的位置。返回新位置 dict。"""
     if not book_id:
