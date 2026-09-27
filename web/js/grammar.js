@@ -1514,10 +1514,33 @@
             answered: false
         };
 
-        function startPractice(key) {
-            const questions = grammarQuestions[key];
+        async function fetchDynamicQuestions(key) {
+            // R18: 拿 1 道 LLM 题放最前面 (新鲜感),其余用静态题库填。
+            // LLM 失败时全部用静态,保证孩子永远有题做。
+            const staticQs = grammarQuestions[key] || [];
+            try {
+                const resp = await fetch(`/api/grammar/question/${encodeURIComponent(key)}`);
+                const data = await resp.json();
+                if (data.success && data.question && data.source === 'llm') {
+                    return [data.question, ...staticQs.slice(0, 4)];
+                }
+            } catch (e) {
+                console.warn('Dynamic question fetch failed, using static:', e);
+            }
+            return staticQs;
+        }
+
+        async function startPractice(key) {
+            const grammar = grammarData[key];
+            document.getElementById('practice-title').textContent = grammar ? grammar.title : '语法练习';
+            document.getElementById('practice-modal').classList.add('show');
+            document.getElementById('practice-question').textContent = '加载中…';
+            document.getElementById('practice-options').classList.add('hidden');
+
+            const questions = await fetchDynamicQuestions(key);
             if (!questions || questions.length === 0) {
                 alert('暂无练习题');
+                document.getElementById('practice-modal').classList.remove('show');
                 return;
             }
 
@@ -1529,10 +1552,7 @@
                 answered: false
             };
 
-            const grammar = grammarData[key];
-            document.getElementById('practice-title').textContent = grammar ? grammar.title : '语法练习';
             showPracticeQuestion();
-            document.getElementById('practice-modal').classList.add('show');
         }
 
         function showPracticeQuestion() {

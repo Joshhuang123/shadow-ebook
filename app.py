@@ -14,9 +14,13 @@ import socket
 from datetime import timedelta
 from pathlib import Path
 
+from dotenv import load_dotenv
 from flask import Flask, session, send_from_directory
 
-from extensions import pwa, courses, tts, books, parent_data, db
+# R18: 加载 .env(本地开发),生产用真环境变量,这里无害
+load_dotenv()
+
+from extensions import pwa, courses, tts, books, parent_data, db, grammar_quiz
 
 
 WEB_DIR = Path(__file__).parent / 'web'
@@ -166,6 +170,7 @@ courses.register_routes(app)
 tts.register_routes(app)
 books.register_routes(app)
 parent_data.register_routes(app)
+grammar_quiz.register_routes(app)  # R18: LLM 动态出题(grammar_quiz.py)
 
 
 # === 启动 ===
