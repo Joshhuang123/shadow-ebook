@@ -251,3 +251,75 @@ def test_endpoint_rate_limited(client, monkeypatch, clear_api_rate):
     )
     resp = _post_audio(client)
     assert resp.status_code == 429
+
+# === R20: 薄弱词喂回 prompt ===
+def test_build_prompt_includes_weak_words():
+    prompt = feedback._build_prompt(
+        sentence="What are you doing?",
+        transcript="What are you doing",
+        similarity=0.95,
+        error_pairs=[],
+        weak_words=["th", "the", "they"],
+    )
+    assert "th" in prompt
+    assert "the" in prompt
+    assert "they" in prompt
+    assert "薄弱词" in prompt
+
+
+def test_build_prompt_handles_empty_weak_words():
+    prompt = feedback._build_prompt(
+        sentence="Hello",
+        transcript="Hello",
+        similarity=1.0,
+        error_pairs=[],
+        weak_words=None,
+    )
+    assert "暂无历史数据" in prompt
+
+
+def test_build_prompt_default_weak_words_is_empty():
+    """不传 weak_words 时,默认行为应该是"暂无历史数据"占位。"""
+    prompt = feedback._build_prompt(
+        sentence="Hello", transcript="Hello", similarity=1.0, error_pairs=[],
+    )
+    assert "暂无历史数据" in prompt
+
+
+def test_endpoint_passes_weak_words_to_llm(client, monkeypatch):
+    """端点应该调 get_weak_words 并把结果塞进 LLM 的 prompt。"""
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    with patch.object(feedback, '_get_whisper', return_value=_fake_whisper_model("What are you doing?")):
+        with patch.object(feedback, 'get_llm_client') as g:
+            fake_llm = MagicMock(spec=llm.BaseLLMClient)
+            fake_llm.chat_json.return_value = {
+                "overall": "好", "errors": [],
+                "suggestion": "继续", "encouragement": "加油!🌟",
+            }
+            g.return_value = fake_llm
+            with patch.object(feedback, 'get_weak_words', return_value=["th", "they"]) as gw:
+                resp = _post_audio(client, sentence="What are you doing?")
+    assert resp.status_code == 200
+    assert gw.called, '端点应该调 get_weak_words'
+    # LLM 收到的 prompt 应该包含薄弱词
+    call_args = fake_llm.chat_json.call_args
+    prompt_text = call_args[0][0][0]["content"]
+    assert "th" in prompt_text
+    assert "they" in prompt_text
+
+
+def test_endpoint_works_when_no_weak_words(client, monkeypatch):
+    """没薄弱词(新用户)时不应该崩。"""
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    with patch.object(feedback, '_get_whisper', return_value=_fake_whisper_model("Hello")):
+        with patch.object(feedback, 'get_llm_client') as g:
+            fake_llm = MagicMock(spec=llm.BaseLLMClient)
+            fake_llm.chat_json.return_value = {
+                "overall": "好", "errors": [],
+                "suggestion": "继续", "encouragement": "加油!🌟",
+            }
+            g.return_value = fake_llm
+            with patch.object(feedback, 'get_weak_words', return_value=[]):
+                resp = _post_audio(client, sentence="Hello")
+    assert resp.status_code == 200
+    assert resp.get_json()["success"] is True

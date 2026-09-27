@@ -8,11 +8,13 @@ import logging
 import os
 import tempfile
 from pathlib import Path
+from typing import Optional
 
 from flask import jsonify, request
 
 from extensions.auth import _api_rate_limit_ok
 from extensions.llm import get_llm_client
+from extensions.parent_data import get_weak_words
 
 logger = logging.getLogger(__name__)
 
@@ -94,27 +96,39 @@ _FEEDBACK_PROMPT = """你是给 8-12 岁中国孩子的英语跟读老师。看�
 **读错的词 (差异):**
 {errors_block}
 
+**孩子历史薄弱词 (家长追踪过的、错误率较高的):**
+{weak_words_block}
+
 请严格按下面的 JSON 格式输出,只输出 JSON,不要任何解释或 markdown 标记:
 
 {{"overall": "一句话总体评价", "errors": [{{"got": "...", "expected": "...", "tip": "..."}}], "suggestion": "1-2 句建议", "encouragement": "1 句鼓励"}}
 
 要求:
 - 如果 errors 为空,overall 就说"读得很准",suggestion 说继续保持
+- **如果薄弱词里有原句里的词,errors 里必须包含这条,且 tip 要明确针对这个薄弱点**(例:薄弱词"th",原句含"the",tip 说"th 要把舌尖放上齿背")
 - 语气必须鼓励性,**永远不要**让孩子觉得自己很笨
 - tip 用中文,30 字以内
 - encouragement 必须包含一个 emoji"""
 
 
-def _build_prompt(sentence: str, transcript: str, similarity: float, error_pairs: list) -> str:
+def _build_prompt(sentence: str, transcript: str, similarity: float,
+                  error_pairs: list, weak_words: Optional[list] = None) -> str:
     if error_pairs:
         errors_block = "\n".join(f"- 实际:「{got}」→ 应该:「{exp}」" for got, exp in error_pairs[:5])
     else:
         errors_block = "(没有明显错误)"
+
+    if weak_words:
+        weak_words_block = "、".join(weak_words)
+    else:
+        weak_words_block = "(暂无历史数据,基于这次表现给反馈)"
+
     return _FEEDBACK_PROMPT.format(
         sentence=sentence,
         transcript=transcript,
         similarity=similarity,
         errors_block=errors_block,
+        weak_words_block=weak_words_block,
     )
 
 
@@ -220,7 +234,9 @@ def register_routes(app):
         # === Step 4: LLM 生成反馈 ===
         try:
             client = get_llm_client()
-            prompt = _build_prompt(sentence, transcript, similarity, error_pairs)
+            # R20: 拿孩子历史薄弱词喂进 prompt,让反馈个性化
+            weak_words = get_weak_words(limit=10)
+            prompt = _build_prompt(sentence, transcript, similarity, error_pairs, weak_words)
             feedback = client.chat_json(
                 [{"role": "user", "content": prompt}],
                 schema=FEEDBACK_JSON_SCHEMA,
