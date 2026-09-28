@@ -323,3 +323,77 @@ def test_endpoint_works_when_no_weak_words(client, monkeypatch):
                 resp = _post_audio(client, sentence="Hello")
     assert resp.status_code == 200
     assert resp.get_json()["success"] is True
+
+
+# === D2: whisper 懒加载加锁 — 并发首调只 load 一次 ===
+def test_whisper_lock_prevents_concurrent_loads(monkeypatch):
+    """多线程并发调 _get_whisper,whisper.load_model 应该只被调一次。"""
+    monkeypatch.setattr(feedback, '_WHISPER_MODEL', None)
+
+    # 把 whisper 模块塞进 sys.modules,让 import whisper 成功
+    import sys
+    import types
+    fake_whisper = types.ModuleType('whisper')
+    call_count = {'n': 0}
+
+    def slow_load(name):
+        import time as _t
+        _t.sleep(0.05)  # 模拟加载耗时,确保并发线程有机会撞 race
+        call_count['n'] += 1
+        return MagicMock()
+
+    fake_whisper.load_model = slow_load
+    monkeypatch.setitem(sys.modules, 'whisper', fake_whisper)
+
+    import threading
+    results = []
+    barrier = threading.Barrier(8)
+
+    def worker():
+        barrier.wait()  # 8 线程同时起跑
+        results.append(feedback._get_whisper())
+
+    threads = [threading.Thread(target=worker) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert call_count['n'] == 1, f"应该只 load 一次,实际 {call_count['n']} 次"
+
+
+def test_whisper_lock_fast_path_when_already_loaded(monkeypatch):
+    """模型已加载时,_get_whisper 不该再调 whisper.load_model。"""
+    fake_model = MagicMock()
+    monkeypatch.setattr(feedback, '_WHISPER_MODEL', fake_model)
+
+    # 故意让 import whisper 失败 — 验证 fast-path 不走 import 也不会触雷
+    import sys
+    monkeypatch.delitem(sys.modules, 'whisper', raising=False)
+    sys.modules['whisper'] = None  # ImportError
+
+    result = feedback._get_whisper()
+    assert result is fake_model, "已加载时直接返回,不该 import whisper"
+
+
+# === D6: feedback 端点用 'feedback' 桶(独立于 global) ===
+def test_feedback_endpoint_uses_feedback_bucket(client, monkeypatch, clear_api_rate):
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    # global 桶打满 (601 次) → feedback 端点应该不受影响
+    with patch.object(feedback, '_get_whisper', return_value=_fake_whisper_model()):
+        with patch.object(feedback, 'get_llm_client') as g:
+            fake_llm = MagicMock(spec=llm.BaseLLMClient)
+            fake_llm.chat_json.return_value = {
+                "overall": "好", "errors": [],
+                "suggestion": "继续", "encouragement": "加油!",
+            }
+            g.return_value = fake_llm
+            # 直接灌满 global 桶
+            from extensions import auth
+            with auth._API_LOCK:
+                now = __import__('time').time()
+                auth._API_RATE[('127.0.0.1', 'global')] = [now] * 600
+            resp = _post_audio(client)
+    assert resp.status_code == 200, \
+        "feedback 端点应使用独立 feedback 桶,不该受 global 桶限制"
+    assert resp.get_json()["success"] is True

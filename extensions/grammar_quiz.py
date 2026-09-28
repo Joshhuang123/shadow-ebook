@@ -420,7 +420,7 @@ def register_routes(app):
 
 
 def _rate_limited():
-    ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'global')
+    ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'grammar')
     if not ok:
         return jsonify({
             "success": False,

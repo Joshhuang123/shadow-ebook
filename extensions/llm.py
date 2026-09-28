@@ -6,6 +6,7 @@ Does NOT own: feature-specific prompts or caching (grammar_quiz.py, future feedb
 import json
 import logging
 import os
+import time
 import urllib.error
 import urllib.request
 from typing import Any, Optional
@@ -27,6 +28,40 @@ class BaseLLMClient:
         """默认实现走 chat + 强校验,子类可重写更高效的版本。"""
         raw = self.chat(messages, **kw)
         return _parse_and_validate(raw, schema)
+
+
+# === Retry 配置 ===
+# 瞬时错误(HTTP 5xx/408/429、网络错误)重试 1 次,4xx 不重试(用户/配置问题,重试无意义)。
+# 退避 0.5s,够上游恢复也不至于让用户等太久(单次 chat 通常 2-5s)。
+_RETRY_BACKOFF_S = 0.5
+_RETRYABLE_HTTP_CODES = {408, 429, 500, 502, 503, 504}
+
+
+def _urlopen_with_retry(req, timeout: float, max_retries: int = 1):
+    """urlopen 包装:瞬时错误重试。返回 (response_or_None, last_error_str)。
+
+    成功 → (resp, None);失败 → (None, "LLM upstream HTTP 500" 等)
+    """
+    last_err = None
+    for attempt in range(max_retries + 1):
+        try:
+            return urllib.request.urlopen(req, timeout=timeout), None
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode(errors="replace")[:500]
+            last_err = f"LLM upstream HTTP {e.code}: {err_body}"
+            if e.code not in _RETRYABLE_HTTP_CODES or attempt >= max_retries:
+                logger.warning(last_err)
+                return None, last_err
+            logger.info(f"LLM HTTP {e.code} 瞬时错误, {0.5 * (attempt + 1)}s 后重试...")
+            time.sleep(_RETRY_BACKOFF_S * (attempt + 1))
+        except urllib.error.URLError as e:
+            last_err = f"LLM unreachable: {e.reason}"
+            if attempt >= max_retries:
+                logger.warning(last_err)
+                return None, last_err
+            logger.info(f"LLM 网络错误, {0.5 * (attempt + 1)}s 后重试...")
+            time.sleep(_RETRY_BACKOFF_S * (attempt + 1))
+    return None, last_err or "LLM request failed"
 
 
 # === OpenAI 兼容协议的通用实现 (DeepSeek / MiniMax / Moonshot / 智谱 全套这套) ===
@@ -66,22 +101,34 @@ class OpenAICompatClient(BaseLLMClient):
             },
             method="POST",
         )
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                payload = json.loads(resp.read())
-        except urllib.error.HTTPError as e:
-            err_body = e.read().decode(errors="replace")[:500]
-            logger.warning(f"LLM HTTP {e.code}: {err_body}")
-            raise RuntimeError(f"LLM upstream HTTP {e.code}") from e
-        except urllib.error.URLError as e:
-            logger.warning(f"LLM URL error: {e}")
-            raise RuntimeError(f"LLM unreachable: {e.reason}") from e
+
+        # === D4: 结构化日志 — 记耗时 + key ===
+        t0 = time.monotonic()
+        resp, err = _urlopen_with_retry(req, self.timeout)
+        elapsed_ms = int((time.monotonic() - t0) * 1000)
+        if err:
+            logger.info(f"LLM call failed model={self.model} elapsed={elapsed_ms}ms err={err[:120]}")
+            raise RuntimeError(err)
 
         try:
-            return payload["choices"][0]["message"]["content"]
+            payload = json.loads(resp.read())
+        except Exception as e:
+            logger.info(f"LLM call failed model={self.model} elapsed={elapsed_ms}ms err=malformed JSON")
+            raise RuntimeError(f"LLM returned malformed JSON: {e}") from e
+
+        try:
+            content = payload["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError) as e:
             logger.warning(f"LLM malformed response: {payload!r}")
             raise RuntimeError("LLM returned malformed response") from e
+
+        usage = payload.get("usage", {})
+        logger.info(
+            f"LLM call ok model={self.model} elapsed={elapsed_ms}ms "
+            f"prompt_tokens={usage.get('prompt_tokens', '?')} "
+            f"completion_tokens={usage.get('completion_tokens', '?')}"
+        )
+        return content
 
 
 # === Provider 子类 — 只放默认值,override 模型名 / 限参 ===
@@ -97,12 +144,18 @@ class DeepSeekClient(OpenAICompatClient):
 
 
 class MiniMaxClient(OpenAICompatClient):
-    """占位:用户提到 MiniMax-M3.1-Flash-Preview 时使用。endpoint 和 model 由构造参数覆盖。"""
-    def __init__(self, api_key: str, model: str = "MiniMax-M3", **kw):
+    """MiniMax M 系列 (M3.1-Flash-Preview / M3 / M2.7) — OpenAI 兼容协议。
+
+    端点:`api.minimax.cn/v1` (官方文档 2026-09)。M3.1 默认开启思考,
+    `reasoning_content` 通过单独字段返回,我们只读 `content`(最终答案)。
+    """
+    DEFAULT_MODEL = "MiniMax-M3.1-Flash-Preview"
+
+    def __init__(self, api_key: str, model: Optional[str] = None, **kw):
         super().__init__(
-            base_url="https://api.minimaxi.com/anthropic/v1",
+            base_url="https://api.minimax.cn/v1",
             api_key=api_key,
-            model=model,
+            model=model or self.DEFAULT_MODEL,
             **kw,
         )
 
@@ -155,7 +208,7 @@ def get_llm_client() -> BaseLLMClient:
     if provider == "minimax":
         return MiniMaxClient(
             api_key=os.environ.get("MINIMAX_API_KEY", ""),
-            model=os.environ.get("LLM_MODEL", "MiniMax-M3"),
+            model=os.environ.get("LLM_MODEL", MiniMaxClient.DEFAULT_MODEL),
         )
 
     raise RuntimeError(
