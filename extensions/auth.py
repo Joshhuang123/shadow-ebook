@@ -65,6 +65,46 @@ _API_LIMITS = {
 }
 _API_LOCK = threading.Lock()  # 保护 _API_RATE (Phase 2 加锁)
 
+# 清理阈值: dict 涨到这么大才值得扫一次,避免每个请求都遍历
+_SWEEP_THRESHOLD = 512
+
+
+def _sweep_stale_api_rate(now: float) -> int:
+    """删掉整个已过期的 (ip, bucket) key,返回删了几条。
+
+    为什么需要:`_api_rate_limit_ok` 只在某个 key 被再次访问时裁剪它自己的
+    时间戳数组,从不过期删除整个 key。平板换 WiFi、DHCP 换 IP、设备上下线,
+    都会留下永久条目 —— 长期跑 dict 单向增长,这是个慢性的内存泄漏。
+
+    调用方负责持有 _API_LOCK,本函数自己不取锁(避免二次加锁死锁)。
+
+    关键陷阱:各 bucket 的 window 差很多 (`import` 是 3600s,其余是 60s)。
+    用全局最小 window 去淘汰,会把 `import` bucket 还没过期但暂时没访问的
+    key 提前删掉 —— 结果是那个 IP 的上传限流被绕过。所以要按 bucket
+    各自的 window 判断。
+    """
+    # 未达阈值不扫: 遍历全表的开销不能让它变成每个请求的固定成本
+    if len(_API_RATE) < _SWEEP_THRESHOLD:
+        return 0
+
+    # 收集完再统一改 —— 遍历中增删 key 会 RuntimeError
+    trims = {}       # key -> 剔除陈旧时间戳后的新数组
+    stale_keys = []  # 窗口内已无请求,整个删掉
+    for key, timestamps in _API_RATE.items():
+        window = _API_LIMITS.get(key[1], _API_LIMITS['global'])['window']
+        fresh = [t for t in timestamps if now - t < window]
+        if not fresh:
+            stale_keys.append(key)
+        elif len(fresh) != len(timestamps):
+            trims[key] = fresh
+
+    for key, fresh in trims.items():
+        _API_RATE[key] = fresh
+    for key in stale_keys:
+        del _API_RATE[key]
+
+    return len(stale_keys)
+
 
 def _api_rate_limit_ok(ip, bucket='global'):
     """返回 (ok, retry_after_sec). 超过限制时返回 (False, 至少 1 秒)"""
@@ -78,6 +118,7 @@ def _api_rate_limit_ok(ip, bucket='global'):
             return False, max(retry, 1)
         arr.append(now)
         _API_RATE[key] = arr
+        _sweep_stale_api_rate(now)
         return True, 0
 
 
