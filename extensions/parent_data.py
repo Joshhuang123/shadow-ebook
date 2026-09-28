@@ -137,6 +137,8 @@ def _save_parent_data(data: dict):
         'INSERT OR REPLACE INTO parent_data (id, data_json, updated_at) VALUES (1, ?, ?)',
         (json.dumps(data, ensure_ascii=False), now)
     )
+    # D5: 任何写都 invalidate weak_words 缓存,让孩子答完立刻看到更新
+    _invalidate_weak_words_cache()
 
 
 # === R12: 间隔重复 (SRS) 状态机 ===
@@ -274,7 +276,17 @@ def get_weak_words(limit: int = 10) -> list:
       - 排除 review_count=0 的词(没数据,没法算错误率)
       - 错误率 = 1 - correct_count / review_count
       - review_count 越大,排序越靠前(数据更可信,胜过只看过 1 次的"高错误率")
+
+    D5: 30s TTL 缓存。feedback 每条录音都调,30s 够用户读完题 + 录音的窗口,
+    又不会让薄弱词更新后延迟太久才生效。写操作(更新 vocabReviews)会主动
+    invalidate,免得用户刚答对就还看到老数据。
     """
+    cache_key = limit
+    now = time.time()
+    cached = _WEAK_WORDS_CACHE.get(cache_key)
+    if cached and (now - cached[0]) < _WEAK_WORDS_TTL_S:
+        return cached[1]
+
     data = _load_parent_data()
     reviews = data.get('vocabReviews', {})
 
@@ -291,7 +303,19 @@ def get_weak_words(limit: int = 10) -> list:
 
     # 错误率降序,review_count 降序(同错误率下复习多的优先)
     weak.sort(key=lambda x: (-x[1], -x[2]))
-    return [w for w, _, _ in weak[:limit]]
+    result = [w for w, _, _ in weak[:limit]]
+    _WEAK_WORDS_CACHE[cache_key] = (now, result)
+    return result
+
+
+# === D5: weak_words 缓存 ===
+_WEAK_WORDS_CACHE: dict = {}  # limit -> (timestamp, result)
+_WEAK_WORDS_TTL_S = 30.0
+
+
+def _invalidate_weak_words_cache():
+    """写操作调,主动清缓存。让用户答对/答错后立刻看到更新。"""
+    _WEAK_WORDS_CACHE.clear()
 
 
 def _save_book_progress(book_id: str, chapter_idx: int, sentence_idx: int) -> dict:

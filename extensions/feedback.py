@@ -7,6 +7,8 @@ import difflib
 import logging
 import os
 import tempfile
+import threading
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -22,22 +24,31 @@ logger = logging.getLogger(__name__)
 # === Whisper 模型懒加载 (单例,首次请求才装,避免 import 时拖慢启动) ===
 _WHISPER_MODEL = None
 _WHISPER_MODEL_NAME = os.environ.get("WHISPER_MODEL", "base")  # base/small/medium/large
+_WHISPER_LOCK = threading.Lock()  # 防 Flask threaded 下并发首调加载两遍
 
 
 def _get_whisper():
-    """懒加载 whisper 模型。失败抛 RuntimeError 让上层降级。"""
+    """懒加载 whisper 模型。失败抛 RuntimeError 让上层降级。
+
+    D2: 加锁防止并发首调 race。Lock 包整个 if+load,确保只 load 一次。
+    后续命中缓存走 fast-path 不加锁 (Lock 自身开销几微秒,可忽略)。
+    """
     global _WHISPER_MODEL
     if _WHISPER_MODEL is not None:
         return _WHISPER_MODEL
-    try:
-        import whisper  # type: ignore
-    except ImportError:
-        raise RuntimeError(
-            "whisper 未安装。运行: pip install openai-whisper (或 pip install -r requirements-dev.txt)"
-        )
-    logger.info(f"加载 whisper 模型 {_WHISPER_MODEL_NAME} (首次较慢)...")
-    _WHISPER_MODEL = whisper.load_model(_WHISPER_MODEL_NAME)
-    logger.info("whisper 模型加载完成")
+    with _WHISPER_LOCK:
+        if _WHISPER_MODEL is not None:  # double-check:别的线程可能已经装好
+            return _WHISPER_MODEL
+        try:
+            import whisper  # type: ignore
+        except ImportError:
+            raise RuntimeError(
+                "whisper 未安装。运行: pip install openai-whisper (或 pip install -r requirements-dev.txt)"
+            )
+        t0 = time.monotonic()
+        logger.info(f"加载 whisper 模型 {_WHISPER_MODEL_NAME} (首次较慢)...")
+        _WHISPER_MODEL = whisper.load_model(_WHISPER_MODEL_NAME)
+        logger.info(f"whisper 模型加载完成 took={int((time.monotonic() - t0) * 1000)}ms")
     return _WHISPER_MODEL
 
 
@@ -202,8 +213,13 @@ def register_routes(app):
 
             # === Step 2b: 转写 (加载成功但本条录音失败 → 502,可重试) ===
             try:
+                asr_t0 = time.monotonic()
                 asr_result = model.transcribe(tmp.name, language='en', fp16=False)
                 transcript = (asr_result.get('text') or '').strip()
+                logger.info(
+                    f"ASR ok elapsed={int((time.monotonic() - asr_t0) * 1000)}ms "
+                    f"transcript_len={len(transcript)}"
+                )
             except Exception as e:
                 logger.warning(f"ASR 转写失败: {type(e).__name__}: {e}")
                 return jsonify({
@@ -233,6 +249,7 @@ def register_routes(app):
 
         # === Step 4: LLM 生成反馈 ===
         try:
+            llm_t0 = time.monotonic()
             client = get_llm_client()
             # R20: 拿孩子历史薄弱词喂进 prompt,让反馈个性化
             weak_words = get_weak_words(limit=10)
@@ -240,6 +257,10 @@ def register_routes(app):
             feedback = client.chat_json(
                 [{"role": "user", "content": prompt}],
                 schema=FEEDBACK_JSON_SCHEMA,
+            )
+            logger.info(
+                f"feedback ok elapsed={int((time.monotonic() - llm_t0) * 1000)}ms "
+                f"similarity={similarity:.2f} weak_words={len(weak_words)}"
             )
         except Exception as e:
             # LLM 失败 → 仍然返回 transcript + similarity,前端用静态 fallback
@@ -264,7 +285,7 @@ def register_routes(app):
 
 
 def _rate_limited():
-    ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'global')
+    ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'feedback')
     if not ok:
         return jsonify({
             "success": False,

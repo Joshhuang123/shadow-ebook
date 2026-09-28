@@ -86,16 +86,23 @@ def browser() -> Browser:
 
     launch args: 减少内存压力 + 防止跑 30+ e2e 后 chromium 累坏。
     dev-shm-usage 是 Linux 默认会占满 /dev/shm 的,mac 上无所谓但留着无害。
+
+    D3: 优先用系统 Chrome (channel='chrome'),跳过 playwright 自带的
+    chromium 下载 (~150MB,网速慢时容易卡)。Playwright 自带 chromium 装不上
+    时 fallback 到 chrome,行为对前端测试无差别。
     """
     with sync_playwright() as pw:
-        b = pw.chromium.launch(
-            headless=True,
-            args=[
-                '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--no-sandbox',
-            ],
-        )
+        launch_args = [
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--no-sandbox',
+        ]
+        # 优先 channel=chrome (系统已装),省掉 150MB 下载
+        try:
+            b = pw.chromium.launch(channel='chrome', headless=True, args=launch_args)
+        except Exception:
+            # 回退到 playwright 自带 chromium
+            b = pw.chromium.launch(headless=True, args=launch_args)
         yield b
         b.close()
 

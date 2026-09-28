@@ -34,7 +34,25 @@ def test_get_llm_client_minimax(monkeypatch):
     monkeypatch.setenv("MINIMAX_API_KEY", "minimax-test")
     client = llm.get_llm_client()
     assert isinstance(client, llm.MiniMaxClient)
-    assert "minimaxi.com" in client.base_url
+    assert "minimax.cn" in client.base_url
+    assert client.model == "MiniMax-M3.1-Flash-Preview"
+
+
+def test_minimax_default_model_is_m31(monkeypatch):
+    """默认 model 应该是 M3.1-Flash-Preview (官方文档 2026-09 推荐)。"""
+    monkeypatch.setenv("LLM_PROVIDER", "minimax")
+    monkeypatch.setenv("MINIMAX_API_KEY", "minimax-test")
+    monkeypatch.delenv("LLM_MODEL", raising=False)
+    client = llm.get_llm_client()
+    assert client.model == "MiniMax-M3.1-Flash-Preview"
+
+
+def test_minimax_custom_model_via_env(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "minimax")
+    monkeypatch.setenv("MINIMAX_API_KEY", "minimax-test")
+    monkeypatch.setenv("LLM_MODEL", "MiniMax-M3")
+    client = llm.get_llm_client()
+    assert client.model == "MiniMax-M3"
 
 
 def test_get_llm_client_unknown_provider(monkeypatch):
@@ -87,6 +105,56 @@ def test_openai_compat_chat_http_error(monkeypatch):
     with patch("urllib.request.urlopen", side_effect=http_err):
         with pytest.raises(RuntimeError, match="LLM upstream HTTP 500"):
             client.chat([{"role": "user", "content": "x"}])
+
+
+# === D1: retry on transient errors ===
+def test_openai_compat_retries_on_500_then_succeeds(monkeypatch):
+    """HTTP 500 第一次 → 重试 → 第二次 ok → 返回 content。"""
+    client = llm.OpenAICompatClient(base_url="https://e.com", api_key="k", model="m")
+    err = MagicMock()
+    err.read.return_value = b"oops"
+    http_500 = llm.urllib.error.HTTPError("url", 500, "Server Error", {}, err)
+    ok_payload = {"choices": [{"message": {"content": "ok"}}]}
+    ok_resp = _mock_urlopen_response(ok_payload)
+    # 把 sleep 短路,免得测试真的等 0.5s
+    monkeypatch.setattr(llm.time, "sleep", lambda s: None)
+    with patch("urllib.request.urlopen", side_effect=[http_500, ok_resp]) as m:
+        result = client.chat([{"role": "user", "content": "x"}])
+    assert result == "ok"
+    assert m.call_count == 2
+
+
+def test_openai_compat_no_retry_on_400(monkeypatch):
+    """HTTP 400(配置错误)不重试,直接抛。"""
+    client = llm.OpenAICompatClient(base_url="https://e.com", api_key="k", model="m")
+    err = MagicMock()
+    err.read.return_value = b"bad request"
+    http_400 = llm.urllib.error.HTTPError("url", 400, "Bad Request", {}, err)
+    with patch("urllib.request.urlopen", side_effect=http_400) as m:
+        with pytest.raises(RuntimeError, match="HTTP 400"):
+            client.chat([{"role": "user", "content": "x"}])
+    assert m.call_count == 1
+
+
+def test_openai_compat_retries_on_url_error(monkeypatch):
+    """URLError(网络层)重试一次。"""
+    client = llm.OpenAICompatClient(base_url="https://e.com", api_key="k", model="m")
+    url_err = llm.urllib.error.URLError("connection refused")
+    ok_resp = _mock_urlopen_response({"choices": [{"message": {"content": "ok"}}]})
+    monkeypatch.setattr(llm.time, "sleep", lambda s: None)
+    with patch("urllib.request.urlopen", side_effect=[url_err, ok_resp]) as m:
+        result = client.chat([{"role": "user", "content": "x"}])
+    assert result == "ok"
+    assert m.call_count == 2
+
+
+def test_openai_compat_no_retry_when_first_call_succeeds(monkeypatch):
+    """第一次成功就不该再调,retry 不应该无脑触发。"""
+    client = llm.OpenAICompatClient(base_url="https://e.com", api_key="k", model="m")
+    ok_resp = _mock_urlopen_response({"choices": [{"message": {"content": "ok"}}]})
+    with patch("urllib.request.urlopen", return_value=ok_resp) as m:
+        client.chat([{"role": "user", "content": "x"}])
+    assert m.call_count == 1
 
 
 def test_openai_compat_chat_malformed_payload():

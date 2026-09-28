@@ -375,3 +375,62 @@ def test_get_weak_words_respects_limit(tmp_db):
 
 def test_get_weak_words_empty_data_returns_empty(tmp_db):
     assert parent_data.get_weak_words() == []
+
+
+# === D5: weak_words 缓存 ===
+def test_weak_words_cache_hits_within_ttl(tmp_db):
+    """30s TTL 内,第二次调不应再 load parent_data。"""
+    _seed_word('w1', correct=1, total=3)
+    # 第一次:cache miss
+    r1 = parent_data.get_weak_words()
+    assert r1 == ['w1']
+    # 第二次:cache hit (mod 模拟 _load_parent_data,看是否被调)
+    import unittest.mock
+    with unittest.mock.patch.object(parent_data, '_load_parent_data',
+                                    wraps=parent_data._load_parent_data) as m:
+        r2 = parent_data.get_weak_words()
+        assert m.call_count == 0, "30s TTL 内不应再查 DB"
+    assert r2 == r1
+
+
+def test_weak_words_cache_expires_after_ttl(tmp_db, monkeypatch):
+    """TTL 过期后应该重新查 DB。"""
+    _seed_word('w1', correct=1, total=3)
+    parent_data.get_weak_words()  # 预热缓存
+    # 把 TTL 调成 0,让缓存立刻失效
+    monkeypatch.setattr(parent_data, '_WEAK_WORDS_TTL_S', 0)
+    import unittest.mock
+    with unittest.mock.patch.object(parent_data, '_load_parent_data',
+                                    wraps=parent_data._load_parent_data) as m:
+        parent_data.get_weak_words()
+        assert m.call_count >= 1, "TTL 过期应该重新查 DB"
+
+
+def test_weak_words_cache_invalidated_on_write(tmp_db):
+    """_save_parent_data 应该自动 invalidate 缓存。"""
+    _seed_word('w1', correct=1, total=3)
+    r1 = parent_data.get_weak_words()
+    assert r1 == ['w1']
+
+    # 模拟一次写操作(直接调 _save_parent_data 触发 invalidate)
+    data = parent_data._load_parent_data()
+    data['stats'] = {'updated': True}
+    parent_data._save_parent_data(data)
+
+    # 缓存被清,再调应该重新查 DB
+    import unittest.mock
+    with unittest.mock.patch.object(parent_data, '_load_parent_data',
+                                    wraps=parent_data._load_parent_data) as m:
+        parent_data.get_weak_words()
+        assert m.call_count >= 1, "写后缓存应被 invalidate"
+
+
+def test_weak_words_cache_per_limit(tmp_db):
+    """不同 limit 各自缓存。"""
+    _seed_word('w1', correct=0, total=3)
+    _seed_word('w2', correct=0, total=3)
+    _seed_word('w3', correct=0, total=3)
+    r_limit_1 = parent_data.get_weak_words(limit=1)
+    r_limit_5 = parent_data.get_weak_words(limit=5)
+    assert len(r_limit_1) == 1
+    assert len(r_limit_5) == 3

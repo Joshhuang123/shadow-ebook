@@ -59,6 +59,8 @@ _API_LIMITS = {
     'import':      {'max': 10,  'window': 3600},   # 防 100MB EPUB 上传被滥用
     'pregenerate': {'max': 10,  'window': 60},     # 防 anon 反复打 status (R8: 扫 100k 文件慢)
     'export':      {'max': 10,  'window': 60},     # 防已登录家长按错键 1 分钟 60 次 1MB JSON (R8)
+    'grammar':     {'max': 120, 'window': 60},     # D6: 出题 — 命中缓存便宜,LLM 才花钱,120 够用
+    'feedback':    {'max': 30,  'window': 60},     # D6: 跟读 — whisper+LLM 双重成本,压紧
     'global':      {'max': 600, 'window': 60},     # 兜底:任何端点都受这个限制
 }
 _API_LOCK = threading.Lock()  # 保护 _API_RATE (Phase 2 加锁)
