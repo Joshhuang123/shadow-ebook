@@ -205,11 +205,19 @@
 | Ghost | 轻操作(链接式) | 文字 primary,hover bg-light |
 | Danger | 危险(删除、改 PIN) | `bg-danger` |
 
-| 尺寸 | 高度 | 内边距 | 字号 |
-|---|---|---|---|
-| sm | 32px | 12/16 | 14 |
-| md | 40px | 16/24 | 16 |
-| lg | 48px | 20/32 | 18 |
+| 尺寸 | 高度 | 内边距 | 字号 | 用途 |
+|---|---|---|---|---|
+| sm | **48px** | 16/28 | 18 | 默认交互下限(导航、返回、次要操作) |
+| md | **60px** | 18/24 | 20 | 孩子的主动作:答题选项、确认、提交 |
+| lg | **72px** | — | 32 | 播放 / 录音,圆形 |
+
+**48px 是硬下限,没有例外。** 早期版本曾定义 32/40/48 三档,实际使用中
+`web/kid-touch.css` 已用 `!important` 把所有交互元素强制到 48px/18px —— 因为
+10 岁孩子在 iPad 上点不准小按钮。规范向实现看齐:R16 评审确认 sm 档上调至 48,
+md / lg 按实际使用值补齐。
+
+> ⚠️ 旧版 `kid-touch.css` 里的 `@media (orientation: landscape) and (max-height: 800px)`
+> 会把 `--touch-min` 降回 44px,**违反本下限**,待清理。见 §14.2。
 
 **active 状态**:scale(0.97),100ms ease-out
 **disabled**:opacity 0.5,cursor not-allowed
@@ -231,9 +239,14 @@ transition: box-shadow 200ms var(--ease-out);
 
 ### 8.3 输入框
 
-- 高度 40px(md),内边距 12/16
+- 高度 **48px**,内边距 12/16,字号 18(与按钮 sm 档对齐)
 - 边框 1px `border`,focus 变 `border-strong` + 淡主色 ring 3px
 - error 状态:边框 `danger`,辅助文字也 `danger`
+- PIN 输入框额外加大:4 位数字分开显示,每格 ≥ 56px,间距 12px
+  (家长页孩子也会碰,尤其在平板上)
+
+> ⚠️ `kid-touch.css` 的选择器列表里**没有 `input`**,所以家长页的 PIN 框
+> 目前仍是旧的 40px,低于 48 下限。待补,见 §14.5。
 
 ### 8.4 进度条
 
@@ -282,11 +295,65 @@ transition: box-shadow 200ms var(--ease-out);
 
 ---
 
-## 十一、暗色模式(预留,本期不实现)
+## 十一、暗色模式(R17 已实现,本节补齐规范)
 
-色板双轨,变量名同 token,值不同。CSS 切换 `data-theme="dark"`。
+> 本节在 R17 实现之后补写。此前 DESIGN.md 写着"预留,本期不实现",
+> 但 R17 已把暗色做完并合入 —— 规范滞后于实现,此处对齐。
+> token 实际值见 `web/styles/tokens.css`,本节定义**规则**。
 
-本期不实现,但 token 设计上已经预留(所有颜色都走 var())。
+### 11.1 切换机制
+
+| 方式 | 行为 |
+|---|---|
+| 不设 `data-theme` | 跟随系统 `prefers-color-scheme` |
+| `data-theme="dark"` | 强制暗色 |
+| `data-theme="light"` | 强制浅色(即使系统是暗色) |
+
+孩子端的切换入口在 `web/theme.js`,家长端另给一个显式开关。
+
+### 11.2 色板双轨原则
+
+**token 变量名不变,只有值变。** 任何组件都不许写死颜色。
+
+暗色不是把浅色"反相",而是**重新配一套**:同一个赤陶棕在深底上要变亮,
+否则 `#B86A4E` 贴在 `#1A1714` 上对比度不够。
+
+| Token | 浅色 | 暗色 | 变化逻辑 |
+|---|---|---|---|
+| `--bg` | `#FAF9F6` | `#1A1714` | 米白 → 暖黑(带一点棕,不是纯黑) |
+| `--bg-card` | `#FFFFFF` | `#252220` | |
+| `--color-primary` | `#B86A4E` | `#D89B7E` | **亮一档**,保识别度 |
+| `--color-secondary` | `#6B8A52` | `#8FAA7A` | 同样亮一档 |
+| `--text-primary` | `#2D2A26` | `#EDE6DA` | 暖黑 → 米白,避免纯白刺眼 |
+
+### 11.3 暗色专属规则(代码里看不出来,必须写下来)
+
+1. **不用纯黑背景。** `--bg` 最深到 `#1A1714`,保留暖调。纯黑(#000)在 OLED
+   上边缘发白,且和暖色板打架。
+2. **文字不用纯白。** 用 `#EDE6DA`。孩子长时间阅读,纯白刺眼。
+3. **阴影换算。** 暗色下阴影几乎不可见,靠**边框**(`--border`)而非投影
+   区分卡片。阴影保留但加深(`rgba(0,0,0,0.3~0.6)`),用于模态框悬浮感。
+4. **封面图不反色。** 书籍封面、用户图片保持原样 —— 反色会让人物失真,
+   比背景略亮一点即可(靠 `--bg-card` 抬一档)。
+5. **波形图重算基线。** 跟读页的录音波形在暗色下描边要换用
+   `--border-strong`,否则浅灰波形在深底上糊成一团。
+6. **tint 类半透明底色统一降到 0.16~0.20**,比浅色下的浓度略高,
+   因为深底上同样的透明度视觉浓度更低。
+
+### 11.4 对比度底线
+
+| 元素 | 要求 |
+|---|---|
+| 正文 / 背景 | ≥ 4.5:1 |
+| 大字(≥18px 或 ≥14px bold)/ 背景 | ≥ 3:1 |
+| 按钮文字 / 按钮底色 | ≥ 4.5:1 |
+
+新增暗色 token 时,提交前用对比度工具验证,过不了就不许合。
+
+### 11.5 迁移路径(已实施)
+
+R17 完成:token 双轨 + `data-theme` 切换 + `theme.js` + e2e 覆盖
+(`tests/e2e/test_dark_mode.py`)。
 
 ---
 
@@ -308,3 +375,64 @@ transition: box-shadow 200ms var(--ease-out);
 - 任何 token / 规范变更,先在本文件改 → PR review → 再写代码
 - 不允许代码先于规范改动
 - 评审时,把本文档给前端同事看,作为"设计语言统一性"的依据
+
+---
+
+## 十四、已知偏差(DESIGN.md ↔ 代码)
+
+R16 代码评审时记录。本节列的是**规范与实现不一致**的地方,以及裁决结果。
+修完一条就删一条。
+
+### 14.1 `kid-touch.css` 用 `!important` 覆盖整个设计系统 🔴
+
+该文件对 `.btn`、`button`、`[class*="card"]` 等 10 个选择器统一施加
+`!important`,强行改写 min-height / padding / font-size / border-radius。
+后果:token 体系被旁路了 —— 改 `--btn-font` 不会生效,因为它被 `!important`
+盖住了。
+
+**裁决**:以实现为准(48/60/72 三档,见 §8.1),规范已上调对齐。
+待办:把 `kid-touch.css` 的尺寸值改为读 token,去掉 `!important`,
+让它退回"平板适配"而不是"第二套设计系统"。
+
+### 14.2 iPad 横屏把按钮降回 44px 🔴
+
+```css
+@media (orientation: landscape) and (max-height: 800px) {
+    :root { --touch-min: 44px; --btn-font: 16px; }
+}
+```
+
+iPad 横屏正是**最常用**的姿势(README 写明"iPad 横屏为主"),
+而这个 media query 恰好在横屏时把按钮降到 44px,**低于 §8.1 的 48px 下限**。
+
+**裁决**:违反下限,待删。iPad 横屏空间紧张应通过减少留白、而不是缩小
+点击目标来解决。
+
+### 14.3 `kid-mode-toggle` 硬编码橙红渐变 🟡
+
+```css
+background: linear-gradient(135deg, #F59E0B, #EF4444);
+```
+
+违反 §2.5「不引入新色」。这是全项目唯一一处不走 token 的品牌色,
+且橙红对"儿童友好"的调性是干扰项。
+
+**裁决**:改为 `--color-accent` → `--color-primary` 的 token 渐变,
+或直接用 `--color-accent` 纯色。
+
+### 14.4 `kid-touch.css` 只在 2 个页面加载 🟡
+
+`index.html` 和 `parent.html` 引了它,`tutor` / `grammar` / `stats` **没有**。
+结果:跟读录音、语法答题这些孩子点得最多的地方,拿不到 48px 触控优化。
+
+**裁决**:5 个页面应统一加载。待办。
+
+### 14.5 `kid-touch.css` 漏掉 `input` 🟡
+
+选择器列表是 `.btn, button, .clickable, [class*="btn"], [class*="option"],
+[class*="card"], .nav-link, .book-card, .comp-option, .quality-btn,
+.voice-select` —— **没有裸 `input`**。所以家长页的 PIN 输入框仍是 40px,
+低于 §8.3 刚定的 48px 下限。
+
+**裁决**:补 `input[type="text"], input[type="password"], input[type="number"]`
+到选择器列表。待办。
