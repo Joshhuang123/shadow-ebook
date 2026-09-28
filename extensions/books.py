@@ -10,12 +10,13 @@ import hashlib
 import io
 import json
 import logging
+import os
 import re
 import html
 import time
 import zipfile
 from pathlib import Path
-from flask import jsonify, request, send_from_directory
+from flask import abort, jsonify, request, send_from_directory, session
 from werkzeug.utils import secure_filename
 
 from extensions.auth import require_parent_auth, _api_rate_limit_ok
@@ -33,6 +34,16 @@ COVER_URL_PREFIX = '/data/covers/'  # API 响应里 cover 字段的前缀, 反�
 
 def is_valid_book_id(book_id):
     return bool(book_id and BOOK_ID_PATTERN.match(book_id))
+
+
+# === debug 端点开关 ===
+# 不能写成 `if os.environ.get('SHADOW_DEBUG'):` —— 那样 SHADOW_DEBUG=0
+# (非空字符串) 在 Python 里是 truthy,等于把 debug 打开了。这是个经典坑。
+_DEBUG_OFF = {'0', 'false', 'no', 'off', ''}
+
+
+def _debug_enabled() -> bool:
+    return os.environ.get('SHADOW_DEBUG', '').strip().lower() not in _DEBUG_OFF
 
 
 # === EPUB 解析 helper (Round 4: 从 import_book 抽出来好测试) ===
@@ -553,8 +564,17 @@ def register_routes(app):
         """审计书籍解析质量 (R9 fixup 后, 用来发现历史 import 残留问题)。
 
         扫四类可疑: 短句 (<10字符) / CSS 残留 / 页码候选 (3+连续数字) / 重复内容 (页眉页脚特征)。
-        不需鉴权 (debug 用途), 走 tts bucket 限流 (30/min 够家长偶尔调)。
+
+        默认 404: 开了 SHADOW_DEBUG=1 才放行,且要家长鉴权。
+        原设计是"不需鉴权 + 30/min 限流",但 LAN 上任何设备都能拉到
+        全部书籍的解析统计,生产暴露没必要。
+        做成请求时判断而不是 import 时不注册路由,是为了让测试能直接打。
         """
+        if not _debug_enabled():
+            abort(404)
+        if not session.get('parent_auth'):
+            return jsonify({"success": False, "error": "未授权"}), 401
+
         if not is_valid_book_id(book_id):
             return jsonify({"success": False, "error": "非法书籍ID"}), 400
 

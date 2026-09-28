@@ -1,7 +1,7 @@
 {
-  "name": "shadow-learning",
+  "name": "shadow-ebook",
   "version": "1.0.0",
-  "description": "免费开源的英语电子书阅读器，支持 EPUB 导入、点击查词、TTS 朗读、蓝思值计算，专为英语学习者设计。",
+  "description": "英语电子书阅读与跟读学习系统：EPUB 导入、点击查词、TTS 朗读、艾宾浩斯复习、语法动态出题、跟读 AI 反馈。",
   "main": "index.js",
   "directories": {
     "test": "tests"
@@ -17,7 +17,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/Joshhuang123/shadow-ebook/issues"
