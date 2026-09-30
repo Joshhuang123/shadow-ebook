@@ -56,6 +56,10 @@ data/grammar/*.json
 data/parent/*
 !data/parent/.gitkeep
 
+# 书封面(2026-09-30 脱管):这些是出版物封面,属于各自版权方的作品,
+# 不该进公开仓库。本地文件照常保留并被 app 读取,只是不再跟踪。
+data/covers/
+
 # Phase 3: SQLite DB (runtime state, regenerated on first startup)
 data/shadow.db
 data/shadow.db-shm
@@ -95,4 +99,8 @@ certs/server.key
 
 # R18: 本地 .env(API keys),不入库;.env.example 入库做模板
 .env
+
+# scripts/backup.sh 的产物。整份 shadow.db 都在里面(家长 PIN 哈希、全部书目
+# 内容、孩子的阅读进度),绝不能进版本库 —— 备份的意义也正在于它是本地私有的。
+backups/
 

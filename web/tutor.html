@@ -27,7 +27,7 @@
             <a href="/grammar" class="nav-link">语法学习</a>
             <a href="/stats" class="nav-link">📊 统计</a>
         </div>
-    <button id="themeBtn" data-action="cycleTheme" style="background:var(--color-primary);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1.1em;cursor:pointer;margin-left:12px;flex-shrink:0;">&#xD83D;&#xDD0C;</button>
+    <button id="themeBtn" class="theme-btn" data-action="cycleTheme">&#xD83D;&#xDD0C;</button>
         </nav>
     <div class="container">
         <header>
@@ -48,7 +48,7 @@
                     <span class="unit-count">7个章节 · 故事跟读</span>
                 </div>
                 <div class="unit-item" data-action="showVocabReview" id="vocab-review-entry">
-                    <span class="unit-name">🔁 今日复习 <span id="vocab-due-badge" style="background:var(--warning,#D4A574);color:white;border-radius:10px;padding:2px 8px;font-size:0.7em;margin-left:8px;">0</span></span>
+                    <span class="unit-name">🔁 今日复习 <span id="vocab-due-badge">0</span></span>
                     <span class="unit-count">间隔重复 · 巩固查过的词</span>
                 </div>
             </div>
@@ -62,14 +62,14 @@
 
         <!-- 单元选择 (NC2A) -->
         <div id="unit-selection" class="card hidden">
-            <h2>📚 选择学习单元 <button class="btn btn-secondary" data-action="showBooks" style="padding:5px 15px;font-size:0.8em;margin-left:10px;">← 返回选择</button></h2>
+            <h2>📚 选择学习单元 <button class="btn btn-secondary btn-inline-back" data-action="showBooks">← 返回选择</button></h2>
             <div class="unit-list" id="unit-list"></div>
         </div>
 
         <!-- 章节选择 (Magic Tree House) -->
         <div id="chapter-selection" class="card hidden">
-            <h2>🎄 Christmas in Camelot <button class="btn btn-secondary" data-action="showBooks" style="padding:5px 15px;font-size:0.8em;margin-left:10px;">← 返回选择</button></h2>
-            <p style="color:#666;margin-bottom:15px;">Jack和Annie收到Morgan的邀请，去卡米洛特过圣诞节！跟读故事句子，学习地道的英语表达。</p>
+            <h2>🎄 Christmas in Camelot <button class="btn btn-secondary btn-inline-back" data-action="showBooks">← 返回选择</button></h2>
+            <p class="chapter-desc">Jack和Annie收到Morgan的邀请，去卡米洛特过圣诞节！跟读故事句子，学习地道的英语表达。</p>
             <div class="unit-list" id="chapter-list"></div>
         </div>
 
@@ -78,7 +78,7 @@
             <h2 id="unit-title">📖 Unit 1-2: 现在进行时</h2>
 
             <div class="progress-bar">
-                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+                <div class="progress-fill" id="progress-fill"></div>
             </div>
             <div class="progress-text" id="progress-text">1 / 7</div>
 
@@ -103,14 +103,14 @@
 
             <!-- 声波动画 -->
             <div class="audio-visualizer hidden" id="audio-visualizer">
-                <div class="audio-bar" style="height:10px;"></div>
-                <div class="audio-bar" style="height:10px;"></div>
-                <div class="audio-bar" style="height:10px;"></div>
-                <div class="audio-bar" style="height:10px;"></div>
-                <div class="audio-bar" style="height:10px;"></div>
-                <div class="audio-bar" style="height:10px;"></div>
-                <div class="audio-bar" style="height:10px;"></div>
-                <div class="audio-bar" style="height:10px;"></div>
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
+                <div class="audio-bar"></div>
             </div>
 
             <!-- 波形对比 -->

@@ -30,7 +30,7 @@
             <a href="/tutor" class="nav-link">跟读学习</a>
             <a href="/grammar" class="nav-link">语法学习</a>
         </div>
-    <button id="themeBtn" data-action="cycleTheme" style="background:var(--color-primary);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:1.1em;cursor:pointer;margin-left:12px;flex-shrink:0;">&#xD83D;&#xDD0C;</button>
+    <button id="themeBtn" class="theme-btn" data-action="cycleTheme">&#xD83D;&#xDD0C;</button>
         </nav>
 
     <div class="main-container">
@@ -48,7 +48,7 @@
         <div class="chart-section" id="vocab-test-section">
             <div class="section-title">📚 词汇量测试</div>
             <div id="vocab-test-content">
-                <p style="color:var(--text-secondary);margin-bottom:15px;">测试你的词汇水平，获得个性化书单推荐</p>
+                <p class="vocab-test-intro">测试你的词汇水平，获得个性化书单推荐</p>
                 <button class="btn btn-primary" data-action="startVocabTest">开始测试</button>
             </div>
         </div>
@@ -68,7 +68,7 @@
             <div class="section-title">📖 推荐书单</div>
             <div class="book-rec-level" id="book-rec-level">你的词汇水平: 初级 (500-1000词)</div>
             <div id="interest-filter">
-                <p style="color:var(--text-secondary);margin-bottom:10px;font-size:0.9em;">兴趣筛选：</p>
+                <p class="interest-filter-title">兴趣筛选：</p>
                 <div class="interest-tags" id="interest-tags">
                     <span class="interest-tag" data-interest="all" data-action="setInterest" data-arg="all">全部</span>
                     <span class="interest-tag" data-interest="adventure" data-action="setInterest" data-arg="adventure">冒险</span>
@@ -82,7 +82,7 @@
             <div class="book-rec-list" id="book-rec-list">
                 <!-- 推荐书籍 -->
             </div>
-            <button class="btn btn-secondary" data-action="retestVocab" style="margin-top:15px;">重新测试</button>
+            <button class="btn btn-secondary" data-action="retestVocab">重新测试</button>
         </div>
 
         <!-- 学习时长图表 -->
@@ -102,7 +102,7 @@
         </div>
 
         <!-- 重置按钮 -->
-        <div style="text-align: center; margin-top: 30px;">
+        <div class="reset-actions">
             <button class="reset-btn" data-action="resetStats">🗑️ 重置所有数据</button>
         </div>
     </div>

@@ -206,6 +206,10 @@
                         <span class="book-rec-level-tag">${Number(book.lexile) || 0}L · ${escapeHtml(diff)} · ${escapeHtml(tag)}</span>
                     </div>`;
                 }).join('');
+            // 高度走 CSSOM:模板里的 style="height:..." 会被 CSP 丢弃,图会全塌成一条线
+            chart.querySelectorAll('[data-h]').forEach(b => {
+                b.style.height = b.dataset.h + 'px';
+            });
         }
 
         function showVocabResult(savedLevel) {
@@ -371,7 +375,7 @@
                 return `
                     <div class="bar-item">
                         <div class="bar-value">${d.time > 0 ? formatTime(d.time) : '-'}</div>
-                        <div class="bar" style="height: ${height}px; ${isToday ? 'opacity: 1;' : 'opacity: 0.7;'}"></div>
+                        <div class="bar${isToday ? ' bar--today' : ''}" data-h="${height}"></div>
                         <div class="bar-label">${d.day}</div>
                     </div>
                 `;
@@ -409,7 +413,7 @@
                         <span>${stats.wordsMastered} / ${stats.wordsLearned} 词</span>
                     </div>
                     <div class="progress-bar">
-                        <div class="progress-fill words" style="width: ${wordProgress}%"></div>
+                        <div class="progress-fill words" data-pct="${wordProgress}"></div>
                     </div>
                 </div>
                 <div class="progress-item">
@@ -418,7 +422,7 @@
                         <span>${grammarTotal} / ${grammarMax} 题</span>
                     </div>
                     <div class="progress-bar">
-                        <div class="progress-fill grammar" style="width: ${grammarProgress}%"></div>
+                        <div class="progress-fill grammar" data-pct="${grammarProgress}"></div>
                     </div>
                 </div>
                 <div class="progress-item">
@@ -427,10 +431,16 @@
                         <span>${stats.sentencesPracticed} 句</span>
                     </div>
                     <div class="progress-bar">
-                        <div class="progress-fill speaking" style="width: ${speakingProgress}%"></div>
+                        <div class="progress-fill speaking" data-pct="${speakingProgress}"></div>
                     </div>
                 </div>
             `;
+
+            // 进度条宽度改用 CSSOM 设置:上面模板里的 style="width:..." 会被 CSP
+            // (style-src 'self') 丢弃,结果是三条 0 宽度的空槽。
+            section.querySelectorAll('[data-pct]').forEach(el => {
+                el.style.width = el.dataset.pct + '%';
+            });
         }
 
         // 重置数据

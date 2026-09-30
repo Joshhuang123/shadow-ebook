@@ -287,7 +287,7 @@
                                 </ul>
                             </div>
                         </div>
-                        <div class="tense-box blue" style="margin-top:16px;">
+                        <div class="tense-box blue tense-box--spaced">
                             <h4>⏪ 一般过去时</h4>
                             <div class="formula">动词过去式</div>
                             <ul class="rule-list">
@@ -1464,8 +1464,8 @@
             const hasQuestions = grammarQuestions[key] && grammarQuestions[key].length > 0;
             if (hasQuestions) {
                 html += `
-                    <div class="grammar-section" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
-                        <button class="practice-btn" data-action="clickRestartPractice" data-arg="${key}" style="width: 100%; padding: 14px; font-size: 1em;">
+                    <div class="grammar-section grammar-section--restart">
+                        <button class="practice-btn practice-btn--wide" data-action="clickRestartPractice" data-arg="${key}">
                             🎯 开始练习 (${grammarQuestions[key].length}题)
                         </button>
                     </div>

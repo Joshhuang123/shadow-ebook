@@ -200,9 +200,9 @@
         }
 
         .exam-tab.active {
-            background: var(--color-primary);
+            background: var(--primary-fill);
             border-color: var(--color-primary);
-            color: white;
+            color: var(--text-on-primary);
         }
 
         .exam-section {
@@ -647,3 +647,32 @@
         [class*="-btn"]:active:not(:disabled) {
             transform: scale(0.96);
         }
+
+        /* === 从 HTML 内联 style 迁移过来的规则 (CSP style-src 'self' 会丢弃 style 属性) === */
+
+        /* 考试板块标题下的一句说明 */
+        .exam-subtitle {
+            color: var(--text-secondary);
+        }
+
+        /* 新概念板块的分节标题 */
+        .nc-section-title {
+            color: var(--text-secondary);
+            margin: 40px 0 20px;
+            font-size: 1em;
+        }
+
+/* R23: 从 JS 模板内联 style 搬过来的规则(CSP 会丢弃内联 style,之前没生效) */
+.tense-box--spaced { margin-top: var(--space-4); }
+
+.grammar-section--restart {
+    margin-top: var(--space-5);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--border);
+}
+
+.practice-btn--wide {
+    width: 100%;
+    padding: 14px;
+    font-size: 1em;
+}

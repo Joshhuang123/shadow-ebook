@@ -12,6 +12,14 @@
     --color-secondary:     #6B8A52;
     --color-accent:        #D4A574;
 
+    /* 主色当「底色」用时另取一档。#B86A4E 配白字只有 4.03:1,
+       低于 WCAG AA 正文要求的 4.5:1;压到 #A55A40 是 5.08:1,
+       色相不变,肉眼看还是同一个暖棕,只是沉了半档。
+       规则:凡是「主色底 + 反色字」都用 primary-fill;
+       --color-primary 留给边框、进度条、正文强调这些不用它承载文字的场景。 */
+    --primary-fill:        #A55A40;
+    --primary-fill-hover:  #8F4A31;
+
     /* ===== 色板·背景 ===== */
     --bg:            #FAF9F6;
     --bg-card:       #FFFFFF;
@@ -129,7 +137,8 @@
     --text-primary:   #EDE6DA;
     --text-secondary: #A39A8E;
     --text-disabled:  #5A544C;
-    --text-on-primary:#FFFFFF;
+    /* 暗色下主色被调亮成 #D89B7E,白字只有 2.36:1 读不清 → 按钮文字反过来用暖黑 6.06:1 */
+    --text-on-primary:#2D2A26;
 
     --border:        #3D372F;
     --border-strong: #5A544C;
@@ -141,6 +150,10 @@
     --color-primary-dark:  #B86A4E;
     --color-secondary:     #8FAA7A;
     --color-accent:        #D4A574;
+
+    /* 暗色下主色已调亮,配暖黑字 6.06:1,直接沿用即可 */
+    --primary-fill:        #D89B7E;
+    --primary-fill-hover:  #C98A6B;
 
     --tint-primary:   rgba(216, 155, 126, 0.16);
     --tint-secondary: rgba(143, 170, 122, 0.16);
@@ -172,6 +185,7 @@
         --text-primary:   #EDE6DA;
         --text-secondary: #A39A8E;
         --text-disabled:  #5A544C;
+        --text-on-primary:#2D2A26;   /* 同上:亮底配深字 */
 
         --border:        #3D372F;
         --border-strong: #5A544C;
@@ -182,6 +196,10 @@
         --color-primary-dark:  #B86A4E;
         --color-secondary:     #8FAA7A;
         --color-accent:        #D4A574;
+
+        /* 暗色下主色已调亮,配暖黑字 6.06:1,直接沿用即可 */
+        --primary-fill:        #D89B7E;
+        --primary-fill-hover:  #C98A6B;
 
         --tint-primary:   rgba(216, 155, 126, 0.16);
         --tint-secondary: rgba(143, 170, 122, 0.16);

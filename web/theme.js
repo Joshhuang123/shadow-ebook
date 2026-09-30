@@ -50,13 +50,13 @@
     }
 
     function updateBtn(mode) {
-        var b = document.getElementById('themeBtn');
-        if (!b) return;
-        b.textContent = ICONS[mode] || ICONS.auto;
-        b.title = TITLES[mode] || TITLES.auto;
-        b.setAttribute('aria-label', TITLES[mode] || TITLES.auto);
-        b.style.minWidth = '36px';
-        b.style.textAlign = 'center';
+        // 用 data-action 找而不是 getElementById —— grammar.html 有两个主题按钮,
+        // 同 id 只会拿到第一个,另一个永远停在初始图标。
+        document.querySelectorAll('[data-action="cycleTheme"]').forEach(function (b) {
+            b.textContent = ICONS[mode] || ICONS.auto;
+            b.title = TITLES[mode] || TITLES.auto;
+            b.setAttribute('aria-label', TITLES[mode] || TITLES.auto);
+        });
     }
 
     function cycleTheme() {

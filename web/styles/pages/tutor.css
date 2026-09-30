@@ -38,7 +38,7 @@
         .unit-list { display: grid; gap: 10px; }
         .unit-item {
             padding: 15px 20px;
-            background: #F5F2EC;
+            background: var(--bg-dark);
             border-radius: 12px;
             cursor: pointer;
             transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
@@ -46,7 +46,7 @@
             justify-content: space-between;
             align-items: center;
         }
-        .unit-item:hover { background: #F5EDE5; transform: translateX(5px); }
+        .unit-item:hover { background: var(--bg-dark); transform: translateX(5px); }
         .unit-name { font-weight: 600; color: var(--text-primary); }
         .unit-count { color: var(--text-secondary); font-size: 0.9em; }
 
@@ -97,8 +97,8 @@
             color: white;
         }
         .btn-primary:hover { transform: scale(1.05); box-shadow: 0 5px 20px rgba(204,120,92,0.4); }
-        .btn-secondary { background: #F5EDE5; color: #B86A4E; }
-        .btn-secondary:hover { background: #F5EDE5; }
+        .btn-secondary { background: var(--tint-accent); color: var(--color-primary); }
+        .btn-secondary:hover { background: var(--bg-dark); }
         .btn-danger { background: #C25B56; color: white; }
         .btn-danger:hover { background: #A04B47; transform: scale(1.05); }
         .btn-success { background: #6B8A52; color: white; }
@@ -115,6 +115,7 @@
         .progress-fill {
             background: linear-gradient(90deg, #B86A4E, #B86F4D);
             height: 100%;
+            width: 0%;
             border-radius: 10px;
             transition: width 0.3s;
         }
@@ -148,6 +149,7 @@
         }
         .audio-bar {
             width: 6px;
+            height: 10px;
             background: linear-gradient(to top, #B86A4E, #B86F4D);
             border-radius: 3px;
             transition: height 0.1s ease;
@@ -157,7 +159,7 @@
         .waveform-comparison {
             margin: 15px 0;
             padding: 15px;
-            background: #F5F2EC;
+            background: var(--bg-dark);
             border-radius: 12px;
         }
         .waveform-comparison.hidden { display: none; }
@@ -200,7 +202,7 @@
 
         /* 反馈 */
         .feedback {
-            background: #F5F2EC;
+            background: var(--bg-dark);
             padding: 20px;
             border-radius: 12px;
             margin: 15px 0;
@@ -212,6 +214,54 @@
             border-bottom: 1px solid var(--border);
         }
         .feedback-item:last-child { border-bottom: none; }
+        /* 识别文本是辅助信息,压到次要层级 */
+        .feedback-item--muted { opacity: 0.6; font-size: 0.85em; }
+
+        .muted-note { color: var(--text-secondary); }
+
+        /* 间隔复习 · 空/完成态 */
+        .review-empty {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        .review-empty-art { font-size: 4em; }
+        .review-empty-sub {
+            color: var(--text-secondary);
+            margin-bottom: var(--space-5);
+        }
+
+        /* 间隔复习 · 单词卡 */
+        .vocab-card--center { text-align: center; padding: 30px 10px; }
+        .vocab-card-meta {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+        .vocab-card-word {
+            font-size: 3em;
+            font-weight: 700;
+            margin: 30px 0 10px;
+            color: var(--color-primary);
+        }
+        .vocab-card-actions {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        .vocab-card-actions .btn {
+            flex: 1;
+            max-width: 160px;
+            min-height: 48px;   /* R19: 触屏最小点击区 */
+        }
+        .vocab-card-skip { margin-top: 30px; font-size: 0.85em; }
+
+        .lookup-result {
+            margin: 20px 0;
+            min-height: 60px;
+            color: var(--text-primary);
+            text-align: left;
+        }
+        .lookup-zh { margin-top: 10px; color: var(--text-secondary); }
         .feedback-good { color: #6B8A52; }
         .feedback-bad { color: #C25B56; }
         .feedback-icon { font-size: 1.2em; margin-right: 10px; }
@@ -225,14 +275,14 @@
         .options { display: grid; gap: 10px; }
         .option {
             padding: 15px 20px;
-            background: #F5F2EC;
-            border: 2px solid #D6CFC0;
+            background: var(--bg-dark);
+            border: 2px solid var(--border);
             border-radius: 12px;
             cursor: pointer;
             transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
             font-size: 1.1em;
         }
-        .option:hover { border-color: #B86A4E; background: #F5EDE5; }
+        .option:hover { border-color: var(--color-primary); background: var(--bg-dark); }
         .option.correct { background: #E5EEDF; border-color: #6B8A52; }
         .option.wrong { background: #F5DDDD; border-color: #C25B56; }
         /* 对/错不仅用颜色, 还加 ✓/✗ 图标 (色盲友好) */
@@ -281,8 +331,8 @@
             font-size: 0.85em;
             transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
         }
-        .nav-link:hover { color: var(--color-primary); background: #F5EDE5; }
-        .nav-link.active { color: white; background: var(--color-primary); }
+        .nav-link:hover { color: var(--color-primary); background: var(--bg-dark); }
+        .nav-link.active { color: var(--text-on-primary); background: var(--primary-fill); }
 
         /* ==================== 平板适配 ==================== */
         /* 平板竖屏 (600px - 768px) */
@@ -360,11 +410,11 @@
                 transform: scale(0.97);
             }
             .unit-item:active {
-                background: #F5EDE5;
+                background: var(--bg-dark);
                 transform: translateX(3px);
             }
             .option:active {
-                background: #F5EDE5;
+                background: var(--bg-dark);
             }
         }
 
@@ -403,4 +453,30 @@
         [class*="-btn"]:active:not(:disabled) {
             transform: scale(0.96);
         }
+
+        /* === 从 HTML 内联 style 迁移过来的规则 (CSP style-src 'self' 会丢弃 style 属性) === */
+
+        /* 今日复习条目右侧的到期词数徽标; 显示/隐藏由 JS 设 el.style.display */
+        #vocab-due-badge {
+            background: var(--warning, #D4A574);
+            color: white;
+            border-radius: 10px;
+            padding: 2px 8px;
+            font-size: 0.7em;
+            margin-left: 8px;
+        }
+
+        /* 单元/章节选择标题里的「← 返回选择」小按钮 */
+        .btn-inline-back {
+            padding: 5px 15px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+
+        /* 章节选择卡片里的故事简介 */
+        #chapter-selection .chapter-desc {
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+        }
+
 
