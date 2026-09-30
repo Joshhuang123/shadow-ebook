@@ -416,7 +416,8 @@ def test_parse_toc_nav_epub3():
     })
     toc = _parse_toc(zf, 'content.opf')
     assert len(toc) == 2
-    assert toc[0] == {'title': 'Chapter 1: Beginnings', 'href': 'ch1.xhtml', 'level': 0}
+    assert toc[0] == {'title': 'Chapter 1: Beginnings', 'href': 'ch1.xhtml',
+                      'level': 0, 'base': ''}
     assert toc[1]['title'] == 'Chapter 2: Journeys'
 
 

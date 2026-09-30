@@ -170,8 +170,51 @@ def _is_chapter_heading(text: str) -> bool:
 
 _CONTAINER_ROOTFILE = re.compile(r'<rootfile[^>]+full-path=["\']([^"\']+)["\']')
 _OPF_ITEMREF = re.compile(r'<itemref[^>]+idref=["\']([^"\']+)["\']')
-_OPF_ITEM = re.compile(r'<item[^>]+id=["\']([^"\']+)["\'][^>]+href=["\']([^"\']+)["\']')
-_OPF_COVER_META = re.compile(r'<meta[^>]+name=["\']cover["\'][^>]+content=["\']([^"\']+)["\']', re.I)
+# manifest item 必须与属性顺序无关。
+# 历史 bug(2026-09-30): 原来是 <item[^>]+id="..."[^>]+href="...">,强制 id 出现在 href 之前。
+# 真实 EPUB(zlib 上的商业书,如 magic tree house 29)写的是
+#   <item href="OEBPS/..._c001_r1.htm" id="c001" media-type="..."/>
+# 结果整本 manifest 一条都匹配不上 → spine 解析返回空 → 降级 sorted(html_files)
+# → 一本 20 多章的真书被压成 1 章 846 句。
+_OPF_ITEM_TAG = re.compile(r'<item\b[^>]*>', re.I)
+_OPF_ATTR_ID = re.compile(r'\bid=["\']([^"\']*)["\']', re.I)
+_OPF_ATTR_HREF = re.compile(r'\bhref=["\']([^"\']*)["\']', re.I)
+
+
+def _opf_items(opf: str) -> list:
+    """从 OPF 文本抽 manifest 的 (id, href) 列表,与属性书写顺序无关。"""
+    items = []
+    for tag in _OPF_ITEM_TAG.findall(opf):
+        m_id = _OPF_ATTR_ID.search(tag)
+        m_href = _OPF_ATTR_HREF.search(tag)
+        if m_id and m_href:
+            items.append((m_id.group(1), m_href.group(1)))
+    return items
+_OPF_ITEMREF = re.compile(r'<itemref\b[^>]*>', re.I)
+_OPF_ATTR_IDREF = re.compile(r'\bidref=["\']([^"\']*)["\']', re.I)
+_OPF_META_TAG = re.compile(r'<meta\b[^>]*>', re.I)
+_OPF_ATTR_NAME = re.compile(r'\bname=["\']([^"\']*)["\']', re.I)
+_OPF_ATTR_CONTENT = re.compile(r'\bcontent=["\']([^"\']*)["\']', re.I)
+# EPUB 3 用 manifest item 的 properties="cover-image" 声明封面,不再用 <meta name="cover">。
+# 历史 bug: 只认 EPUB 2 的 meta,EPUB 3(现在的主流)一律导不出封面。
+# 同样不能依赖属性顺序 —— 和 _opf_items 一样按 tag 逐个看。
+_OPF_ATTR_PROPS = re.compile(r'\bproperties=["\']([^"\']*)["\']', re.I)
+
+
+def _opf_cover_meta_id(opf: str) -> str:
+    """读 <meta name="cover" content="..."> 的 content 值。
+
+    同样不能依赖属性顺序:真实 EPUB 里存在 <meta content="cover-image" name="cover"/>
+    这种字母序写法,要求 name 在 content 前的正则会直接漏掉。
+    """
+    for tag in _OPF_META_TAG.findall(opf):
+        m_name = _OPF_ATTR_NAME.search(tag)
+        if not m_name or m_name.group(1).strip().lower() != 'cover':
+            continue
+        m_content = _OPF_ATTR_CONTENT.search(tag)
+        if m_content:
+            return m_content.group(1).strip()
+    return ''
 # OPF metadata 提取 (dc:* 命名空间元素, 包在 <metadata>...</metadata> 里)
 _DC_TITLE = re.compile(r'<dc:title[^>]*>([^<]*)</dc:title>', re.I)
 _DC_CREATOR = re.compile(r'<dc:creator[^>]*>([^<]*)</dc:creator>', re.I)
@@ -203,31 +246,49 @@ def _parse_spine_order(zf, opf_path: str) -> list:
         opf = zf.read(opf_path).decode('utf-8', errors='ignore')
     except KeyError:
         return []
-    spine_ids = _OPF_ITEMREF.findall(opf)
-    id_to_file = dict(_OPF_ITEM.findall(opf))
+    # 同样按 tag 逐个取 idref,不依赖 <itemref> 内部属性顺序
+    spine_ids = []
+    for tag in _OPF_ITEMREF.findall(opf):
+        m = _OPF_ATTR_IDREF.search(tag)
+        if m:
+            spine_ids.append(m.group(1))
+    id_to_file = dict(_opf_items(opf))
     # opf_path 可能带子目录 (如 OEBPS/content.opf), href 是相对路径
     opf_dir = opf_path.rsplit('/', 1)[0] + '/' if '/' in opf_path else ''
     return [opf_dir + id_to_file[sid] for sid in spine_ids if sid in id_to_file]
 
 
 def _find_cover_via_opf(zf, opf_path: str) -> str:
-    """走 EPUB spec 找封面: <meta name="cover" content="item_id"> → manifest id → href。
-    找不到返回 ''。比文件名猜更准 (尤其对不按 cover.jpg 命名的书)。"""
+    """走 EPUB spec 找封面。两条路,先新后旧:
+
+    1. EPUB 3:manifest item 带 properties="cover-image" → 直接取它的 href
+    2. EPUB 2:<meta name="cover" content="item_id"> → manifest id → href
+
+    找不到返回 ''。比文件名猜更准 (尤其对不按 cover.jpg 命名的书)。
+    """
     if not opf_path:
         return ''
     try:
         opf = zf.read(opf_path).decode('utf-8', errors='ignore')
     except KeyError:
         return ''
-    m = _OPF_COVER_META.search(opf)
-    if not m:
+
+    opf_dir = opf_path.rsplit('/', 1)[0] + '/' if '/' in opf_path else ''
+
+    # 1) EPUB 3 properties="cover-image"
+    for tag in _OPF_ITEM_TAG.findall(opf):
+        props = _OPF_ATTR_PROPS.search(tag)
+        if props and 'cover-image' in props.group(1).lower().split():
+            m_href = _OPF_ATTR_HREF.search(tag)
+            if m_href:
+                return opf_dir + m_href.group(1)
+
+    # 2) EPUB 2 <meta name="cover" content="item_id">
+    cover_id = _opf_cover_meta_id(opf)
+    if not cover_id:
         return ''
-    cover_id = m.group(1)
-    # 找 manifest 里 id == cover_id 的 item
-    for item_id, href in _OPF_ITEM.findall(opf):
+    for item_id, href in _opf_items(opf):
         if item_id == cover_id:
-            # href 是相对 opf_dir 的路径
-            opf_dir = opf_path.rsplit('/', 1)[0] + '/' if '/' in opf_path else ''
             return opf_dir + href
     return ''
 
@@ -359,7 +420,7 @@ def _parse_toc(zf, opf_path: str) -> list:
 
     # 1) EPUB 2 NCX: 在 manifest 里找 media-type='application/x-dtbncx+xml' 的 item
     ncx_href = None
-    for item_id, href in _OPF_ITEM.findall(opf):
+    for item_id, href in _opf_items(opf):
         # 找 item 标签中含 ncx media-type
         item_match = re.search(
             r'<item[^>]+id=["\']' + re.escape(item_id) + r'["\'][^>]*media-type=["\']' + re.escape(_NCX_MEDIA) + r'["\']',
@@ -381,7 +442,7 @@ def _parse_toc(zf, opf_path: str) -> list:
         spine_toc = re.search(r'<spine[^>]+toc=["\']([^"\']+)["\']', opf, re.I)
         if spine_toc:
             toc_id = spine_toc.group(1)
-            for item_id, href in _OPF_ITEM.findall(opf):
+            for item_id, href in _opf_items(opf):
                 if item_id == toc_id:
                     ncx_href = href
                     break
@@ -403,9 +464,11 @@ def _parse_toc(zf, opf_path: str) -> list:
                     src_m = _NCX_CONTENT_SRC.search(block)
                     if label_m and src_m:
                         entries.append({
-                            'title': re.sub(r'\s+', ' ', label_m.group(1)).strip(),
+                            'title': re.sub(r'\s+', ' ',
+                                            html.unescape(label_m.group(1))).strip(),
                             'href': src_m.group(1).split('#')[0],  # 去掉 #anchor
                             'level': 0,  # 简化: 不算嵌套
+                            'base': ncx_arcname.rsplit('/', 1)[0] + '/' if '/' in ncx_arcname else '',
                         })
                 if entries:
                     return entries
@@ -419,16 +482,54 @@ def _parse_toc(zf, opf_path: str) -> list:
         if _NAV_EPUB_TYPE.search(nav):
             entries = []
             for href, title in _NAV_LI.findall(nav):
-                t = re.sub(r'\s+', ' ', title).strip()
+                t = re.sub(r'\s+', ' ', html.unescape(title)).strip()
                 if t:
-                    entries.append({'title': t, 'href': href.split('#')[0], 'level': 0})
+                    entries.append({
+                        'title': t, 'href': href.split('#')[0], 'level': 0,
+                        'base': opf_dir,
+                    })
             if entries:
                 return entries
     return []
 
 
+def _parse_toc_base(ent: dict) -> str:
+    """TOC 条目里 href 相对于哪个目录 —— 由 _parse_toc 写入 base 字段。"""
+    return (ent or {}).get('base') or ''
+
+
+def _resolve_zip_name(zf, href: str, opf_path: str = '', extra_base: str = '') -> str:
+    """把 TOC / nav 里的 href 解析成 zip 内真实存在的路径名。
+
+    href 的基准目录在不同 EPUB 里不统一:可能是 OPF 所在目录、NCX 所在目录,
+    也可能直接就是 zip 根。这里把常见基准挨个试一遍,谁存在用谁。
+    """
+    if not href:
+        return ''
+    href = href.split('#')[0].strip()
+    if not href:
+        return ''
+    names = set(zf.namelist())
+    candidates = [href]
+    for base in (extra_base, opf_path.rsplit('/', 1)[0] + '/' if '/' in opf_path else ''):
+        if not base:
+            continue
+        joined = (base.rstrip('/') + '/' + href).lstrip('/')
+        if joined not in candidates:
+            candidates.append(joined)
+    for c in candidates:
+        if c in names:
+            return c
+    # 都命中不了时,做一次尾部匹配兜底(有些包 href 带了多余的 ../)
+    for c in candidates:
+        tail = c.split('/')[-1]
+        for n in names:
+            if n.split('/')[-1] == tail:
+                return n
+    return ''
+
+
 def calc_lexile(book_data):
-    """根据书名估算蓝思值 (因为句子数据不完整)"""
     title = book_data.get('book', '').lower()
 
     # 已知蓝思值的书籍 (更精确的值)
@@ -494,6 +595,63 @@ def calc_lexile(book_data):
         return 1000
 
 
+# 阅读密度:每屏放几句。
+# 密度不该由「孩子的水平」单独决定 —— 同一本 500 蓝思的书,700 的孩子该看到
+# 一整页,400 的孩子该逐句啃。真正决定密度的是书与孩子的**差值** gap。
+# gap 为负 = 书比孩子简单,孩子读得轻松,就该少打断、多给内容;
+# gap 为正 = 书比孩子难,必须拆细、留白,否则一页字看着就发怵。
+#
+# 这是全项目的唯一权威表。web/js/index.js 里的 JS 版必须和它逐档一致,
+# tests/test_reading_density.py 里有 parity 测试钉死,防止两边悄悄漂移。
+READING_DENSITY_STEPS = (
+    # (gap 上界含号, 每屏句数, 模式)
+    (-200, 10, 'book'),
+    (-50, 7, 'book'),
+    (50, 5, 'focus'),
+    (150, 4, 'focus'),
+    (None, 3, 'focus'),   # gap > 150,书明显比孩子难
+)
+
+# 没建档案 / 没填蓝思值时的兜底:按「刚够读」处理,密度居中偏保守。
+DEFAULT_CHILD_LEXILE = 600
+
+
+def calc_reading_density(book_lexile, child_lexile) -> dict:
+    """按「书的难度 - 孩子的水平」算出每屏句数与阅读模式。
+
+    返回 {sentencesPerPage, mode, bookLexile, childLexile, gap}。
+    mode='focus' 是一屏几句的大字号聚焦(初级);
+    mode='book'  是连续小字的书页(高段位),CSS 靠这个 class 切换。
+
+    任何一侧缺失都退回 DEFAULT_CHILD_LEXILE / 500,不抛异常 ——
+    阅读器打不开一本书的代价比密度算错大得多。
+    """
+    try:
+        book_l = int(book_lexile) if book_lexile is not None else 500
+    except (TypeError, ValueError):
+        book_l = 500
+    try:
+        child_l = int(child_lexile) if child_lexile is not None else DEFAULT_CHILD_LEXILE
+    except (TypeError, ValueError):
+        child_l = DEFAULT_CHILD_LEXILE
+    # 蓝思值有物理上限,填个 9999 不该让 gap 溢出成天文数字
+    child_l = max(0, min(child_l, 2000))
+
+    gap = book_l - child_l
+    for upper, per_page, mode in READING_DENSITY_STEPS:
+        if upper is None or gap <= upper:
+            return {
+                'sentencesPerPage': per_page,
+                'mode': mode,
+                'bookLexile': book_l,
+                'childLexile': child_l,
+                'gap': gap,
+            }
+    # 循环里必然返回,这里只是让类型检查器闭嘴
+    return {'sentencesPerPage': 3, 'mode': 'focus',
+            'bookLexile': book_l, 'childLexile': child_l, 'gap': gap}
+
+
 # === R11: list_books 缓存 ===
 # 每次家长打开 parent 页都触发, 旧逻辑要把每本书全 JSON parse + 算 lexile,
 # harry_potter 6.7MB + treasury 173KB 等加起来近 10MB 扫描。
@@ -526,7 +684,25 @@ def register_routes(app):
             book['title'] = book.get('book', book_id)
         if 'cover' in book:
             book['cover'] = _cover_url(book['cover'])
+        # 阅读密度要按「书的难度 - 孩子的水平」算,前端拿不到书的蓝思值就没法算。
+        book['lexile'] = calc_lexile(book)
         return jsonify({"success": True, "book": book})
+
+    @app.route('/api/child/profile')
+    def child_profile():
+        """孩子的阅读档案 —— 阅读器要靠它算每屏句数,所以不能要家长鉴权。
+
+        只回算密度必需的三个字段。stats / vocabulary / lookedWords 这些
+        仍然锁在 /api/parent/data 后面,不能因为要个蓝思值就把整张表放开。
+        档案本身存在 parent_data.settings.child,由家长页写入。
+        """
+        from extensions.parent_data import load_child_profile
+        profile = load_child_profile()
+        return jsonify({
+            "success": True,
+            "child": profile,
+            "defaultLexile": DEFAULT_CHILD_LEXILE,
+        })
 
     @app.route('/api/books')
     def list_books():
@@ -543,7 +719,8 @@ def register_routes(app):
             book_id, data_json = row['id'], row['data_json']
             data = json.loads(data_json)
             chapters = data.get('chapters', [])
-            total_sentences = sum(len(ch.get('sentences', [])) for ch in chapters)
+            chapter_sentences = [len(ch.get('sentences', []) or []) for ch in chapters]
+            total_sentences = sum(chapter_sentences)
             books.append({
                 "id": book_id,
                 "title": data.get('book', data.get('title', book_id)),
@@ -552,6 +729,9 @@ def register_routes(app):
                 "publisher": data.get('publisher'),
                 "chapters": len(chapters),
                 "sentences": total_sentences,
+                # 书架页的进度条要知道「读到全书第几句」,光有总数算不出来。
+                # 章数少(几十)体积可忽略,换来的是进度条不说谎。
+                "chapter_sentences": chapter_sentences,
                 "lexile": calc_lexile(data),
                 "cover": _cover_url(data.get('cover')),  # R11: 兼容旧绝对路径
             })
@@ -631,11 +811,36 @@ def register_routes(app):
         if not is_valid_book_id(book_id):
             return jsonify({"success": False, "error": "非法书籍ID"}), 400
         conn = get_db()
-        cur = conn.execute('DELETE FROM books WHERE id = ?', (book_id,))
-        if cur.rowcount == 0:
+        # 先取标题再删 —— 删完就查不到了,日志里只剩一个 id 等于没记。
+        # 本项目 2026-09-30 出现过 books 表被清空且无任何痕迹的悬案,
+        # 就是因为这条路径当时不落日志。
+        row = conn.execute('SELECT data_json FROM books WHERE id = ?', (book_id,)).fetchone()
+        if row is None:
             return jsonify({"success": False, "error": "书籍不存在"}), 404
+        try:
+            title = (json.loads(row[0]) or {}).get('book', '?')
+        except Exception:
+            title = '?(data_json 解析失败)'
+        cur = conn.execute('DELETE FROM books WHERE id = ?', (book_id,))
+        remaining = conn.execute('SELECT COUNT(*) FROM books').fetchone()[0]
+        # 封面文件名由标题推导(_save_cover),不同书必落在不同文件上,
+        # 删书不删图只会让 covers/ 越攒越多 —— data/covers/ 里已经躺着
+        # 9 个无主封面(bleak_house / harry_potter_1 / percy_jackson_2 ...)。
+        # 找不到或标题不可用时静默跳过,删书本身不该因为清理失败而失败。
+        try:
+            stem = _sanitize_book_id(title)
+            if stem:
+                for f in COVERS_DIR.glob(f'{stem}.*'):
+                    f.unlink()
+                    logger.info(f'删除书籍封面: {f.name}')
+        except OSError as e:
+            logger.warning(f'清理封面失败 book_id={book_id!r}: {e}')
+        logger.warning(
+            '删除书籍 id=%r title=%r by=%s 剩余=%d',
+            book_id, title, request.remote_addr, remaining,
+        )
         _invalidate_books_list_cache()
-        return jsonify({"success": True})
+        return jsonify({"success": True, "remaining": remaining})
 
     @app.route('/api/book/import', methods=['POST'])
     @require_parent_auth
@@ -681,6 +886,21 @@ def register_routes(app):
                 else:
                     logger.info('未找到真 TOC, 降级到正则猜章节')
 
+                # === R10: 判重必须在任何写盘动作之前 ===
+                # 历史 bug: 判重放在解析末尾,而封面早在 _save_cover 就落盘了。
+                # 同 id 再导一次 → 数据确实被 409 拦下没覆盖,但旧书的封面文件
+                # 已经被新 EPUB 的封面盖掉,旧书从此顶着新书的封面显示。
+                # 判重只依赖 book_title,此处 title 已定稿(OPF 优先),可以提前。
+                book_id = _sanitize_book_id(book_title)
+                if get_db().execute('SELECT 1 FROM books WHERE id = ?', (book_id,)).fetchone():
+                    logger.warning(f'book_id {book_id!r} 已存在, 拒绝覆盖 (filename={filename!r})')
+                    return jsonify({
+                        "success": False,
+                        "error": f'书籍 ID {book_id!r} 已存在, 请重命名文件后重试 (例: {book_id}_v2.epub)',
+                        "retryable": False,
+                        "book_id": book_id,
+                    }), 409
+
                 html_files = [n for n in zf.namelist() if n.endswith(('.html', '.xhtml', '.htm')) and 'image' not in n.lower()]
 
                 # 提取封面: 先走 OPF spec 找, 找不到再按常见文件名猜
@@ -710,35 +930,72 @@ def register_routes(app):
                 current_chapter = None
                 current_sentences = []
 
-                for html_file in ordered_files:
-                    if not html_file:
-                        continue
-                    try:
-                        content = zf.read(html_file).decode('utf-8', errors='ignore')
-                        text = _clean_text(content)
-                        if not text or len(text) < 20:
+                # === 章节切分(2026-09-30 重写) ===
+                # 历史 bug:断章只靠「这个文件的纯文本短得像标题」,而 _clean_text
+                # 返回的是整个文件的全文 —— 几百词,永远不满足 _is_chapter_heading 的
+                # ≤8 词 / ≤80 字符,于是 if 分支一次都不走,所有章节内容全堆进第 1 章。
+                # 实测 magic tree house 29 这本 24 章的真书被压成 1 章 846 句。
+                #
+                # 正确做法:有真 TOC 时,一个 TOC 条目 = 一章,标题直接用 TOC 的。
+                # 只有拿不到 TOC 的书才退回原来的正则猜法(再不行走每 50 句一章)。
+                if toc_entries:
+                    seen_arc = set()
+                    for ent in toc_entries:
+                        href = (ent.get('href') or '').split('#')[0].strip()
+                        if not href:
                             continue
+                        arc = _resolve_zip_name(zf, href, opf_path, _parse_toc_base(ent))
+                        if not arc or arc in seen_arc:
+                            continue
+                        seen_arc.add(arc)
+                        try:
+                            content = zf.read(arc).decode('utf-8', errors='ignore')
+                        except KeyError:
+                            logger.warning(f'TOC 指向的文件不存在: {arc}')
+                            continue
+                        except Exception as e:
+                            logger.warning(f'读 TOC 章节 {arc} 失败: {e}')
+                            continue
+                        text = _clean_text(content)
+                        if not text:
+                            continue
+                        sents = _split_sentences(text)
+                        if sents:
+                            chapters.append({
+                                "name": ent.get('title') or f'Chapter {len(chapters)+1}',
+                                "sentences": sents,
+                            })
+                    logger.info(f'按 TOC 切出 {len(chapters)} 章 (原 {len(toc_entries)} 条)')
+                else:
+                    for html_file in ordered_files:
+                        if not html_file:
+                            continue
+                        try:
+                            content = zf.read(html_file).decode('utf-8', errors='ignore')
+                            text = _clean_text(content)
+                            if not text or len(text) < 20:
+                                continue
 
-                        # R11: 只用 h1-h6 提取章节标题。
-                        # 旧 fallback 用 <title> 是 bug — <title> 是整本书名,
-                        # 没 h1-h6 的章节会全部拿到同一个书名作标题。
-                        heading_match = re.search(r'<h[1-6][^>]*>([^<]+)</h[1-6]>', content, re.I)
-                        chapter_title = heading_match.group(1) if heading_match else ''
+                            # R11: 只用 h1-h6 提取章节标题。
+                            # 旧 fallback 用 <title> 是 bug — <title> 是整本书名,
+                            # 没 h1-h6 的章节会全部拿到同一个书名作标题。
+                            heading_match = re.search(r'<h[1-6][^>]*>([^<]+)</h[1-6]>', content, re.I)
+                            chapter_title = heading_match.group(1) if heading_match else ''
 
-                        if _is_chapter_heading(text) and len(text.split()) < 10:
-                            if current_chapter and current_sentences:
-                                chapters.append({"name": current_chapter, "sentences": current_sentences})
-                            current_chapter = text if text else (chapter_title or f'Chapter {len(chapters)+1}')
-                            current_sentences = []
-                        else:
-                            sents = _split_sentences(text)
-                            if sents:
-                                if not current_chapter:
-                                    current_chapter = chapter_title or book_title
-                                current_sentences.extend(sents)
-                    except Exception as e:
-                        logger.warning(f'解析 EPUB 章节 {html_file} 失败: {e}')
-                        continue
+                            if _is_chapter_heading(text) and len(text.split()) < 10:
+                                if current_chapter and current_sentences:
+                                    chapters.append({"name": current_chapter, "sentences": current_sentences})
+                                current_chapter = text if text else (chapter_title or f'Chapter {len(chapters)+1}')
+                                current_sentences = []
+                            else:
+                                sents = _split_sentences(text)
+                                if sents:
+                                    if not current_chapter:
+                                        current_chapter = chapter_title or book_title
+                                    current_sentences.extend(sents)
+                        except Exception as e:
+                            logger.warning(f'解析 EPUB 章节 {html_file} 失败: {e}')
+                            continue
 
                 if current_chapter and current_sentences:
                     chapters.append({"name": current_chapter, "sentences": current_sentences})
@@ -747,7 +1004,17 @@ def register_routes(app):
                 if len(chapters) == 0 or all(len(ch.get('sentences', [])) == 0 for ch in chapters):
                     chapters = []
                     current_sentences = []
-                    for html_file in ordered_files[:20]:
+                    FALLBACK_FILE_CAP = 20
+                    if len(ordered_files) > FALLBACK_FILE_CAP:
+                        # 以前这里直接 ordered_files[:20],被截掉的章节无声消失,
+                        # 家长导入一本 30 章的书只拿到前 20 章且毫无提示。
+                        logger.warning(
+                            '走 fallback 分章,但 EPUB 有 %d 个章节文件,只处理前 %d 个,'
+                            '其余 %d 个被丢弃 —— 本书导入结果不完整',
+                            len(ordered_files), FALLBACK_FILE_CAP,
+                            len(ordered_files) - FALLBACK_FILE_CAP,
+                        )
+                    for html_file in ordered_files[:FALLBACK_FILE_CAP]:
                         if not html_file:
                             continue
                         try:
@@ -788,18 +1055,6 @@ def register_routes(app):
                 "toc": toc_entries,  # 真 TOC, 无则 []
             }
             conn = get_db()
-            # === R10: 重复 import 不再静默覆盖, 返 409 引导家长重命名 ===
-            # 历史: Round 4 只 log warning, 实际用 INSERT OR REPLACE 静默覆盖老书
-            # (用户 import 一本新书如果 title 跟老书算出的 book_id 一样, 老书数据被无提示替换)
-            existing = conn.execute('SELECT 1 FROM books WHERE id = ?', (book_id,)).fetchone()
-            if existing:
-                logger.warning(f'book_id {book_id!r} 已存在, 拒绝覆盖 (filename={filename!r})')
-                return jsonify({
-                    "success": False,
-                    "error": f'书籍 ID {book_id!r} 已存在, 请重命名文件后重试 (例: {book_id}_v2.epub)',
-                    "retryable": False,
-                    "book_id": book_id,
-                }), 409
             now = int(time.time() * 1000)
             conn.execute(
                 'INSERT OR REPLACE INTO books (id, data_json, imported_at, updated_at) '
@@ -814,7 +1069,7 @@ def register_routes(app):
                 "author": opf_meta.get('creator'),
                 "total_chapters": len(merged_chapters),
                 "total_sentences": total_sentences,
-                "has_cover": cover_path is not None,
+                "has_cover": bool(cover_path),
                 "has_toc": bool(toc_entries),
             })
 

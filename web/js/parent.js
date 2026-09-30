@@ -4,6 +4,10 @@
         // XSS 防御: 所有外部数据走 textContent
         const el = (id) => document.getElementById(id);
 
+        // 书名来自用户导入的 EPUB metadata,是不可信输入,拼 innerHTML 前必须转义。
+        const _escMap = {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'};
+        const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => _escMap[c]);
+
         function setText(id, text) { el(id).textContent = text ?? ''; }
 
         function showPwdError(msg) {
@@ -197,7 +201,7 @@
             const titles = new Map((books || []).map(b => [b.id, b.title || b.id]));
             const ids = Object.keys(progress || {});
             if (ids.length === 0) {
-                box.innerHTML = '<div style="color:#999;padding:8px 0;">孩子还没读过任何书</div>';
+                box.innerHTML = '<div class="muted-note">孩子还没读过任何书</div>';
                 return;
             }
             ids.sort((a, b) => (progress[b].last_open_ts || 0) - (progress[a].last_open_ts || 0));
@@ -301,6 +305,131 @@
 
             elTl.onchange = (e) => localStorage.setItem('dailyTimeLimit', e.target.value);
             elEn.onchange = (e) => localStorage.setItem('enableTimeLimit', e.target.checked);
+
+            loadChildProfile();
+        }
+
+        // 孩子档案。密度公式的权威版在 extensions/books.py,
+        // 这里只做「填了什么就是什么」的回显,以及给家长一个所见即所得的预览 ——
+        // 家长改一个数字就能看到自己书架上会变成每页几句,不用先导一本书试试。
+        const PROFILE_DENSITY_STEPS = [
+            [-200, 10, '连续书页'],
+            [-50, 7, '连续书页'],
+            [50, 5, '大字聚焦'],
+            [150, 4, '大字聚焦'],
+            [null, 3, '大字聚焦'],
+        ];
+        const DEFAULT_CHILD_LEXILE = 600;
+
+        function previewDensity(bookLexile, childLexile) {
+            // Number(null)/Number('') 都是 0,得先挡空值,否则「没填」
+            // 会被当成 0 分,预览出来的每页句数比实际低一大截。
+            const num = (v, fallback) => {
+                if (v === null || v === undefined || v === '') return fallback;
+                const n = Number(v);
+                return Number.isFinite(n) ? n : fallback;
+            };
+            const bl = num(bookLexile, 500);
+            let cl = num(childLexile, DEFAULT_CHILD_LEXILE);
+            cl = Math.max(0, Math.min(cl, 2000));
+            const gap = bl - cl;
+            for (const [upper, per, mode] of PROFILE_DENSITY_STEPS) {
+                if (upper === null || gap <= upper) return { per, mode, gap };
+            }
+            return { per: 3, mode: '大字聚焦', gap };
+        }
+
+        // 拿已导入的书当参照,预览里列出真实存在的几本
+        async function loadChildProfile() {
+            const setVal = (id, v) => { const e = el(id); if (e) e.value = v ?? ''; };
+            try {
+                const r = await fetch('/api/child/profile', { credentials: 'same-origin' });
+                const j = await r.json();
+                const c = (j && j.child) || {};
+                setVal('childName', c.name || '');
+                setVal('childAge', c.age ?? '');
+                setVal('childLexile', c.lexile ?? '');
+            } catch (e) {
+                console.warn('load child profile failed', e);
+            }
+            renderProfilePreview();
+
+            const lx = el('childLexile');
+            if (lx) lx.oninput = renderProfilePreview;
+        }
+
+        async function renderProfilePreview() {
+            const box = el('profilePreview');
+            if (!box) return;
+            const cl = el('childLexile') ? el('childLexile').value.trim() : '';
+            const childLex = cl === '' ? DEFAULT_CHILD_LEXILE : Number(cl);
+
+            let books = [];
+            try {
+                const r = await fetch('/api/books', { credentials: 'same-origin' });
+                const j = await r.json();
+                books = (j && j.books) || [];
+            } catch (e) { /* 没书就只显示提示 */ }
+
+            if (!books.length) {
+                box.innerHTML = '<div class="profile-hint">书架上还没有书,导入一本后这里会显示每页句数</div>';
+                return;
+            }
+            const rows = books.slice(0, 5).map(b => {
+                const d = previewDensity(b.lexile, childLex);
+                return `<div class="profile-row">
+                    <span class="pr-title">${escapeHtml(b.title || '')}</span>
+                    <span class="pr-lexile">${b.lexile || 500}L</span>
+                    <span class="pr-dens">每页 ${d.per} 句 · ${d.mode}</span>
+                </div>`;
+            }).join('');
+            box.innerHTML = `<div class="profile-hint">按你书架上的书预览:</div>${rows}`;
+        }
+
+        function pickLexile(value) {
+            const e = el('childLexile');
+            if (!e) return;
+            e.value = value;
+            renderProfilePreview();
+        }
+
+        async function saveChildProfile() {
+            const name = el('childName') ? el('childName').value.trim() : '';
+            const ageRaw = el('childAge') ? el('childAge').value.trim() : '';
+            const lexRaw = el('childLexile') ? el('childLexile').value.trim() : '';
+            const btn = el('saveChildProfile');
+
+            const body = {
+                name,
+                age: ageRaw === '' ? null : Number(ageRaw),
+                // 留空 = 交给默认 600,而不是存 0 —— 0 会让 gap 变成整本书的难度,
+                // 误判成「这书对孩子极难」,直接掉到每页 3 句。
+                lexile: lexRaw === '' ? null : Number(lexRaw),
+            };
+            if (body.lexile !== null && (!Number.isFinite(body.lexile) || body.lexile < 0)) {
+                alert('蓝思值得是个数字'); return;
+            }
+            if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
+            try {
+                const r = await fetch('/api/child/profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(body),
+                });
+                const j = await r.json();
+                if (j && j.success) {
+                    if (btn) btn.textContent = '已保存 ✓';
+                } else {
+                    alert('保存失败: ' + ((j && j.error) || r.status));
+                    if (btn) btn.textContent = '保存档案';
+                }
+            } catch (e) {
+                alert('保存失败,检查网络');
+                if (btn) btn.textContent = '保存档案';
+            } finally {
+                if (btn) btn.disabled = false;
+            }
         }
 
         // 导出 (从 server 拉)

@@ -16,6 +16,7 @@ import hashlib
 import hmac
 import json
 import logging
+import re
 import secrets
 import time
 from flask import jsonify, request, session, Response
@@ -128,6 +129,43 @@ def _load_parent_data() -> dict:
         "stats": {}, "vocabulary": {}, "settings": {},
         "vocabReviews": {}, "bookProgress": {}, "sentenceMastery": {},
     }
+
+
+def load_child_profile() -> dict:
+    """读出孩子档案 {name, age, lexile}。
+
+    存在 settings.child 下。字段一律宽松处理:家长可能只填了蓝思没填年龄,
+    可能填了 "8 岁" 这种带单位的手输,可能干脆什么都没填。
+    解析失败一律退回 None,让阅读器用 DEFAULT_CHILD_LEXILE,
+    绝不能因为档案写坏了就打不开书。
+    """
+    settings = (_load_parent_data().get('settings') or {})
+    child = settings.get('child')
+    if not isinstance(child, dict):
+        return {"name": "", "age": None, "lexile": None}
+
+    def _as_int(v):
+        # 允许 "600L" / "600 级" / " 600 " 这类手输
+        m = re.search(r'-?\d+', str(v)) if v is not None else None
+        return int(m.group(0)) if m else None
+
+    return {
+        "name": str(child.get('name') or '')[:40],
+        "age": _as_int(child.get('age')),
+        "lexile": _as_int(child.get('lexile')),
+    }
+
+
+def save_child_profile(profile: dict) -> dict:
+    """写入孩子档案(家长页调用)。返回规范化后的档案。"""
+    data = _load_parent_data()
+    data.setdefault('settings', {})['child'] = {
+        'name': str(profile.get('name') or '')[:40],
+        'age': profile.get('age'),
+        'lexile': profile.get('lexile'),
+    }
+    _save_parent_data(data)
+    return load_child_profile()
 
 
 def _save_parent_data(data: dict):
@@ -465,6 +503,17 @@ def register_routes(app):
                 _deep_merge(current.setdefault(section, {}), payload[section])
         _save_parent_data(current)
         return jsonify({"success": True})
+
+    @app.route('/api/child/profile', methods=['POST'])
+    @require_parent_auth
+    def child_profile_save():
+        """家长页保存孩子档案。读写都走独立接口,不动 /api/parent/data ——
+        那个是孩子端免鉴权上报用的,拿它写档案等于把档案开放给任何人改。"""
+        payload = request.json or {}
+        if not isinstance(payload, dict):
+            return jsonify({"success": False, "error": "请求格式不对"}), 400
+        saved = save_child_profile(payload)
+        return jsonify({"success": True, "child": saved})
 
     @app.route('/api/parent/reset', methods=['POST'])
     @require_parent_auth

@@ -22,7 +22,7 @@
         }
 
         .top-nav {
-            background: white;
+            background: var(--bg-card);
             box-shadow: 0 2px 10px rgba(115, 99, 78, 0.15);
             padding: 12px 24px;
             position: fixed;
@@ -61,7 +61,7 @@
         }
 
         .card {
-            background: white;
+            background: var(--bg-card);
             border-radius: 20px;
             padding: 24px;
             margin-bottom: 20px;
@@ -106,9 +106,13 @@
             flex-wrap: wrap;
         }
 
-        .pwd-digit {
+        /* 选择器带 .password-input 前缀是必需的:components.css 里
+           `input[type="password"] { width: 100% }` 的特异度 (0,1,1) 压过
+           单类名 (0,1,0),不加前缀四个格子会被拉成整行宽、各自换行。 */
+        .password-input .pwd-digit {
             width: 60px;
             height: 60px;
+            flex: 0 0 60px;
             text-align: center;
             font-size: 2em;
             border: 3px solid var(--border);
@@ -117,7 +121,7 @@
             font-weight: bold;
         }
 
-        .pwd-digit:focus {
+        .password-input .pwd-digit:focus {
             border-color: var(--color-primary);
         }
 
@@ -129,8 +133,8 @@
         }
 
         .default-pwd-hint {
-            background: #F5EDE5;
-            border: 2px solid #D4A574;
+            background: var(--tint-accent);
+            border: 2px solid var(--color-accent);
             border-radius: 12px;
             padding: 15px;
             margin-top: 20px;
@@ -336,7 +340,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 16px;
-            background: #F5F2EC;
+            background: var(--bg-dark);
             border-radius: 12px;
             margin-bottom: 10px;
         }
@@ -382,7 +386,7 @@
             width: 24px;
             left: 4px;
             bottom: 4px;
-            background: white;
+            background: var(--bg-card);
             border-radius: 50%;
             transition: 0.3s;
         }
@@ -416,8 +420,8 @@
         }
 
         .btn-primary {
-            background: var(--color-primary);
-            color: white;
+            background: var(--primary-fill);
+            color: var(--text-on-primary);
         }
 
         .btn-secondary {
@@ -441,8 +445,8 @@
 
         /* Time Limit Setting */
         .time-limit-setting {
-            background: #F5EDE5;
-            border: 2px solid #D4A574;
+            background: var(--tint-accent);
+            border: 2px solid var(--color-accent);
             border-radius: 12px;
             padding: 16px;
         }
@@ -486,3 +490,113 @@
         transform: scale(0.96);
     }
     
+    /* R23: 从内联 style="..." 搬过来的规则 ====================
+       CSP 的 style-src 'self' 不含 'unsafe-inline',内联样式全部被丢弃,
+       这些属性之前其实根本没生效。改用类,顺带接上 token 以支持暗色模式。 */
+
+    .nav-ebook-link {
+        text-decoration: none;
+        margin-right: var(--space-2);
+    }
+
+    .pwd-remaining {
+        display: none;          /* JS 用 .style.display = 'block' 打开 */
+        color: var(--color-accent);
+        font-size: 0.85em;
+        margin-top: var(--space-1);
+    }
+
+    .vocab-legend .dot--learning   { background: var(--warning); }
+    .vocab-legend .dot--practicing { background: var(--color-primary); }
+    .vocab-legend .dot--familiar   { background: var(--color-secondary); }
+    /* 「已掌握」要比「熟悉」再深一档,否则图例里两格看起来一模一样 */
+    .vocab-legend .dot--mastered   { background: color-mix(in srgb, var(--color-secondary) 78%, black); }
+
+    .stats-grid--spaced { margin-top: var(--space-5); }
+
+    .due-banner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: var(--space-3);
+        padding: 10px var(--space-3);
+        border-radius: var(--radius-md);
+        background: var(--tint-accent);
+        color: var(--text-primary);
+    }
+    .due-banner span:first-child { font-weight: var(--font-medium); }
+    #vocabDueNow {
+        font-size: 1.4em;
+        font-weight: var(--font-bold);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* ========== 孩子档案(2026-09-30) ==========
+       这张卡的作用是让家长看见「改了档案 → 每页句数会变成多少」,
+       所以预览行是主体,输入框只是配角。 */
+    .profile-desc {
+        font-size: var(--text-sm);
+        color: var(--text-secondary);
+        line-height: 1.6;
+        margin: 0 0 var(--space-3);
+    }
+    .profile-lexile input { width: 5.5em; }
+    .lexile-presets {
+        display: flex;
+        gap: var(--space-2);
+        flex-wrap: wrap;
+        margin: var(--space-3) 0;
+    }
+    .btn-preset {
+        padding: 6px 14px;
+        min-height: 36px;
+        border: 1px solid var(--border-primary);
+        border-radius: var(--radius-pill);
+        background: var(--surface-primary, transparent);
+        color: var(--text-secondary);
+        font-size: var(--text-sm);
+        cursor: pointer;
+        transition: background-color var(--duration-fast) var(--ease-out),
+                    color var(--duration-fast) var(--ease-out);
+    }
+    .btn-preset:hover {
+        background: var(--tint-primary);
+        color: var(--color-primary);
+    }
+    .profile-preview {
+        margin: var(--space-3) 0;
+        padding: var(--space-3);
+        border-radius: var(--radius-md);
+        background: var(--surface-secondary, var(--tint-primary));
+    }
+    .profile-hint {
+        font-size: var(--text-sm);
+        color: var(--text-secondary);
+        margin-bottom: var(--space-2);
+    }
+    .profile-row {
+        display: flex;
+        align-items: baseline;
+        gap: var(--space-3);
+        padding: 5px 0;
+        font-size: var(--text-sm);
+        border-top: 1px solid var(--border-subtle, transparent);
+    }
+    .pr-title {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--text-primary);
+    }
+    .pr-lexile {
+        color: var(--text-disabled);
+        font-variant-numeric: tabular-nums;
+        flex-shrink: 0;
+    }
+    .pr-dens {
+        color: var(--color-primary);
+        font-weight: var(--font-medium);
+        flex-shrink: 0;
+    }
