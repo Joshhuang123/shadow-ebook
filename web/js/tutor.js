@@ -517,7 +517,7 @@
 
             // 转写文本(给家长看)
             if (data.transcript) {
-                html += `<div class="feedback-item" style="opacity:0.6; font-size:0.85em;">
+                html += `<div class="feedback-item feedback-item--muted">
                     <span class="feedback-icon">📝</span>
                     <span>识别: "${escapeHtml(data.transcript)}"</span>
                 </div>`;
@@ -893,11 +893,11 @@
 
             if (reviewQueue.length === 0) {
                 document.getElementById('vocab-flashcard').innerHTML = `
-                    <div style="text-align:center;padding:60px 20px;">
-                        <div style="font-size:4em;">🎉</div>
+                    <div class="review-empty">
+                        <div class="review-empty-art">🎉</div>
                         <h2>今日复习完成！</h2>
-                        <p style="color:#666;">所有词都复习过啦, 明天再来</p>
-                        <button class="btn btn-primary" data-action="showBooks" style="margin-top:20px;">← 返回</button>
+                        <p class="review-empty-sub">所有词都复习过啦, 明天再来</p>
+                        <button class="btn btn-primary" data-action="showBooks">← 返回</button>
                     </div>`;
                 return;
             }
@@ -908,11 +908,11 @@
             const card = document.getElementById('vocab-flashcard');
             if (reviewIdx >= reviewQueue.length) {
                 card.innerHTML = `
-                    <div style="text-align:center;padding:60px 20px;">
-                        <div style="font-size:4em;">🎉</div>
+                    <div class="review-empty">
+                        <div class="review-empty-art">🎉</div>
                         <h2>复习完成！</h2>
-                        <p style="color:#666;">${reviewQueue.length} 词已巩固, 状态自动推进</p>
-                        <button class="btn btn-primary" data-action="showBooks" style="margin-top:20px;">← 返回</button>
+                        <p class="review-empty-sub">${reviewQueue.length} 词已巩固, 状态自动推进</p>
+                        <button class="btn btn-primary" data-action="showBooks">← 返回</button>
                     </div>`;
                 refreshVocabBadge();
                 return;
@@ -920,16 +920,16 @@
             const w = reviewQueue[reviewIdx];
             const stateLabels = {learning: '🆕 学习中', practicing: '📚 练习中', familiar: '👍 熟悉', mastered: '⭐ 已掌握'};
             card.innerHTML = `
-                <div class="vocab-card" style="text-align:center;padding:30px 10px;">
-                    <div style="color:#999;font-size:0.9em;">${reviewIdx + 1} / ${reviewQueue.length} · ${stateLabels[w.state] || w.state}</div>
-                    <div style="font-size:3em;font-weight:700;margin:30px 0 10px;color:var(--primary,#B86A4E);">${w.word}</div>
+                <div class="vocab-card vocab-card--center">
+                    <div class="vocab-card-meta">${reviewIdx + 1} / ${reviewQueue.length} · ${stateLabels[w.state] || w.state}</div>
+                    <div class="vocab-card-word">${w.word}</div>
                     <button class="btn btn-secondary" id="vocab-translate-btn" data-action="lookupWord" data-arg="${w.word}">🔍 查词意</button>
-                    <div id="vocab-translate-result" style="margin:20px 0;min-height:60px;color:#444;"></div>
-                    <div style="margin-top:30px;display:flex;gap:15px;justify-content:center;">
-                        <button class="btn btn-danger" data-action="answerVocab" data-arg="false" style="flex:1;max-width:160px;">❌ 忘了</button>
-                        <button class="btn btn-success" data-action="answerVocab" data-arg="true" style="flex:1;max-width:160px;">✅ 记住了</button>
+                    <div id="vocab-translate-result" class="lookup-result"></div>
+                    <div class="vocab-card-actions">
+                        <button class="btn btn-danger" data-action="answerVocab" data-arg="false">❌ 忘了</button>
+                        <button class="btn btn-success" data-action="answerVocab" data-arg="true">✅ 记住了</button>
                     </div>
-                    <button class="btn btn-secondary" data-action="showBooks" style="margin-top:30px;font-size:0.85em;">稍后再来</button>
+                    <button class="btn btn-secondary vocab-card-skip" data-action="showBooks">稍后再来</button>
                 </div>`;
         }
 
@@ -953,27 +953,22 @@
         async function lookupWord(word) {
             const result = document.getElementById('vocab-translate-result');
             if (!result) return;
-            result.innerHTML = '<span style="color:#999;">查词中...</span>';
+            result.innerHTML = '<span class="muted-note">查词中...</span>';
             try {
-                const r = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
-                const j = await r.json();
+                // 走自家后端(和阅读器同一个 /api/dict)。原来这里直连
+                // api.dictionaryapi.dev,那个子域在国内连不上,查词必失败。
+                const r = await fetch(`/api/dict/${encodeURIComponent(word)}`);
+                const j = await r.json().catch(() => null);
+                const meanings = (j && j.success && j.meanings) || [];
                 let html = '';
-                if (Array.isArray(j) && j[0]?.meanings) {
-                    j[0].meanings.slice(0, 2).forEach(m => {
-                        const def = m.definitions?.[0]?.definition || '';
-                        if (def) html += `<div><b>${m.partOfSpeech || ''}</b>: ${def}</div>`;
-                    });
-                }
-                // 同时拉中文翻译
-                try {
-                    const tr = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=en|zh-CN`);
-                    const tj = await tr.json();
-                    const zh = tj.responseData?.translatedText;
-                    if (zh) html += `<div style="margin-top:10px;color:#666;"><b>中文:</b> ${zh}</div>`;
-                } catch (_) {}
-                result.innerHTML = html || '<span style="color:#999;">没查到, 别灰心, 看下一个</span>';
+                if (j && j.phonetic) html += `<div class="lookup-zh"><b>音标:</b> /${escapeHtml(j.phonetic)}/</div>`;
+                meanings.slice(0, 3).forEach(m => {
+                    // 释义来自上游,插 innerHTML 前必须转义
+                    html += `<div>${m.part ? `<b>${escapeHtml(m.part)}</b>: ` : ''}${escapeHtml(m.cn)}</div>`;
+                });
+                result.innerHTML = html || '<span class="muted-note">没查到, 别灰心, 看下一个</span>';
             } catch (e) {
-                result.innerHTML = '<span style="color:#999;">查词失败, 可跳到下一题</span>';
+                result.innerHTML = '<span class="muted-note">查词失败, 可跳到下一题</span>';
             }
         }
 

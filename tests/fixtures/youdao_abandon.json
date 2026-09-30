@@ -1,0 +1,51 @@
+{
+  "simple": {
+    "query": "abandon",
+    "word": [
+      {
+        "usphone": "əˈbændən",
+        "ukphone": "əˈbændən",
+        "ukspeech": "abandon&type=1",
+        "return-phrase": "abandon",
+        "usspeech": "abandon&type=2",
+        "collegeExamVoice": {
+          "speechWord": "abandon"
+        }
+      }
+    ]
+  },
+  "ec": {
+    "word": [
+      {
+        "usphone": "əˈbændən",
+        "ukphone": "əˈbændən",
+        "trs": [
+          {
+            "tr": [
+              {
+                "l": {
+                  "sentence": [],
+                  "i": [
+                    "v. 抛弃，遗弃；（因危险）离开，舍弃；中止，不再有；放弃（信念、信仰或看法）；陷入，沉湎于（某种情感）"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "tr": [
+              {
+                "l": {
+                  "sentence": [],
+                  "i": [
+                    "n. 放任，放纵"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

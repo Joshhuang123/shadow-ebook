@@ -20,7 +20,7 @@ from flask import Flask, session, send_from_directory
 # R18: 加载 .env(本地开发),生产用真环境变量,这里无害
 load_dotenv()
 
-from extensions import pwa, courses, tts, books, parent_data, db, grammar_quiz, feedback
+from extensions import pwa, courses, tts, books, parent_data, db, grammar_quiz, feedback, dictionary
 
 
 WEB_DIR = Path(__file__).parent / 'web'
@@ -110,7 +110,10 @@ _CSP = '; '.join([
     "style-src 'self'",
     "img-src 'self' data: blob:",
     "font-src 'self'",
-    "connect-src 'self' https://api.mymemory.translated.net https://api.dictionaryapi.dev",
+    # 查词已挪到服务端 /api/dict,不再需要放行词典域名(那个 api. 子域在国内
+    # 连不上,是「查词总失败」的根因,见 extensions/dictionary.py)。
+    # mymemory 仍要留着:点句子看翻译还在前端直连它,实测可达。
+    "connect-src 'self' https://api.mymemory.translated.net",
     "media-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
@@ -172,6 +175,7 @@ books.register_routes(app)
 parent_data.register_routes(app)
 grammar_quiz.register_routes(app)  # R18: LLM 动态出题(grammar_quiz.py)
 feedback.register_routes(app)     # R19: 跟读 AI 反馈 (whisper + LLM)
+dictionary.register_routes(app) # 查词代理 + 缓存 (dictionary.py)
 
 
 # === 启动 ===

@@ -59,6 +59,16 @@ CREATE TABLE IF NOT EXISTS generated_questions (
 );
 CREATE INDEX IF NOT EXISTS idx_gen_q_lookup
   ON generated_questions(user_id, grammar_key, used_count, created_at DESC);
+
+-- dict_cache: 查词结果缓存。查词是「同一个词被点很多次」的场景
+-- (点一次查一次,生词本里再复习又点一次),每次都打第三方既慢又白给配额。
+-- 存 payload 原样,所以换解析逻辑时可以按需 bump found_at 强制重取。
+CREATE TABLE IF NOT EXISTS dict_cache (
+  word TEXT PRIMARY KEY,
+  payload TEXT NOT NULL,
+  found INTEGER NOT NULL,        -- 0 = 上游确实没有这个词(负缓存)
+  fetched_at INTEGER NOT NULL
+);
 """
 
 

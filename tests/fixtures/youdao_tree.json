@@ -1,0 +1,60 @@
+{
+  "simple": {
+    "query": "tree",
+    "word": [
+      {
+        "usphone": "triː",
+        "ukphone": "triː",
+        "ukspeech": "tree&type=1",
+        "return-phrase": "tree",
+        "usspeech": "tree&type=2",
+        "collegeExamVoice": {
+          "speechWord": "tree"
+        }
+      }
+    ]
+  },
+  "ec": {
+    "word": [
+      {
+        "usphone": "triː",
+        "ukphone": "triː",
+        "trs": [
+          {
+            "tr": [
+              {
+                "l": {
+                  "i": [
+                    "n. 树（乔木）；树状物；树状图，树形结构；（旧用或复合词中）木料、木制构件；（Tree，英国人名）特里"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "tr": [
+              {
+                "l": {
+                  "i": [
+                    "vt. 把（动物）赶上树；使陷入困境"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "tr": [
+              {
+                "l": {
+                  "i": [
+                    "vi. 爬上树；逃上树"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
