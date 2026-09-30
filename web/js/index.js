@@ -5,6 +5,24 @@
         let currentChapterIndex = 0;
         let currentSentenceIndex = 0;
         let sentences = [];
+        // chapterStarts[i] = 第 i 章第一句在全书 sentences 里的下标。
+        // 全书拍平成一条流之后,翻页才能从本章末屏直接接到下一章首屏。
+        let chapterStarts = [];
+        // 每屏句数与阅读形态由「书的蓝思值 - 孩子的蓝思值」算出,不是写死的。
+        // 权威公式在 extensions/books.py 的 calc_reading_density(),
+        // 这里的表必须和它逐档一致(tests/test_reading_density.py 有 parity 测试)。
+        let sentencesPerPage = 3;
+        let readingMode = 'focus';
+        let childProfile = { name: '', age: null, lexile: null };
+        // 没建档案时按「刚够读」处理;和后端 DEFAULT_CHILD_LEXILE 一致。
+        const DEFAULT_CHILD_LEXILE = 600;
+        const READING_DENSITY_STEPS = [
+            [-200, 10, 'book'],
+            [-50, 7, 'book'],
+            [50, 5, 'focus'],
+            [150, 4, 'focus'],
+            [null, 3, 'focus'],
+        ];
         let audioElement = null;
         let currentAudioUrl = null;  // 当前 audioElement 的 blob URL, 用于 revoke
         let isPlaying = false;
@@ -170,8 +188,6 @@
             initFontSize();
             document.getElementById('book-list-page').classList.add('hidden');
             document.getElementById('reader-page').classList.add('active');
-            // R10b: 显示 sticky 控制条 (fixed 钉底部)
-            document.querySelector('.reader-controls-sticky')?.classList.add('visible');
         }
 
         // R10: 全局缓存家长登录状态, 让 import 卡片显示"需先登录"提示
@@ -188,53 +204,23 @@
         // 页面加载时查一次, login/logout 之后再查
         refreshParentAuth();
 
-        // R10: 左侧 TOC 侧边栏折叠 (改 grid 模板让 1fr 占满)
-        function toggleTocSidebar() {
-            const sidebar = document.getElementById('toc-sidebar');
-            const main = document.getElementById('reader-main');
-            const btn = document.getElementById('toc-toggle');
-            const fab = document.getElementById('toc-fab');
-            const collapsed = sidebar.classList.toggle('collapsed');
-            main.classList.toggle('toc-collapsed', collapsed);
-            btn.textContent = collapsed ? '▶' : '◀';
-            btn.title = collapsed ? '展开目录' : '折叠目录';
-            if (fab) fab.classList.toggle('hidden', !collapsed);
-            try { localStorage.setItem('toc-collapsed', collapsed ? '1' : '0'); } catch (e) {}
-        }
-        try {
-            if (localStorage.getItem('toc-collapsed') === '1') {
-                document.getElementById('toc-sidebar').classList.add('collapsed');
-                document.getElementById('reader-main').classList.add('toc-collapsed');
-                const b = document.getElementById('toc-toggle');
-                if (b) { b.textContent = '▶'; b.title = '展开目录'; }
-                const fab = document.getElementById('toc-fab');
-                if (fab) fab.classList.remove('hidden');
-            }
-        } catch (e) {}
-
-        // R10: 右侧控制栏折叠 (改 grid 模板让 1fr 占满)
+        // R24: 侧栏从「常驻第三列」改成抽屉。设计稿底栏只有三个动作
+        // (字号 / 朗读 / 更多),六块功能全部收进 ☰ 后面。
         function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const main = document.getElementById('reader-main');
-            const btn = document.getElementById('sidebar-toggle');
-            const fab = document.getElementById('controls-fab');
-            const collapsed = sidebar.classList.toggle('collapsed');
-            main.classList.toggle('sidebar-collapsed', collapsed);
-            btn.textContent = collapsed ? '◀' : '▶';
-            btn.title = collapsed ? '展开控制' : '折叠控制';
-            if (fab) fab.classList.toggle('hidden', !collapsed);
-            try { localStorage.setItem('sidebar-collapsed', collapsed ? '1' : '0'); } catch (e) {}
+            const drawer = document.getElementById('sidebar');
+            const open = drawer.classList.toggle('open');
+            document.getElementById('drawer-scrim').classList.toggle('open', open);
+            // 键盘可达:抽屉开着时 Esc 关闭
+            if (open) document.addEventListener('keydown', escCloseDrawer);
+            else document.removeEventListener('keydown', escCloseDrawer);
         }
-        try {
-            if (localStorage.getItem('sidebar-collapsed') === '1') {
-                document.getElementById('sidebar').classList.add('collapsed');
-                document.getElementById('reader-main').classList.add('sidebar-collapsed');
-                const b = document.getElementById('sidebar-toggle');
-                if (b) { b.textContent = '◀'; b.title = '展开控制'; }
-                const fab = document.getElementById('controls-fab');
-                if (fab) fab.classList.remove('hidden');
-            }
-        } catch (e) {}
+        function escCloseDrawer(e) {
+            if (e.key === 'Escape') toggleSidebar();
+        }
+        function closeDrawer() {
+            const drawer = document.getElementById('sidebar');
+            if (drawer.classList.contains('open')) toggleSidebar();
+        }
 
         // R10: 简易 toast (章节边界未识别等临时提示用)
         function showToast(msg, ms) {
@@ -245,116 +231,182 @@
             setTimeout(() => t.remove(), ms || 2500);
         }
 
-        // 加载书籍列表
+        // R22: 书架页渲染 (照设计稿 C)
+        // 三段结构:继续读大卡(有进度才出现) / 空状态(没书才出现) / 我的书架网格。
+        // 排序按「正在读 → 最近读过 → 剩下的」,不按蓝思值分组 ——
+        // 孩子回来时记得的是「上次读那本」,不是「上个月加的那个」。
         async function loadBookList() {
             try {
-                const res = await fetch('/api/books');
-                const data = await res.json();
+                const [booksRes, progressRes] = await Promise.all([
+                    fetch('/api/books'),
+                    fetch('/api/progress').catch(() => ({ json: async () => ({ progress: {} }) })),
+                ]);
+                const booksData = await booksRes.json();
+                const progressMap = (await progressRes.json()).progress || {};
+
+                const books = booksData.success ? booksData.books : [];
+                const continueCard = document.getElementById('continue-card');
+                const emptyState = document.getElementById('shelf-empty');
+                const shelfTitle = document.getElementById('shelf-title');
                 const grid = document.getElementById('book-grid');
 
-                if (data.success && data.books.length > 0) {
-                    // 按蓝思值分组
-                    const low = data.books.filter(b => b.lexile >= 500 && b.lexile < 800);
-                    const mid = data.books.filter(b => b.lexile >= 800 && b.lexile <= 1000);
-                    const high = data.books.filter(b => b.lexile > 1000 || b.lexile === 0);
-
-                    let html = '';
-
-                    function getLevelClass(lexile) {
-                        if (lexile >= 500 && lexile < 800) return 'beginner';
-                        if (lexile >= 800 && lexile <= 1000) return 'intermediate';
-                        return 'advanced';
-                    }
-
-                    function getSearchTitle(title) {
-                        // 清理书名用于搜索
-                        return title.replace(/[_-]/g, ' ').replace(/J\. K\./g, 'JK').replace(/Rick Riordan/g, '').replace(/Jeff Kinney/g, '').trim();
-                    }
-
-                    function getCoverUrl(book) {
-                        // 优先使用本地封面
-                        if (book.cover) {
-                            return book.cover;
-                        }
-                        // 降级使用Open Library网络封面
-                        const searchTitle = getSearchTitle(book.title);
-                        return `https://covers.openlibrary.org/b/title/${encodeURIComponent(searchTitle)}-M.jpg`;
-                    }
-
-                    function renderShelf(books, icon, name, level, levelClass) {
-                        if (books.length === 0) return '';
-                        let html = `<div class="bookshelf-section">
-                            <div class="shelf-label ${levelClass}">
-                                <span class="shelf-label-icon">${icon}</span>
-                                <span class="shelf-label-text">${name}</span>
-                                <span class="shelf-label-level">${level}</span>
-                            </div>
-                            <div class="bookshelf">`;
-                        books.forEach((b, i) => {
-                            const levelClass = getLevelClass(b.lexile);
-                            const coverUrl = getCoverUrl(b);
-                            const hasLocalCover = !!b.cover;
-                            const fallbackColor = ['#B86A4E-#9A5238', '#5C7A4A-#3D5A2E', '#C8985F-#A07A45', '#7A3A40-#5A2A30', '#4A6B3A-#2D4A20', '#8B4A2C-#5C2E18', '#A04B47-#7A3530'][i % 7];
-
-                            // R9: 作者显示 — fallback 文本下加一行; tooltip 也带作者
-                            const authorLine = b.author ? `<div class="book-cover-author">${b.author}</div>` : '';
-                            const tooltip = b.author ? `${b.title} — ${b.author}` : b.title;
-
-                            html += `
-                                <div class="book-spine" data-action="loadBook" data-arg="${b.id}" title="${tooltip.replace(/"/g, '&quot;')}">
-                                    <span class="lexile-badge ${levelClass}">${b.lexile > 0 ? b.lexile + 'L' : '?'}</span>
-                                    <span class="cache-badge" id="cache-badge-${b.id}" style="display:none;"></span>
-                                    <button class="book-delete-btn" data-action="clickStopDeleteBook" data-arg="${b.id}" data-arg2="${b.title.replace(/'/g, '&#39;')}" title="删除">×</button>
-                                    <button class="cache-audio-btn" data-action="clickStopCacheAudio" data-arg="${b.id}" title="缓存音频">🔊</button>
-                                    <div class="book-cover" style="background:linear-gradient(135deg,${fallbackColor});">
-                                        <img class="book-cover-img" src="${coverUrl}" alt="${b.title}"
-                                             style="width:100%;height:100%;object-fit:cover;border-radius:6px;opacity:0;">
-                                        <span class="book-cover-fallback" style="position:absolute;color:white;font-size:0.75em;font-weight:600;text-align:center;line-height:1.3;padding:8px;text-shadow:1px 1px 2px rgba(0,0,0,0.5);">${b.title}${authorLine}</span>
-                                    </div>
-                                    <div class="book-spine-base"></div>
-                                </div>
-                            `;
-                        });
-                        html += `</div></div>`;
-                        return html;
-                    }
-
-                    html += renderShelf(low, '🌱', '入门级', '500-800L', 'beginner');
-                    html += renderShelf(mid, '📖', '进阶级', '800-1000L', 'intermediate');
-                    html += renderShelf(high, '🏆', '高级', '1000L+', 'advanced');
-
-                    grid.innerHTML = html;
-                    // R16.x: 封面图淡入 (替代原 onload="this.style.opacity='1'...")
-                    grid.querySelectorAll('img.book-cover-img').forEach(img => {
-                        img.addEventListener('load', () => {
-                            img.style.opacity = '1';
-                            if (img.nextElementSibling) img.nextElementSibling.style.opacity = '0';
-                        });
-                        img.addEventListener('error', () => { img.style.display = 'none'; });
-                    });
-                } else {
-                    grid.innerHTML = '<div style="text-align:center;color:var(--text-secondary);padding:60px;font-size:1.2em;">还没有书籍，请导入 EPUB</div>';
+                if (books.length === 0) {
+                    continueCard.hidden = true;
+                    shelfTitle.hidden = true;
+                    grid.innerHTML = '';
+                    emptyState.hidden = false;
+                    document.getElementById('shelf-empty-hint').textContent =
+                        parentAuthed ? '支持 EPUB 格式' : '导入需要家长先在 /parent 登录';
+                    return;
                 }
 
-                // 添加导入卡片 (用 insertAdjacentHTML 避免 innerHTML+= 的 re-parse)
-                // R10: 提示家长"需先登录" 免得点了之后才发现要鉴权
-                const importHint = parentAuthed ? '支持 EPUB 格式' : '需先在 /parent 登录';
-                grid.insertAdjacentHTML('beforeend', `
-                    <div class="import-card" data-action="clickTriggerImportFile">
-                        <div class="icon">➕</div>
-                        <div class="text">导入新书</div>
-                        <div class="hint">${importHint}</div>
-                    </div>
-                `);
+                emptyState.hidden = true;
+                shelfTitle.hidden = false;
+
+                // 正在读 = 最近打开过的那本。取一个,其余全部进网格,避免同一本出现两次。
+                const currentId = pickContinueBookId(books, progressMap);
+                const rest = books
+                    .filter(b => b.id !== currentId)
+                    .sort((a, b) => lastOpen(b, progressMap) - lastOpen(a, progressMap));
+
+                renderContinueCard(books.find(b => b.id === currentId), progressMap[currentId]);
+                document.getElementById('shelf-count').textContent = `(${rest.length})`;
+                grid.innerHTML = rest.map(b => shelfCardHtml(b, progressMap[b.id])).join('');
+
+                // 有书时,导入入口放在网格最后一张卡后面
+                if (parentAuthed) {
+                    grid.insertAdjacentHTML('beforeend', `
+                        <div class="import-card" data-action="clickTriggerImportFile">
+                            <div class="icon">➕</div>
+                            <div class="text">导入新书</div>
+                            <div class="hint">支持 EPUB 格式</div>
+                        </div>
+                    `);
+                }
+
+                bindCoverFallbacks(grid);
+                bindCoverFallbacks(continueCard);
+                // 进度条宽度用 JS 设,不能写进 innerHTML 的 style 属性 ——
+                // CSP 的 style-src 'self' 会把内联 style 全丢掉。
+                grid.querySelectorAll('.shelf-card-fill').forEach(el => {
+                    el.style.width = el.dataset.pct + '%';
+                });
             } catch (err) {
                 console.error('Failed to load book list:', err);
             }
 
-            // 更新所有书的缓存进度
+            // 更新所有书的音频缓存徽章
             updateAllCacheBadges();
         }
 
-        // 更新所有书的缓存进度徽章
+        // 最近打开时间;没打开过返回 0(排最后)
+        function lastOpen(book, progressMap) {
+            const p = progressMap[book.id];
+            return (p && p.last_open_ts) || 0;
+        }
+
+        // 正在读的那本:最近打开过、且还没读完的里面挑一个。
+        // TODO(h-jh): 见下方「你来写」注释。
+        function pickContinueBookId(books, progressMap) {
+            return books
+                .filter(b => progressMap[b.id])
+                .sort((a, b) => lastOpen(b, progressMap) - lastOpen(a, progressMap))[0]?.id || null;
+        }
+
+        // 占位封面:没封面、或封面文件 404 时顶上。跟有封面的卡片同规格(3:4),
+        // 否则同一行卡片高度参差,网格会很难看。
+        function coverFallbackHtml(book) {
+            return `<div class="shelf-card-cover is-empty">${escapeHtml(book.title)}</div>`;
+        }
+
+        // TODO(h-jh): 难度标签。蓝思值分三档,和旧版 getLevelClass 一样的边界。
+        function levelTag(book) {
+            const l = book.lexile || 0;
+            if (l >= 500 && l < 800) return ['beginner', '初级'];
+            if (l >= 800 && l <= 1000) return ['intermediate', '中级'];
+            if (l > 1000) return ['advanced', '高级'];
+            return ['unknown', '未评估'];
+        }
+
+        // 进度 = 读过的句子数 / 全书总句数。
+        // 不用「章数比」,因为各章长短差很多(有的 8 句有的 15 句),按章算会失真。
+        // 当前这句算已读(+1),否则孩子读完整本书的最后一句,进度条停在 99%,永远满不了。
+        //
+        // 越界:句子数按全书 clamp 到 0~100。chapter_idx 超出实际章节数只可能是
+        // 书被重新导入后章节变少,此时「已读完」比「刚开始」更接近事实。
+        function computeProgress(book, p) {
+            if (!p) return 0;
+            const counts = book.chapter_sentences || [];
+            const total = counts.reduce((a, b) => a + b, 0);
+            if (total <= 0) return 0;
+
+            const before = counts.slice(0, p.chapter_idx).reduce((a, b) => a + b, 0);
+            const inChapter = counts[p.chapter_idx] || 0;
+            const read = before + Math.min((p.sentence_idx || 0) + 1, inChapter);
+
+            return Math.max(0, Math.min(100, Math.round((read / total) * 100)));
+        }
+
+        function renderContinueCard(book, p) {
+            const card = document.getElementById('continue-card');
+            if (!book || !p) { card.hidden = true; return; }
+            card.hidden = false;
+
+            document.getElementById('continue-title').textContent = book.title;
+            document.getElementById('continue-author').textContent = book.author || '';
+            const cc = document.getElementById('continue-cover');
+            cc.innerHTML = book.cover
+                ? `<img src="${book.cover}" alt="${escapeHtml(book.title)}">`
+                : coverFallbackHtml(book);
+            document.getElementById('continue-fill').style.width = computeProgress(book, p) + '%';
+            document.getElementById('continue-pos').textContent =
+                `第 ${(p.chapter_idx || 0) + 1} 章 / 共 ${book.chapters} 章`;
+            const btn = document.getElementById('continue-btn');
+            btn.dataset.arg = book.id;
+        }
+
+        function shelfCardHtml(book, p) {
+            const [cls, label] = levelTag(book);
+            const pct = computeProgress(book, p);
+            const pos = p ? `第 ${(p.chapter_idx || 0) + 1} / 共 ${book.chapters} 章` : '未开始';
+            const cover = book.cover
+                ? `<div class="shelf-card-cover"><img src="${book.cover}" alt="${escapeHtml(book.title)}" loading="lazy"></div>`
+                : coverFallbackHtml(book);
+
+            return `
+                <div class="shelf-card" data-action="loadBook" data-arg="${book.id}">
+                    ${cover}
+                    <h3 class="shelf-card-title">${escapeHtml(book.title)}</h3>
+                    <p class="shelf-card-author">${escapeHtml(book.author || '')}</p>
+                    <div class="shelf-card-meta">
+                        <span class="level-tag ${cls}">${label}</span>
+                        <span>${pos}</span>
+                    </div>
+                    <div class="shelf-card-bar"><div class="shelf-card-fill" data-pct="${pct}"></div></div>
+                    <button class="shelf-card-del" data-action="clickStopDeleteBook"
+                            data-arg="${book.id}" data-arg2="${escapeHtml(book.title)}"
+                            aria-label="删除《${escapeHtml(book.title)}》">×</button>
+                </div>
+            `;
+        }
+
+        // 封面 404 → 换成占位。旧版有 onerror,重排时漏了会导致卡片显示断图标。
+        function bindCoverFallbacks(root) {
+            root.querySelectorAll('.shelf-card-cover img, .continue-cover img').forEach(img => {
+                img.addEventListener('error', () => {
+                    const box = img.parentElement;
+                    box.replaceWith(makeFallback(img.alt || '这本书', box.classList.contains('continue-cover')));
+                }, { once: true });
+            });
+        }
+
+        function makeFallback(title, kind) {
+            const el = document.createElement('div');
+            el.className = kind === 'continue' ? 'continue-cover is-empty' : 'shelf-card-cover is-empty';
+            el.textContent = title;
+            return el;
+        }
+
         async function updateAllCacheBadges() {
             const badges = document.querySelectorAll('[id^="cache-badge-"]');
             for (const badge of badges) {
@@ -456,10 +508,8 @@
                     // R9: 渲染左侧真 TOC 侧边栏 (用真 toc 优先, 降级到 chapter 列表)
                     renderTocSidebar(bookData);
 
-                    // 兼容旧版: 顶部 chapter-tabs 容器已删除, 移除旧渲染
-                    const legacyTabs = document.getElementById('chapter-tabs');
-                    if (legacyTabs) legacyTabs.innerHTML = '';
-
+                    flattenBook(bookData);
+                    await applyReadingDensity();
                     selectChapter(0);
                     showReader();
                     calculateAR();
@@ -469,7 +519,7 @@
             }
         }
 
-        // R9: 渲染左侧 TOC 侧边栏 — 用真 toc, 没有时降级到 chapter 列表
+        // R9/R24: 渲染目录 (现在在抽屉里) — 用真 toc, 没有时降级到 chapter 列表
         function renderTocSidebar(book) {
             const list = document.getElementById('toc-list');
             list.innerHTML = '';
@@ -499,7 +549,7 @@
                 // 章节边界未识别时, 在 list 底部再放一次提示
                 if (toc.length > chapters.length * 2) {
                     list.insertAdjacentHTML('beforeend',
-                        '<div class="toc-empty" style="margin-top:8px">⚠️ 此书未识别章节边界,目录仅供参考</div>');
+                        '<div class="toc-empty">⚠️ 此书未识别章节边界,目录仅供参考</div>');
                 }
             } else if (chapters.length > 0) {
                 // 降级: 用 chapter.name 当目录项
@@ -571,22 +621,124 @@
             }
         }
 
+        // 把全书各章拍平成一条句子流。
+        // 原来 sentences 只装当前一章,于是 nextPage 到本章末屏就夹住不动,
+        // 「下一页」按钮变灰 —— 读完整本书得靠一次次手动点目录换章。
+        // 16 章的书读起来像 16 本 12 页的小册子,自然被当成「书被截断了」。
+        function flattenBook(book) {
+            const chs = (book && book.chapters) || [];
+            const all = [];
+            const starts = [];
+            chs.forEach((ch) => {
+                starts.push(all.length);
+                const s = (ch && ch.sentences) || [];
+                for (let k = 0; k < s.length; k++) all.push(s[k]);
+            });
+            sentences = all;
+            chapterStarts = starts;
+        }
+
+        // 句子下标 → 所属章。空章的 start 与下一章相同,这里取到的是后面那章,
+        // 免得游标停在空章上、章名一片空白。
+        function chapterIndexOf(idx) {
+            let ci = 0;
+            for (let i = 0; i < chapterStarts.length; i++) {
+                if (chapterStarts[i] <= idx) ci = i; else break;
+            }
+            return ci;
+        }
+
+        // 读孩子档案。每次打开一本书都拉一次 —— 一次小请求而已,
+        // 但换来的是「家长刚改完档案,孩子下一本书立刻生效」。
+        // 之前做成一会话只拉一次,结果家长改完档案孩子这边纹丝不动。
+        async function fetchChildProfile() {
+            try {
+                const res = await fetch('/api/child/profile');
+                const data = await res.json();
+                if (data && data.success && data.child) childProfile = data.child;
+            } catch (e) {
+                // 拉不到档案不该挡住读书,退回默认值继续
+            }
+            return childProfile;
+        }
+
+        // 按「书的难度 - 孩子的水平」定每屏句数。
+        // gap = book - child:负数说明书比孩子简单,孩子读得轻松就该少打断;
+        // 正数说明书偏难,拆细、留白,否则满屏字看着就发怵。
+        function computeDensity(bookLexile, childLexile) {
+            // 注意:Number(null) 和 Number('') 都是 0,不是 NaN。
+            // 只判 Number.isFinite 的话,「没填蓝思值」会被当成 0 分处理,
+            // gap 变成整本书的难度,直接把密度压到最低档。必须先挡掉空值。
+            const num = (v, fallback) => {
+                if (v === null || v === undefined || v === '') return fallback;
+                const n = Number(v);
+                return Number.isFinite(n) ? n : fallback;
+            };
+            const bl = num(bookLexile, 500);
+            let cl = num(childLexile, DEFAULT_CHILD_LEXILE);
+            cl = Math.max(0, Math.min(cl, 2000));
+            const gap = bl - cl;
+            for (const [upper, perPage, mode] of READING_DENSITY_STEPS) {
+                if (upper === null || gap <= upper) {
+                    return { sentencesPerPage: perPage, mode, gap,
+                             bookLexile: bl, childLexile: cl };
+                }
+            }
+            return { sentencesPerPage: 3, mode: 'focus', gap,
+                     bookLexile: bl, childLexile: cl };
+        }
+
+        async function applyReadingDensity() {
+            await fetchChildProfile();
+            const d = computeDensity(bookData && bookData.lexile, childProfile.lexile);
+            sentencesPerPage = d.sentencesPerPage;
+            readingMode = d.mode;
+            // 形态切换靠 reader-page 上的 class,两种样式在 CSS 里各写一套。
+            const page = document.getElementById('reader-page');
+            if (page) page.classList.toggle('mode-book', d.mode === 'book');
+            updateDensityHint(d);
+            return d;
+        }
+
+        // 把「为什么这一屏是几句」讲清楚,不然家长看到 10 句会以为坏了。
+        function updateDensityHint(d) {
+            const el = document.getElementById('density-hint');
+            if (!el) return;
+            const who = childProfile.name ? childProfile.name : '孩子';
+            if (d.childLexile === DEFAULT_CHILD_LEXILE && childProfile.lexile == null) {
+                el.textContent = `每页 ${d.sentencesPerPage} 句 · 还没设置孩子水平,按默认估的`;
+                el.title = '在家长页填「孩子档案」后,每页句数会按书的难度自动变';
+                return;
+            }
+            el.textContent = `每页 ${d.sentencesPerPage} 句 · ${who} ${d.childLexile}L / 本书 ${d.bookLexile}L`;
+            el.title = d.gap < 0
+                ? '这本书比孩子的水平简单,所以一页多给一些'
+                : (d.gap > 0 ? '这本书比孩子的水平难,所以拆细一些' : '难度和孩子正好匹配');
+        }
+
+        // 目录高亮 + 上一章/下一章按钮的可用态。
+        // 翻页现在会跨章,所以这活儿不能只挂在 selectChapter 上 ——
+        // 必须每次重绘都重算,否则读到下一章首句时章名还停在上一章。
+        function updateChapterChrome() {
+            currentChapterIndex = chapterIndexOf(currentSentenceIndex);
+            document.querySelectorAll('.toc-item').forEach((item, i) => {
+                item.className = item.className.replace(/\s*active/g, '');
+                if (i === currentChapterIndex) item.className += ' active';
+            });
+            const last = (bookData && bookData.chapters ? bookData.chapters.length : 1) - 1;
+            document.querySelectorAll('[data-action="prevChapter"]')
+                .forEach(b => b.disabled = currentChapterIndex === 0);
+            document.querySelectorAll('[data-action="nextChapter"]')
+                .forEach(b => b.disabled = currentChapterIndex >= last);
+        }
+
         // 选择章节
         function selectChapter(index) {
-            currentChapterIndex = parseInt(index);
-            sentences = bookData.chapters[currentChapterIndex].sentences;
-            currentSentenceIndex = 0;
-
-            // R9: 更新左侧 TOC 高亮 (替代旧的 chapter-tab 高亮)
-            document.querySelectorAll('.toc-item').forEach((item, i) => {
-                item.classList.toggle('active', i === currentChapterIndex);
-            });
-
-            // 更新章节导航按钮 (R10: 抽到 sticky bar 后, 这俩 ID 在隐藏 sidebar 里可能不存在 — 防御性判空)
-            const prevBtn = document.getElementById('btn-chapter-prev');
-            const nextBtn = document.getElementById('btn-chapter-next');
-            if (prevBtn) prevBtn.disabled = currentChapterIndex === 0;
-            if (nextBtn) nextBtn.disabled = currentChapterIndex >= bookData.chapters.length - 1;
+            if (!chapterStarts.length) return;
+            const ci = Math.max(0, Math.min(parseInt(index, 10) || 0,
+                                            chapterStarts.length - 1));
+            currentChapterIndex = ci;
+            currentSentenceIndex = chapterStarts[ci];
 
             updateDisplay();
             clearTranslation();
@@ -613,6 +765,41 @@
             translateSentence(sentences[index]);
             scrollToCurrentSentence();
             playCurrentSentence();
+        }
+
+        // ========== 整屏翻页(底栏按钮) ==========
+        // 这两个只给底栏的「上一页 / 下一页」按钮用,方向键不走这里 ——
+        // 方向键是一句一句挪的(见 keydown 那段)。两者分工:
+        //   方向键 → 上下句,走到本页最后一句时页面自然翻过去
+        //   按钮   → 一次跳一整屏,快速略过
+        // 加这两个按钮的起因:一屏只放几句,而 prevSentence/nextSentence 一次只 +1,
+        // 连按好几次才看到换页,而且界面上没有任何翻页入口,完全无从发现。
+        function prevPage() {
+            if (!sentences || !sentences.length) return;
+            currentSentenceIndex = Math.max(0, currentSentenceIndex - sentencesPerPage);
+            updateDisplay();
+        }
+
+        function nextPage() {
+            if (!sentences || !sentences.length) return;
+            // 末屏不满 sentencesPerPage 句,直接落到最后一句所在屏
+            const maxStart = Math.max(0, Math.ceil(sentences.length / sentencesPerPage) - 1);
+            const target = pageStartIndex(currentSentenceIndex) + sentencesPerPage;
+            currentSentenceIndex = Math.min(target, maxStart * sentencesPerPage);
+            currentSentenceIndex = Math.min(currentSentenceIndex, sentences.length - 1);
+            updateDisplay();
+        }
+
+        // 首屏/末屏时把翻页按钮置灰,和上一章/下一章的处理保持一致
+        function updatePageButtons() {
+            const total = sentences ? sentences.length : 0;
+            const per = sentencesPerPage;
+            const page = total ? Math.floor(currentSentenceIndex / per) : 0;
+            const lastPage = total ? Math.max(0, Math.ceil(total / per) - 1) : 0;
+            document.querySelectorAll('[data-action="prevPage"]')
+                .forEach(b => b.disabled = page <= 0);
+            document.querySelectorAll('[data-action="nextPage"]')
+                .forEach(b => b.disabled = page >= lastPage);
         }
 
         // 导航
@@ -701,48 +888,37 @@
             vocabBtn.disabled = !!vocabulary.find(v => v.word === cleanWord);
 
             try {
-                const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`);
-                const data = await res.json();
+                // 走自家后端而不是直连词典站(2026-09-30)。前端直连
+                // api.dictionaryapi.dev 在国内 100% 连不上,查词按钮等于坏的;
+                // 挪到服务端后由后端选上游 + 缓存,平板换网络也不影响。
+                const res = await fetch(`/api/dict/${encodeURIComponent(cleanWord)}`);
+                const data = await res.json().catch(() => null);
 
-                if (data && data.length > 0) {
-                    const entry = data[0];
-                    document.getElementById('modal-phonetic').textContent = entry.phonetic || '';
+                if (data && data.success) {
+                    document.getElementById('modal-phonetic').textContent =
+                        data.phonetic ? `/${data.phonetic}/` : '';
 
-                    // 收集所有释义并获取中文翻译
-                    const meanings = [];
-                    entry.meanings.slice(0, 3).forEach(m => {
-                        m.definitions.slice(0, 2).forEach(def => {
-                            meanings.push({ part: m.partOfSpeech, def: def.definition, example: def.example });
-                        });
-                    });
-
-                    // 批量获取中文翻译
-                    const cnPromises = meanings.map(m =>
-                        fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(m.def)}&langpair=en|zh-CN`)
-                            .then(res => res.json())
-                            .then(cnData => cnData?.responseData?.translatedText || '')
-                            .catch(() => '')
-                    );
-
-                    Promise.all(cnPromises).then(cnDefs => {
-                        let html = '';
-                        meanings.forEach((m, i) => {
-                            html += `
-                                <div class="word-meaning-item">
-                                    <div class="word-meaning-part">${escapeHtml(m.part)}</div>
-                                    <div class="word-meaning-def">${escapeHtml(m.def)}</div>
-                                    ${cnDefs[i] ? `<div class="word-meaning-cn">${escapeHtml(cnDefs[i])}</div>` : ''}
-                                    ${m.example ? `<div class="word-meaning-example">"${escapeHtml(m.example)}"</div>` : ''}
-                                </div>
-                            `;
-                        });
-                        document.getElementById('modal-meanings').innerHTML = html || '<div>未找到释义</div>';
-                    });
+                    const meanings = data.meanings || [];
+                    document.getElementById('modal-meanings').innerHTML = meanings.length
+                        ? meanings.map(m => `
+                            <div class="word-meaning-item">
+                                ${m.part ? `<div class="word-meaning-part">${escapeHtml(m.part)}</div>` : ''}
+                                <div class="word-meaning-cn">${escapeHtml(m.cn)}</div>
+                            </div>`).join('')
+                        : '<div>没查到这个词</div>';
+                } else if (data && data.retryable) {
+                    // 词典连不上 ≠ 查无此词,两回事,别混成一句「查询失败」
+                    document.getElementById('modal-phonetic').textContent = '';
+                    document.getElementById('modal-meanings').innerHTML =
+                        '<div>词典暂时连不上,检查一下网络再点一次</div>';
                 } else {
-                    document.getElementById('modal-meanings').innerHTML = '<div>未找到释义</div>';
+                    document.getElementById('modal-phonetic').textContent = '';
+                    document.getElementById('modal-meanings').innerHTML =
+                        `<div>${escapeHtml(data?.error || '没查到这个词')}</div>`;
                 }
             } catch (err) {
-                document.getElementById('modal-meanings').innerHTML = '<div>查询失败</div>';
+                document.getElementById('modal-phonetic').textContent = '';
+                document.getElementById('modal-meanings').innerHTML = '<div>查询失败,检查一下网络</div>';
             }
         }
 
@@ -937,7 +1113,7 @@
                 <div class="review-done">
                     <div class="review-done-icon">${accuracy >= 80 ? '🎉' : accuracy >= 50 ? '👍' : '💪'}</div>
                     <h3>${accuracy >= 80 ? '太棒了！' : accuracy >= 50 ? '不错！' : '继续加油！'}</h3>
-                    <p style="color:var(--text-secondary);margin:10px 0;">本次复习完成</p>
+                    <p class="done-sub">本次复习完成</p>
                     <div class="review-stats">
                         <div class="review-stat">
                             <div class="review-stat-value correct">${reviewCorrect}</div>
@@ -948,8 +1124,8 @@
                             <div>不认识</div>
                         </div>
                     </div>
-                    <p style="color:var(--text-secondary);">正确率: ${accuracy}%</p>
-                    <button class="btn btn-primary" data-action="closeReviewModal" style="margin-top:20px;">完成</button>
+                    <p class="done-sub">正确率: ${accuracy}%</p>
+                    <button class="btn btn-primary done-btn" data-action="closeReviewModal">完成</button>
                 </div>
             `;
 
@@ -1052,6 +1228,8 @@
                 audioElement.onended = () => {
                     isPlaying = false;
                     btn.disabled = false;
+                    btn.classList.remove('playing');
+                    setReadAloudLabel(false);
                     status.classList.add('hidden');
                     if (onEnd) onEnd();
                     // 自动缓存下一句
@@ -1076,6 +1254,8 @@
 
             if (!('speechSynthesis' in window)) {
                 btn.disabled = false;
+                    btn.classList.remove('playing');
+                    setReadAloudLabel(false);
                 status.classList.add('hidden');
                 return;
             }
@@ -1094,6 +1274,8 @@
             utterance.onend = () => {
                 isPlaying = false;
                 btn.disabled = false;
+                    btn.classList.remove('playing');
+                    setReadAloudLabel(false);
                 status.classList.add('hidden');
                 if (onEnd) onEnd();
                 // 缓存这句
@@ -1105,11 +1287,20 @@
             utterance.onerror = () => {
                 isPlaying = false;
                 btn.disabled = false;
+                    btn.classList.remove('playing');
+                    setReadAloudLabel(false);
                 status.classList.add('hidden');
             };
 
             speechSynthesis.speak(utterance);
             isPlaying = true;
+        }
+
+        function setReadAloudLabel(playing) {
+            const icon = document.getElementById('play-icon');
+            const label = document.querySelector('.read-aloud-text');
+            if (icon) icon.textContent = playing ? '⏸' : '🔊';
+            if (label) label.textContent = playing ? '停止' : '朗读';
         }
 
         async function playCurrentSentence() {
@@ -1120,6 +1311,8 @@
             const status = document.getElementById('status-playing');
 
             btn.disabled = true;
+            btn.classList.add('playing');
+            setReadAloudLabel(true);
             status.classList.remove('hidden');
 
             // 滚动到当前句子
@@ -1225,9 +1418,13 @@
             const formData = new FormData();
             formData.append('epub', file);
 
-            const grid = document.getElementById('book-grid');
-            const importCard = grid.querySelector('.import-card');
-            if (importCard) importCard.querySelector('.text').textContent = '导入中...';
+            // R22: 导入三段式(选文件 → 导入中 → 解析完成),照设计稿 C。
+            // 成功不用 alert —— 弹窗会打断阅读,孩子看到的应该是新书自己出现在架子上。
+            const importCard = document.querySelector('.import-card');
+            if (importCard) {
+                importCard.querySelector('.text').textContent = '导入中…';
+                importCard.querySelector('.hint').textContent = file.name;
+            }
 
             try {
                 const res = await fetch('/api/book/import', { method: 'POST', body: formData });
@@ -1235,7 +1432,6 @@
 
                 if (data.success) {
                     loadBookList();
-                    alert(`导入成功！${data.book_title}`);
                 } else if (res.status === 401) {
                     // R10: 之前 401 之后只 alert "未授权", 家长不知道去哪儿登录
                     if (confirm('导入需要家长登录。\n\n是否现在跳转到登录页? (默认 PIN: 0000)')) {
@@ -1267,34 +1463,70 @@
             }
         }
 
-        // 渲染单页（iPad 横屏用单页滚动 + 固定 sidebar，67d5df2 的设计）
+        // R24: 初版是「一屏只放 3 句」,设计稿的阅读区是「当前页的大字号英文」。
+        // 2026-09-30 改成动态:由「书的蓝思值 - 孩子的蓝思值」决定,见 applyReadingDensity。
+        // focus = 3~5 句大字号聚焦(初级);book = 7~10 句连续小字(高段位)。
+
+        // 当前页的第一句在全书里的下标。
+        // 用整除而不是「从当前句起往后取」:后者每翻一句整屏文字都会往上挪,
+        // 眼睛要重新找位置;整除让文字只在翻页时才动。
+        function pageStartIndex(current) {
+            return Math.floor(current / sentencesPerPage) * sentencesPerPage;
+        }
+
         function updateDisplay() {
+            // 翻页会跨章,当前章必须先按游标重算,章名/目录高亮才对得上
+            updateChapterChrome();
             const container = document.getElementById('sentence-display');
+            const start = pageStartIndex(currentSentenceIndex);
             let html = '';
-            sentences.forEach((sent, i) => {
-                html += formatSentence(sent, i);
-            });
+            for (let i = start; i < Math.min(start + sentencesPerPage, sentences.length); i++) {
+                html += formatSentence(sentences[i], i);
+            }
             container.innerHTML = html;
 
-            // 更新进度
+            // 更新进度。顶栏右侧 N / M 就是「孩子第一眼要知道读到哪了」。
             const total = sentences.length;
             const current = currentSentenceIndex + 1;
             const percent = total > 0 ? Math.round((currentSentenceIndex / total) * 100) : 0;
             document.getElementById('progress-fill').style.width = percent + '%';
-            document.getElementById('progress-text').textContent = `第 ${current} 页 / 共 ${total} 页`;
-            const curPageEl = document.getElementById('current-page');
-            const totPageEl = document.getElementById('total-pages');
-            if (curPageEl) curPageEl.textContent = current;
-            if (totPageEl) totPageEl.textContent = total;
-            // R10: sticky bar 用 page-info 同步显示 (替代旧 #page-info 之外的 btn-prev/btn-next 钩子)
-            const pageInfo = document.getElementById('page-info');
-            if (pageInfo) pageInfo.textContent = `${current} / ${total}`;
+            document.getElementById('reader-pos').textContent = `${current} / ${total}`;
+            const chEl = document.getElementById('reader-chapter');
+            if (chEl) {
+                const ch = (bookData && bookData.chapters || [])[currentChapterIndex];
+                chEl.textContent = ch ? (ch.name || ch.title || '') : '';
+            }
+            updatePageButtons();
+            scheduleProgressSave();
+        }
 
-            // 更新按钮状态 (R10: 抽到 sticky bar 后, 这些 ID 可能不存在 — 防御性判空)
-            const prevBtn = document.getElementById('btn-prev');
-            const nextBtn = document.getElementById('btn-next');
-            if (prevBtn) prevBtn.disabled = currentSentenceIndex === 0;
-            if (nextBtn) nextBtn.disabled = currentSentenceIndex >= sentences.length - 1;
+        // R22: 上报阅读位置。书架页的「继续读」卡片靠这个数据,
+        // 之前只有跟读页在写,主阅读器不写,书架永远显示「未开始」。
+        // 翻句很频繁 → debounce,静默失败不打断阅读。
+        let _progressSaveTimer = null;
+        function scheduleProgressSave() {
+            if (!currentBookId) return;
+            clearTimeout(_progressSaveTimer);
+            _progressSaveTimer = setTimeout(saveProgress, 800);
+        }
+
+        async function saveProgress() {
+            if (!currentBookId) return;
+            try {
+                // 游标现在是全书下标,但 /api/progress 的约定一直是
+                // 「第几章 + 该章第几句」,书架的「继续读」卡片也按这个算百分比。
+                // 这里存回章内下标,契约不变,历史进度也读得动。
+                const ci = chapterIndexOf(currentSentenceIndex);
+                await fetch('/api/progress', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        bookId: currentBookId,
+                        chapterIdx: ci,
+                        sentenceIdx: currentSentenceIndex - (chapterStarts[ci] || 0),
+                    }),
+                });
+            } catch (e) { /* 离线时静默 */ }
         }
 
         // 格式化句子
@@ -1331,6 +1563,11 @@
         }
 
         // 键盘快捷键
+        // ← → 走句子,不是走整页(2026-09-30 改)。之前 ← → 直接跳一整屏,
+        // 想重读上一句就得连按三次往回翻,越读越累。
+        // 现在一句一句挪;由于 sentences 是全书连续的一条流,走到本页最后一句
+        // 再按 →,游标越过 pageStartIndex 的边界,页面自然就翻了 —— 不用专门判断。
+        // 整页翻页交给底栏那两个按钮,那里写的就是「上一页 / 下一页」。
         document.addEventListener('keydown', (e) => {
             if (document.getElementById('reader-page').classList.contains('active')) {
                 if (e.key === 'ArrowLeft') {
@@ -1640,24 +1877,35 @@
         }
 
         // 字体大小调节
+        // 上下限按设计稿来:正文最小 24px(可读性下限),最大 40px。
+        // 再小就真的读不下去了,再大一行放不下两个词。
+        const FONT_MIN = 24;
+        const FONT_MAX = 40;
+        const FONT_DEFAULT = 28;
+
+        function readFontSize() {
+            const v = parseInt(
+                getComputedStyle(document.documentElement).getPropertyValue('--sentence-font-size'), 10);
+            return Number.isFinite(v) ? v : FONT_DEFAULT;
+        }
+
+        function applyFontSize(size) {
+            document.documentElement.style.setProperty('--sentence-font-size', size + 'px');
+        }
+
         function changeFontSize(delta) {
-            const root = document.documentElement;
-            const current = parseInt(getComputedStyle(root).getPropertyValue('--sentence-font-size')) || 20;
-            const newSize = Math.max(12, Math.min(36, current + delta));
-            root.style.setProperty('--sentence-font-size', newSize + 'px');
-            localStorage.setItem('sentenceFontSize', newSize);
-            document.getElementById('font-size-display').textContent = newSize + 'px';
+            const newSize = Math.max(FONT_MIN, Math.min(FONT_MAX, readFontSize() + delta));
+            applyFontSize(newSize);
+            try { localStorage.setItem('sentenceFontSize', newSize); } catch (e) {}
         }
 
         function initFontSize() {
-            const saved = localStorage.getItem('sentenceFontSize');
-            if (saved) {
-                const size = parseInt(saved, 10);
-                if (Number.isFinite(size) && size >= 12 && size <= 36) {
-                    document.documentElement.style.setProperty('--sentence-font-size', size + 'px');
-                    document.getElementById('font-size-display').textContent = size + 'px';
-                }
-            }
+            let size = FONT_DEFAULT;
+            try {
+                const saved = parseInt(localStorage.getItem('sentenceFontSize'), 10);
+                if (Number.isFinite(saved)) size = saved;
+            } catch (e) {}
+            applyFontSize(Math.max(FONT_MIN, Math.min(FONT_MAX, size)));
         }
 
         function showCompQuestion() {
@@ -1700,7 +1948,7 @@
                 <div class="comp-done">
                     <div class="comp-done-icon">${accuracy >= 80 ? '🎉' : accuracy >= 60 ? '👍' : '📚'}</div>
                     <h3>${accuracy >= 80 ? '太棒了！' : accuracy >= 60 ? '还不错！' : '继续加油！'}</h3>
-                    <p style="color:var(--text-secondary);">本章理解测验完成</p>
+                    <p class="done-sub">本章理解测验完成</p>
                     <div class="comp-stats">
                         <div class="comp-stat">
                             <div class="comp-stat-value correct">${compCorrect}</div>
@@ -1711,8 +1959,8 @@
                             <div>错误</div>
                         </div>
                     </div>
-                    <p style="color:var(--text-secondary);">正确率: ${accuracy}%</p>
-                    <button class="btn btn-primary" data-action="closeCompModal" style="margin-top:20px;">完成</button>
+                    <p class="done-sub">正确率: ${accuracy}%</p>
+                    <button class="btn btn-primary done-btn" data-action="closeCompModal">完成</button>
                 </div>
             `;
 
