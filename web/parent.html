@@ -248,6 +248,21 @@
                             🗑️ 重置学习记录
                         </button>
                     </div>
+
+                    <!-- 备份和导出是同一类动作(都是把数据搬出去),所以放在一起。
+                         手动触发,不排定时:什么时候备一份由家长决定。
+                         含家长 PIN 哈希、全部书目和孩子的阅读进度,接口全部要 PIN。 -->
+                    <div class="backup-panel">
+                        <p class="profile-desc">
+                            书目、阅读进度、生词本、孩子档案都在这里。点一下把当前状态
+                            存一份,换电脑或重装系统时能整个搬回去。
+                        </p>
+                        <div class="backup-status" id="backupStatus">正在读取…</div>
+                        <div class="backup-actions">
+                            <button class="btn btn-primary" id="btnBackupNow" data-action="createBackup">🗂 立即备份</button>
+                        </div>
+                        <div class="backup-list" id="backupList"></div>
+                    </div>
                 </div>
             </div>
         </div>

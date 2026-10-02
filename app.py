@@ -20,7 +20,7 @@ from flask import Flask, session, send_from_directory
 # R18: 加载 .env(本地开发),生产用真环境变量,这里无害
 load_dotenv()
 
-from extensions import pwa, courses, tts, books, parent_data, db, grammar_quiz, feedback, dictionary
+from extensions import pwa, courses, tts, books, parent_data, db, grammar_quiz, feedback, dictionary, backup
 
 
 WEB_DIR = Path(__file__).parent / 'web'
@@ -176,6 +176,7 @@ parent_data.register_routes(app)
 grammar_quiz.register_routes(app)  # R18: LLM 动态出题(grammar_quiz.py)
 feedback.register_routes(app)     # R19: 跟读 AI 反馈 (whisper + LLM)
 dictionary.register_routes(app) # 查词代理 + 缓存 (dictionary.py)
+backup.register_routes(app)     # 手动备份:创建/列表/下载/删除 (backup.py)
 
 
 # === 启动 ===

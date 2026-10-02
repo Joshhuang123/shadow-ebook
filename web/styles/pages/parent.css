@@ -600,3 +600,88 @@
         font-weight: var(--font-medium);
         flex-shrink: 0;
     }
+
+/* === 数据备份(在「💾 数据管理」组内) === */
+.backup-panel {
+    /* 和上面的导出按钮隔开,不然读起来像同一组操作 */
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+}
+
+.backup-status {
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    min-height: 1.4em;
+}
+
+.backup-actions {
+    margin-bottom: 14px;
+}
+
+.backup-actions .btn {
+    /* 备份是个低频但有后果的动作,按钮给足点击面积 */
+    min-height: 48px;
+    padding: 0 24px;
+}
+
+.backup-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.backup-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--bg-dark);
+    border-radius: 10px;
+}
+
+.bi-main {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+}
+
+.bi-name {
+    color: var(--text-primary);
+    font-size: 0.95em;
+}
+
+.bi-size {
+    color: var(--text-secondary);
+    font-size: 0.8em;
+    font-variant-numeric: tabular-nums;
+}
+
+.bi-ops {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.bi-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 56px;
+    min-height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.85em;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.bi-btn--danger {
+    color: var(--danger);
+}

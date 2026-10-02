@@ -307,6 +307,7 @@
             elEn.onchange = (e) => localStorage.setItem('enableTimeLimit', e.target.checked);
 
             loadChildProfile();
+            loadBackups();
         }
 
         // 孩子档案。密度公式的权威版在 extensions/books.py,
@@ -481,3 +482,105 @@
             }
         }
     
+        // === 数据备份(手动,不做自动) ===
+        //
+        // 备份是家长主动点的,所以这一块只管三件事:列出有哪些、备份一份、
+        // 允许下载或删掉。保留份数由后端 KEEP_COUNT 控制,前端不重复实现。
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' K';
+            return (bytes / 1024 / 1024).toFixed(1) + ' M';
+        }
+
+        function formatBackupTime(mtime) {
+            const d = new Date(mtime * 1000);
+            const p = n => String(n).padStart(2, '0');
+            const today = new Date();
+            const sameDay = d.toDateString() === today.toDateString();
+            const hm = `${p(d.getHours())}:${p(d.getMinutes())}`;
+            return sameDay ? `今天 ${hm}` : `${d.getMonth() + 1}月${d.getDate()}日 ${hm}`;
+        }
+
+        function renderBackups(items, keep) {
+            const list = el('backupList');
+            const status = el('backupStatus');
+            if (!items.length) {
+                status.textContent = '还没有备份。建议导入完书、设好档案之后备一份。';
+                list.innerHTML = '';
+                return;
+            }
+            const last = items[0];
+            status.innerHTML = `最近一份:${escapeHtml(formatBackupTime(last.mtime))} · `
+                + `${escapeHtml(formatSize(last.size))} · 共 ${items.length} 份`
+                + (keep ? `(超过 ${keep} 份自动删最旧的)` : '');
+
+            list.innerHTML = items.map(b => `
+                <div class="backup-item">
+                    <div class="bi-main">
+                        <span class="bi-name">${escapeHtml(formatBackupTime(b.mtime))}</span>
+                        <span class="bi-size">${escapeHtml(formatSize(b.size))}</span>
+                    </div>
+                    <div class="bi-ops">
+                        <a class="bi-btn" href="/api/backup/${encodeURIComponent(b.name)}"
+                           download>下载</a>
+                        <button class="bi-btn bi-btn--danger" data-action="deleteBackup"
+                                data-arg="${escapeHtml(b.name)}">删</button>
+                    </div>
+                </div>`).join('');
+        }
+
+        async function loadBackups() {
+            const status = el('backupStatus');
+            try {
+                const r = await fetch('/api/backup', { credentials: 'same-origin' });
+                if (r.status === 401) {
+                    status.textContent = '请先输入家长密码';
+                    return;
+                }
+                const j = await r.json();
+                if (j.success) renderBackups(j.backups || [], j.keep);
+                else status.textContent = j.error || '读不到备份列表';
+            } catch (e) {
+                status.textContent = '读不到备份列表,检查一下网络';
+            }
+        }
+
+        async function createBackup() {
+            const btn = el('btnBackupNow');
+            const status = el('backupStatus');
+            btn.disabled = true;
+            btn.textContent = '备份中…';
+            status.textContent = '正在打包(书比较多时会有几秒)…';
+            try {
+                const r = await fetch('/api/backup', {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+                const j = await r.json();
+                if (j.success) {
+                    renderBackups(j.backups || [], null);
+                } else {
+                    status.textContent = j.error || '备份失败';
+                }
+            } catch (e) {
+                status.textContent = '备份失败,检查一下网络';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '立即备份';
+            }
+        }
+
+        async function deleteBackup(name) {
+            if (!confirm(`删掉这份备份?\n${name}\n删了就找不回来了。`)) return;
+            try {
+                const r = await fetch(`/api/backup/${encodeURIComponent(name)}`, {
+                    method: 'DELETE', credentials: 'same-origin',
+                });
+                const j = await r.json();
+                if (j.success) renderBackups(j.backups || [], null);
+                else el('backupStatus').textContent = j.error || '删不掉';
+            } catch (e) {
+                el('backupStatus').textContent = '删不掉,检查一下网络';
+            }
+        }
