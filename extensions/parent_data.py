@@ -3,9 +3,15 @@ Owns: parent PIN storage + verification, parent data CRUD (stats/vocab/settings)
 anon child sync endpoint, parent session check, parent data export.
 Does NOT own: login rate limit helpers / require_parent_auth (auth.py — imported).
 
-Phase 3b: parent_data / parent_pin 改走 SQLite (data/shadow.db),
-        原 data/parent/{data.json,pin.hash} 在首次启动时自动迁入,
-        备份在 data/parent.migrated-<ts>/ 留 30 天。
+Phase 3b: parent_data / parent_pin 改走 SQLite (data/shadow.db)。
+R22 拆表: 原来全部学习数据塞在 parent_data 单行 JSON 里,阅读器每读一句、
+每次查词都是 read-modify-write 整个 blob —— O(全量), 且 gunicorn 多 worker
+下 last-write-wins 互相覆盖。现在:
+  parent_section    stats / settings / vocabulary —— 整段小 JSON (深度合并语义)
+  vocab_reviews     SRS 复习状态, 一词一行, 到期/统计/薄弱词走索引
+  book_progress     阅读进度, 一书一行
+  sentence_mastery  句子熟练度, 一句一行 (每书每句一条, 原整表重写的大头)
+旧单行 blob 首启一次性迁入新表 (db._migrate_parent_split), 行保留作快照。
 
 PIN 哈希格式: scrypt$salt_b64$hash_b64
   - 4 位 PIN 不加盐 = 10000 种可能, 离线秒破。加 scrypt + per-instance salt 缓这个
@@ -25,7 +31,7 @@ from extensions.auth import (
     require_parent_auth, _login_rate_limit_ok, _login_record_failure,
     _login_clear, _login_remaining, _api_rate_limit_ok,
 )
-from extensions.db import get_db
+from extensions.db import get_db, write_txn
 
 
 logger = logging.getLogger(__name__)
@@ -109,38 +115,156 @@ def _check_pin(pin: str) -> bool:
     return False
 
 
-def _load_parent_data() -> dict:
-    conn = get_db()
-    row = conn.execute('SELECT data_json FROM parent_data WHERE id = 1').fetchone()
-    if row:
-        try:
-            data = json.loads(row['data_json'])
-            # 补齐 R12 新增 section, 老数据没这些 key 也不报错
-            data.setdefault('stats', {})
-            data.setdefault('vocabulary', {})
-            data.setdefault('settings', {})
-            data.setdefault('vocabReviews', {})      # R12: SRS 状态机
-            data.setdefault('bookProgress', {})      # R12: 阅读位置
-            data.setdefault('sentenceMastery', {})   # R12: 句子熟练度
-            return data
-        except Exception as e:
-            logger.warning(f'parent_data 解析失败, 返回空: {e}')
+# === R22 拆表: 存储层 ===
+# 整段 JSON 的 section (深度合并语义, 数据量小, 不值得行化)
+_SECTION_NAMES = ('stats', 'vocabulary', 'settings')
+
+
+def _load_section(name: str, conn=None) -> dict:
+    """读一个整段 JSON section (stats / settings / vocabulary)。坏数据当空段。"""
+    conn = conn or get_db()
+    row = conn.execute('SELECT data_json FROM parent_section WHERE name = ?', (name,)).fetchone()
+    if not row:
+        return {}
+    try:
+        data = json.loads(row['data_json'])
+        return data if isinstance(data, dict) else {}
+    except Exception as e:
+        logger.warning(f'parent_section[{name}] 解析失败, 返回空: {e}')
+        return {}
+
+
+def _save_section(name: str, data: dict, conn=None, now: int | None = None):
+    conn = conn or get_db()
+    now = now if now is not None else int(time.time() * 1000)
+    conn.execute(
+        'INSERT OR REPLACE INTO parent_section (name, data_json, updated_at) VALUES (?, ?, ?)',
+        (name, json.dumps(data, ensure_ascii=False), now),
+    )
+
+
+def _review_row_to_dict(row) -> dict:
+    """vocab_reviews 行 → API/旧 dict 形状 (六键, 与拆表前逐键一致)。"""
     return {
-        "stats": {}, "vocabulary": {}, "settings": {},
-        "vocabReviews": {}, "bookProgress": {}, "sentenceMastery": {},
+        'state': row['state'],
+        'added_ts': row['added_ts'],
+        'next_review_ts': row['next_review_ts'],
+        'last_review_ts': row['last_review_ts'],
+        'review_count': row['review_count'],
+        'correct_count': row['correct_count'],
     }
+
+
+def _load_parent_data() -> dict:
+    """装配完整的 parent data 视图 (六键形状与拆表前完全一致)。
+
+    只剩家长 dashboard / export 走这条路 —— 孩子端的热路径 (查词/翻页/复习)
+    都改走下面的行级 helper, 不再为改一个字段读整个视图。
+    """
+    conn = get_db()
+    vocab_reviews = {
+        row['word']: _review_row_to_dict(row)
+        for row in conn.execute('SELECT * FROM vocab_reviews')
+    }
+    book_progress = {
+        row['book_id']: {
+            'chapter_idx': row['chapter_idx'],
+            'sentence_idx': row['sentence_idx'],
+            'last_open_ts': row['last_open_ts'],
+        }
+        for row in conn.execute('SELECT * FROM book_progress')
+    }
+    sentence_mastery: dict = {}
+    for row in conn.execute('SELECT * FROM sentence_mastery'):
+        ch_map = sentence_mastery.setdefault(row['book_id'], {})
+        sent_map = ch_map.setdefault(str(row['chapter_idx']), {})
+        sent_map[str(row['sentence_idx'])] = {
+            'mastery': row['mastery'],
+            'attempts': row['attempts'],
+            'last_attempt_ts': row['last_attempt_ts'],
+        }
+    return {
+        "stats": _load_section('stats', conn),
+        "vocabulary": _load_section('vocabulary', conn),
+        "settings": _load_section('settings', conn),
+        "vocabReviews": vocab_reviews,
+        "bookProgress": book_progress,
+        "sentenceMastery": sentence_mastery,
+    }
+
+
+def _save_parent_data(data: dict):
+    """整份覆写 (旧语义保留): 给完整装配 dict 就全量替换, 缺哪个键就清空哪块。
+
+    现在只剩 reset / 测试用; 业务热路径请走下面的行级 helper。
+    """
+    now = int(time.time() * 1000)
+    with write_txn() as conn:
+        for name in _SECTION_NAMES:
+            section = data.get(name)
+            if section is None:
+                conn.execute('DELETE FROM parent_section WHERE name = ?', (name,))
+            else:
+                _save_section(name, section if isinstance(section, dict) else {}, conn, now)
+
+        conn.execute('DELETE FROM vocab_reviews')
+        for word, r in (data.get('vocabReviews') or {}).items():
+            if not isinstance(r, dict):
+                continue
+            conn.execute(
+                'INSERT OR REPLACE INTO vocab_reviews '
+                '(word, state, added_ts, next_review_ts, last_review_ts, review_count, correct_count) '
+                'VALUES (?, ?, ?, ?, ?, ?, ?)',
+                (str(word), str(r.get('state') or 'learning'),
+                 int(r.get('added_ts') or now), int(r.get('next_review_ts') or 0),
+                 int(r['last_review_ts']) if r.get('last_review_ts') is not None else None,
+                 int(r.get('review_count') or 0), int(r.get('correct_count') or 0)),
+            )
+
+        conn.execute('DELETE FROM book_progress')
+        for book_id, p in (data.get('bookProgress') or {}).items():
+            if not isinstance(p, dict):
+                continue
+            conn.execute(
+                'INSERT OR REPLACE INTO book_progress (book_id, chapter_idx, sentence_idx, last_open_ts) '
+                'VALUES (?, ?, ?, ?)',
+                (str(book_id), int(p.get('chapter_idx') or 0),
+                 int(p.get('sentence_idx') or 0), int(p.get('last_open_ts') or now)),
+            )
+
+        conn.execute('DELETE FROM sentence_mastery')
+        for book_id, chapters in (data.get('sentenceMastery') or {}).items():
+            if not isinstance(chapters, dict):
+                continue
+            for ch, sents in chapters.items():
+                if not isinstance(sents, dict):
+                    continue
+                for idx, m in sents.items():
+                    if not isinstance(m, dict):
+                        continue
+                    try:
+                        conn.execute(
+                            'INSERT OR REPLACE INTO sentence_mastery '
+                            '(book_id, chapter_idx, sentence_idx, mastery, attempts, last_attempt_ts) '
+                            'VALUES (?, ?, ?, ?, ?, ?)',
+                            (str(book_id), int(ch), int(idx),
+                             str(m.get('mastery') or 'attempted'),
+                             int(m.get('attempts') or 0), int(m.get('last_attempt_ts') or now)),
+                        )
+                    except (TypeError, ValueError):
+                        continue
+    _invalidate_weak_words_cache()
 
 
 def load_child_profile() -> dict:
     """读出孩子档案 {name, age, lexile}。
 
-    存在 settings.child 下。字段一律宽松处理:家长可能只填了蓝思没填年龄,
+    存在 settings section 的 child 键下。字段一律宽松处理:家长可能只填了蓝思没填年龄,
     可能填了 "8 岁" 这种带单位的手输,可能干脆什么都没填。
     解析失败一律退回 None,让阅读器用 DEFAULT_CHILD_LEXILE,
     绝不能因为档案写坏了就打不开书。
     """
-    settings = (_load_parent_data().get('settings') or {})
-    child = settings.get('child')
+    child = _load_section('settings').get('child')
     if not isinstance(child, dict):
         return {"name": "", "age": None, "lexile": None}
 
@@ -158,25 +282,14 @@ def load_child_profile() -> dict:
 
 def save_child_profile(profile: dict) -> dict:
     """写入孩子档案(家长页调用)。返回规范化后的档案。"""
-    data = _load_parent_data()
-    data.setdefault('settings', {})['child'] = {
+    settings = _load_section('settings')
+    settings['child'] = {
         'name': str(profile.get('name') or '')[:40],
         'age': profile.get('age'),
         'lexile': profile.get('lexile'),
     }
-    _save_parent_data(data)
+    _save_section('settings', settings)
     return load_child_profile()
-
-
-def _save_parent_data(data: dict):
-    conn = get_db()
-    now = int(time.time() * 1000)
-    conn.execute(
-        'INSERT OR REPLACE INTO parent_data (id, data_json, updated_at) VALUES (1, ?, ?)',
-        (json.dumps(data, ensure_ascii=False), now)
-    )
-    # D5: 任何写都 invalidate weak_words 缓存,让孩子答完立刻看到更新
-    _invalidate_weak_words_cache()
 
 
 # === R12: 间隔重复 (SRS) 状态机 ===
@@ -228,7 +341,7 @@ def calc_sentence_mastery(original_sec: float, recorded_sec: float) -> str:
     return 'slow'
 
 
-# === R12: helper 调 _load / _save 时安全 merge 进已有数据 ===
+# === R12: 行级写路径 (孩子端热路径, 单行 UPSERT, 不再整表重写) ===
 def _record_vocab_lookup(word: str) -> dict:
     """孩子查词: 标 lookedWords, 同时进 SRS learning 桶。
     老词已存在 → 不重置状态 (避免复习间隔被无限重置)。
@@ -237,69 +350,75 @@ def _record_vocab_lookup(word: str) -> dict:
     word = word.strip().lower()
     if not word:
         return {}
-    data = _load_parent_data()
-    vocab = data.setdefault('vocabulary', {})
-    vocab.setdefault('lookedWords', {})[word] = True
-
-    reviews = data.setdefault('vocabReviews', {})
     now = int(time.time() * 1000)
-    if word not in reviews:
-        reviews[word] = {
-            'state': 'learning',
-            'added_ts': now,
-            'next_review_ts': now + _srs_interval_ms('learning'),
-            'last_review_ts': None,
-            'review_count': 0,
-            'correct_count': 0,
-        }
-    _save_parent_data(data)
-    return reviews[word]
+    with write_txn() as conn:
+        conn.execute(
+            'INSERT OR IGNORE INTO vocab_reviews '
+            '(word, state, added_ts, next_review_ts, last_review_ts, review_count, correct_count) '
+            "VALUES (?, 'learning', ?, ?, NULL, 0, 0)",
+            (word, now, now + _srs_interval_ms('learning')),
+        )
+        # 旧行为兼容: lookup 同时把词标进 vocabulary.lookedWords
+        # (前端 index.js 也会 shadowReport 上报一份, 这里保住不经前端的路径)
+        vocab = _load_section('vocabulary', conn)
+        vocab.setdefault('lookedWords', {})[word] = True
+        _save_section('vocabulary', vocab, conn, now)
+        row = conn.execute('SELECT * FROM vocab_reviews WHERE word = ?', (word,)).fetchone()
+    _invalidate_weak_words_cache()
+    return _review_row_to_dict(row)
 
 
 def _record_vocab_review(word: str, correct: bool) -> dict | None:
     """孩子答对/答错一词, 推进 SRS 状态机。返回新状态, 词不存在返 None。"""
     word = word.strip().lower()
-    data = _load_parent_data()
-    reviews = data.setdefault('vocabReviews', {})
-    if word not in reviews:
-        return None
-    r = reviews[word]
-    new_state = _srs_next_state(r['state'], correct)
     now = int(time.time() * 1000)
-    r['state'] = new_state
-    r['last_review_ts'] = now
-    r['next_review_ts'] = now + _srs_interval_ms(new_state)
-    r['review_count'] = r.get('review_count', 0) + 1
-    if correct:
-        r['correct_count'] = r.get('correct_count', 0) + 1
-    _save_parent_data(data)
-    return r
+    with write_txn() as conn:
+        row = conn.execute('SELECT * FROM vocab_reviews WHERE word = ?', (word,)).fetchone()
+        if row is None:
+            return None
+        new_state = _srs_next_state(row['state'], correct)
+        updated = {
+            'state': new_state,
+            'added_ts': row['added_ts'],
+            'next_review_ts': now + _srs_interval_ms(new_state),
+            'last_review_ts': now,
+            'review_count': row['review_count'] + 1,
+            'correct_count': row['correct_count'] + (1 if correct else 0),
+        }
+        conn.execute(
+            'UPDATE vocab_reviews SET state = ?, next_review_ts = ?, last_review_ts = ?, '
+            'review_count = ?, correct_count = ? WHERE word = ?',
+            (new_state, updated['next_review_ts'], now,
+             updated['review_count'], updated['correct_count'], word),
+        )
+    _invalidate_weak_words_cache()
+    return updated
 
 
 def _get_due_reviews(limit: int = 20) -> list:
     """返回 next_review_ts <= now 的词列表, 按 next_review_ts 升序 (最久没过在前)。"""
-    data = _load_parent_data()
-    reviews = data.get('vocabReviews', {})
     now = int(time.time() * 1000)
-    due = [(w, r) for w, r in reviews.items() if r.get('next_review_ts', 0) <= now]
-    due.sort(key=lambda x: x[1].get('next_review_ts', 0))
-    return due[:limit]
+    rows = get_db().execute(
+        'SELECT * FROM vocab_reviews WHERE next_review_ts <= ? '
+        'ORDER BY next_review_ts ASC LIMIT ?',
+        (now, limit),
+    ).fetchall()
+    return [(row['word'], _review_row_to_dict(row)) for row in rows]
 
 
 def _vocab_state_counts() -> dict:
-    """统计 4 桶词数 + 今日到期数。"""
-    data = _load_parent_data()
-    reviews = data.get('vocabReviews', {})
+    """统计 4 桶词数 + 今日到期数 (GROUP BY, 不再扫全 dict)。"""
+    conn = get_db()
     counts = {s: 0 for s in _SRS_STATES}
+    for row in conn.execute('SELECT state, COUNT(*) AS c FROM vocab_reviews GROUP BY state'):
+        if row['state'] in counts:
+            counts[row['state']] = row['c']
     now = int(time.time() * 1000)
-    due_now = 0
-    for r in reviews.values():
-        st = r.get('state', 'learning')
-        if st in counts:
-            counts[st] += 1
-        if r.get('next_review_ts', 0) <= now:
-            due_now += 1
-    return {**counts, 'due_now': due_now, 'total': len(reviews)}
+    due_now = conn.execute(
+        'SELECT COUNT(*) AS c FROM vocab_reviews WHERE next_review_ts <= ?', (now,)
+    ).fetchone()['c']
+    total = conn.execute('SELECT COUNT(*) AS c FROM vocab_reviews').fetchone()['c']
+    return {**counts, 'due_now': due_now, 'total': total}
 
 
 # === R20: 薄弱词查询(供 feedback.py 喂回 LLM prompt) ===
@@ -325,23 +444,16 @@ def get_weak_words(limit: int = 10) -> list:
     if cached and (now - cached[0]) < _WEAK_WORDS_TTL_S:
         return cached[1]
 
-    data = _load_parent_data()
-    reviews = data.get('vocabReviews', {})
-
-    weak = []
-    for word, r in reviews.items():
-        if r.get('state') == 'mastered':
-            continue
-        review_count = r.get('review_count', 0)
-        correct_count = r.get('correct_count', 0)
-        if review_count == 0:
-            continue
-        error_rate = 1 - (correct_count / review_count)
-        weak.append((word, error_rate, review_count))
-
-    # 错误率降序,review_count 降序(同错误率下复习多的优先)
-    weak.sort(key=lambda x: (-x[1], -x[2]))
-    result = [w for w, _, _ in weak[:limit]]
+    # 1 - correct*1.0/review == Python 里的 1 - correct/review, 逐位同源,
+    # 排序结果与拆表前的实现一致
+    rows = get_db().execute(
+        "SELECT word FROM vocab_reviews "
+        "WHERE state != 'mastered' AND review_count > 0 "
+        "ORDER BY 1 - correct_count * 1.0 / review_count DESC, review_count DESC "
+        "LIMIT ?",
+        (limit,),
+    ).fetchall()
+    result = [row['word'] for row in rows]
     _WEAK_WORDS_CACHE[cache_key] = (now, result)
     return result
 
@@ -357,24 +469,38 @@ def _invalidate_weak_words_cache():
 
 
 def _save_book_progress(book_id: str, chapter_idx: int, sentence_idx: int) -> dict:
-    """保存孩子最近读到的位置。返回新位置 dict。"""
+    """保存孩子最近读到的位置。单行 UPSERT。返回新位置 dict。"""
     if not book_id:
         return {}
-    data = _load_parent_data()
-    progress = data.setdefault('bookProgress', {})
     now = int(time.time() * 1000)
-    progress[book_id] = {
-        'chapter_idx': chapter_idx,
-        'sentence_idx': sentence_idx,
-        'last_open_ts': now,
-    }
-    _save_parent_data(data)
-    return progress[book_id]
+    get_db().execute(
+        'INSERT OR REPLACE INTO book_progress (book_id, chapter_idx, sentence_idx, last_open_ts) '
+        'VALUES (?, ?, ?, ?)',
+        (book_id, chapter_idx, sentence_idx, now),
+    )
+    return {'chapter_idx': chapter_idx, 'sentence_idx': sentence_idx, 'last_open_ts': now}
 
 
 def _get_book_progress(book_id: str) -> dict | None:
-    data = _load_parent_data()
-    return data.get('bookProgress', {}).get(book_id)
+    row = get_db().execute(
+        'SELECT chapter_idx, sentence_idx, last_open_ts FROM book_progress WHERE book_id = ?',
+        (book_id,),
+    ).fetchone()
+    if not row:
+        return None
+    return {'chapter_idx': row['chapter_idx'], 'sentence_idx': row['sentence_idx'],
+            'last_open_ts': row['last_open_ts']}
+
+
+def _get_all_book_progress() -> dict:
+    return {
+        row['book_id']: {
+            'chapter_idx': row['chapter_idx'],
+            'sentence_idx': row['sentence_idx'],
+            'last_open_ts': row['last_open_ts'],
+        }
+        for row in get_db().execute('SELECT * FROM book_progress')
+    }
 
 
 def _record_sentence_mastery(book_id: str, chapter_idx: int, sentence_idx: int,
@@ -384,29 +510,40 @@ def _record_sentence_mastery(book_id: str, chapter_idx: int, sentence_idx: int,
     """
     if mastery not in ('fluent', 'slow', 'attempted'):
         return None
-    data = _load_parent_data()
-    sm = data.setdefault('sentenceMastery', {})
-    book_sm = sm.setdefault(book_id, {})
-    ch_sm = book_sm.setdefault(str(chapter_idx), {})
-    key = str(sentence_idx)
     now = int(time.time() * 1000)
-    existing = ch_sm.get(key)
-    # 已 fluent 不再被覆盖 (除非新 attempts 远多于旧)
-    if existing and existing.get('mastery') == 'fluent' and mastery != 'fluent':
-        return existing
-    ch_sm[key] = {
-        'mastery': mastery,
-        'attempts': (existing or {}).get('attempts', 0) + attempts,
-        'last_attempt_ts': now,
-    }
-    _save_parent_data(data)
-    return ch_sm[key]
+    with write_txn() as conn:
+        row = conn.execute(
+            'SELECT mastery, attempts, last_attempt_ts FROM sentence_mastery '
+            'WHERE book_id = ? AND chapter_idx = ? AND sentence_idx = ?',
+            (book_id, chapter_idx, sentence_idx),
+        ).fetchone()
+        # 已 fluent 不再被覆盖 (除非新 attempts 远多于旧)
+        if row and row['mastery'] == 'fluent' and mastery != 'fluent':
+            return {'mastery': row['mastery'], 'attempts': row['attempts'],
+                    'last_attempt_ts': row['last_attempt_ts']}
+        new_attempts = (row['attempts'] if row else 0) + attempts
+        conn.execute(
+            'INSERT OR REPLACE INTO sentence_mastery '
+            '(book_id, chapter_idx, sentence_idx, mastery, attempts, last_attempt_ts) '
+            'VALUES (?, ?, ?, ?, ?, ?)',
+            (book_id, chapter_idx, sentence_idx, mastery, new_attempts, now),
+        )
+    return {'mastery': mastery, 'attempts': new_attempts, 'last_attempt_ts': now}
 
 
 def _get_sentence_mastery(book_id: str) -> dict:
     """返回 {chapter_idx: {sentence_idx: {mastery, attempts, last_attempt_ts}}}"""
-    data = _load_parent_data()
-    return data.get('sentenceMastery', {}).get(book_id, {})
+    out: dict = {}
+    for row in get_db().execute(
+        'SELECT * FROM sentence_mastery WHERE book_id = ?', (book_id,)
+    ):
+        ch_map = out.setdefault(str(row['chapter_idx']), {})
+        ch_map[str(row['sentence_idx'])] = {
+            'mastery': row['mastery'],
+            'attempts': row['attempts'],
+            'last_attempt_ts': row['last_attempt_ts'],
+        }
+    return out
 
 
 def _deep_merge(dst: dict, src: dict) -> dict:
@@ -497,11 +634,14 @@ def register_routes(app):
             return jsonify({"success": False, "error": f"上报过快, {retry} 秒后再试"}), 429
 
         payload = request.json or {}
-        current = _load_parent_data()
-        for section in ('stats', 'vocabulary', 'settings'):
-            if section in payload and isinstance(payload[section], dict):
-                _deep_merge(current.setdefault(section, {}), payload[section])
-        _save_parent_data(current)
+        now = int(time.time() * 1000)
+        # 一个事务包住所有 section 的读改写: 两个 worker 同时上报也不会互相丢段
+        with write_txn() as conn:
+            for section in ('stats', 'vocabulary', 'settings'):
+                if section in payload and isinstance(payload[section], dict):
+                    current = _load_section(section, conn)
+                    _deep_merge(current, payload[section])
+                    _save_section(section, current, conn, now)
         return jsonify({"success": True})
 
     @app.route('/api/child/profile', methods=['POST'])
@@ -518,7 +658,12 @@ def register_routes(app):
     @app.route('/api/parent/reset', methods=['POST'])
     @require_parent_auth
     def parent_reset():
-        _save_parent_data({"stats": {}, "vocabulary": {}, "settings": {}})
+        with write_txn() as conn:
+            conn.execute('DELETE FROM parent_section')
+            conn.execute('DELETE FROM vocab_reviews')
+            conn.execute('DELETE FROM book_progress')
+            conn.execute('DELETE FROM sentence_mastery')
+        _invalidate_weak_words_cache()
         return jsonify({"success": True})
 
     @app.route('/api/parent/export')
@@ -624,8 +769,7 @@ def register_routes(app):
         ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'sync')
         if not ok:
             return jsonify({"success": False, "error": f"上报过快, {retry} 秒后再试"}), 429
-        data = _load_parent_data()
-        return jsonify({"success": True, "progress": data.get('bookProgress', {})})
+        return jsonify({"success": True, "progress": _get_all_book_progress()})
 
     # === R12: 句子熟练度 ===
     @app.route('/api/sentence/mastery', methods=['POST'])

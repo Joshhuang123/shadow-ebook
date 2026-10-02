@@ -270,7 +270,9 @@ shadow-learning/
 ├── certs/                  # HTTPS 证书（已 gitignore）
 ├── tests/                  # 67 个 guard test (见下方"测试与 CI")
 ├── data/
-│   ├── shadow.db           # SQLite (books / parent_data / parent_pin),首启生成
+│   ├── shadow.db           # SQLite (books / parent_section / vocab_reviews /
+│   │                       #  book_progress / sentence_mastery / parent_pin /
+│   │                       #  dict_cache),首启生成;旧单行 blob 自动拆表迁移
 │   ├── shadow.log          # INFO 日志(gitignore)
 │   └── covers/             # 书籍封面图
 └── audio/

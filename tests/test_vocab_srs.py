@@ -304,9 +304,10 @@ def test_mastery_accumulates_attempts(tmp_db, client):
     assert r.json['mastery']['0']['0']['attempts'] == 3
 
 
-# === 旧数据兼容: 没 R12 字段也能 load ===
+# === 旧数据兼容: 拆表迁移 ===
 def test_load_old_data_backfills_new_sections(tmp_db):
-    """_load_parent_data 碰到老 JSON (只有 stats/vocabulary/settings) 应该补齐 R12 字段"""
+    """老部署的单行 blob (只有 stats/vocabulary/settings) 迁进新表后,
+    _load_parent_data 应补齐 R12 字段且老数据保留。"""
     from extensions.db import get_db
     import json as json_mod
     conn = get_db()
@@ -315,6 +316,13 @@ def test_load_old_data_backfills_new_sections(tmp_db):
         (json_mod.dumps({"stats": {"x": 1}, "vocabulary": {}, "settings": {}}, ensure_ascii=False),
          int(time.time() * 1000)),
     )
+    # 模拟"还没拆表迁移过"的旧部署: 删 marker 重跑 init_db
+    marker = tmp_db / '.parent_split_migrated'
+    if marker.exists():
+        marker.unlink()
+    from extensions import db as db_mod
+    db_mod.init_db()
+
     data = parent_data._load_parent_data()
     assert 'vocabReviews' in data
     assert 'bookProgress' in data
@@ -384,10 +392,10 @@ def test_weak_words_cache_hits_within_ttl(tmp_db):
     # 第一次:cache miss
     r1 = parent_data.get_weak_words()
     assert r1 == ['w1']
-    # 第二次:cache hit (mod 模拟 _load_parent_data,看是否被调)
+    # 第二次:cache hit (mod 模拟 get_db,看是否被调)
     import unittest.mock
-    with unittest.mock.patch.object(parent_data, '_load_parent_data',
-                                    wraps=parent_data._load_parent_data) as m:
+    with unittest.mock.patch.object(parent_data, 'get_db',
+                                    wraps=parent_data.get_db) as m:
         r2 = parent_data.get_weak_words()
         assert m.call_count == 0, "30s TTL 内不应再查 DB"
     assert r2 == r1
@@ -400,8 +408,8 @@ def test_weak_words_cache_expires_after_ttl(tmp_db, monkeypatch):
     # 把 TTL 调成 0,让缓存立刻失效
     monkeypatch.setattr(parent_data, '_WEAK_WORDS_TTL_S', 0)
     import unittest.mock
-    with unittest.mock.patch.object(parent_data, '_load_parent_data',
-                                    wraps=parent_data._load_parent_data) as m:
+    with unittest.mock.patch.object(parent_data, 'get_db',
+                                    wraps=parent_data.get_db) as m:
         parent_data.get_weak_words()
         assert m.call_count >= 1, "TTL 过期应该重新查 DB"
 
@@ -417,12 +425,9 @@ def test_weak_words_cache_invalidated_on_write(tmp_db):
     data['stats'] = {'updated': True}
     parent_data._save_parent_data(data)
 
-    # 缓存被清,再调应该重新查 DB
-    import unittest.mock
-    with unittest.mock.patch.object(parent_data, '_load_parent_data',
-                                    wraps=parent_data._load_parent_data) as m:
-        parent_data.get_weak_words()
-        assert m.call_count >= 1, "写后缓存应被 invalidate"
+    # 缓存被清,且新查询能看到最新数据
+    assert parent_data._WEAK_WORDS_CACHE == {}, "写后缓存应被 invalidate"
+    assert parent_data.get_weak_words() == ['w1']
 
 
 def test_weak_words_cache_per_limit(tmp_db):

@@ -4,12 +4,8 @@ anon 端点接受孩子的 stats/vocab/settings 上报, 不需要鉴权。
 合并写入, 不会覆盖整张表 — 关键不变量。
 """
 import importlib
-import json
-import sqlite3
 
 import pytest
-
-from extensions import db as db_module
 
 
 @pytest.fixture
@@ -20,11 +16,14 @@ def client(tmp_db, clear_api_rate):
 
 
 def _read_parent_data_json() -> dict:
-    """从 monkeypatch 后的 DB_PATH 读 — 别在模块顶层 import DB_PATH, fixture 改不到。"""
-    conn = sqlite3.connect(str(db_module.DB_PATH))
-    row = conn.execute("SELECT data_json FROM parent_data WHERE id = 1").fetchone()
-    conn.close()
-    return json.loads(row[0]) if row else {}
+    """读装配后的完整 parent data。
+
+    R22 拆表后数据不再有单行 JSON, 但本文件测的是合并语义 ( anon 上报
+    进不进得去、会不会互相覆盖 ), 走 _load_parent_data 的装配视图即可,
+    和家长页 GET /api/parent/data 看到的是同一份。
+    """
+    from extensions import parent_data
+    return parent_data._load_parent_data()
 
 
 def test_post_data_does_not_require_auth(client):
