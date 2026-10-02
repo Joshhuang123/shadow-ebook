@@ -5,7 +5,13 @@ const vm = require('vm');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
-const REPO = '/Users/huangjunhai/shadow-learning';
+const REPO = path.resolve(__dirname, '..');
+// Python 解释器: SHADOW_PYTHON 显式指定 > 仓库内 venv (setup.sh 建的 .venv 也认)
+// > PATH 上的 python3。之前把作者机器的绝对路径写死,换台机器测试必挂。
+const PY = process.env.SHADOW_PYTHON
+  || [path.join(REPO, 'venv/bin/python'), path.join(REPO, '.venv/bin/python')]
+      .find(p => fs.existsSync(p))
+  || 'python3';
 
 function mkEl(id) {
   return {
@@ -68,7 +74,7 @@ const jsOut = CASES.map(([b, c]) => {
   return [b === null ? '' : b, c === null ? '' : c, r.sentencesPerPage, r.mode].join('\t');
 }).join('\n');
 
-const pyOut = execFileSync('/Users/huangjunhai/shadow-learning/venv/bin/python', ['-c', `
+const pyOut = execFileSync(PY, ['-c', `
 import sys, json
 sys.path.insert(0, ${JSON.stringify(REPO)})
 from extensions.books import calc_reading_density

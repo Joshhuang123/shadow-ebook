@@ -4,7 +4,7 @@ const fs = require('fs');
 const vm = require('vm');
 const path = require('path');
 
-const ROOT = '/Users/huangjunhai/shadow-learning';
+const ROOT = path.resolve(__dirname, '..');
 // 自造一本 21 章 / 778 句的书,刻意复刻真实故障的形状:
 // 第 0 章 14 句(真实那本的第 0 章 "Copyright" 正好 14 句),
 // 于是旧代码下顶栏会显示 "1 / 14" —— 正是用户报的「只有十四页」。
