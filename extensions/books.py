@@ -595,6 +595,19 @@ def calc_lexile(book_data):
         return 1000
 
 
+def _book_lexile(data: dict) -> int:
+    """书的蓝思值: 优先读导入时算好存进 data_json 的 lexile 字段。
+
+    calc_lexile 要扫全书句子 + 正则过滤,哈利波特一本就 6.7MB ——
+    书架页每次缓存失效、阅读器每次打开书都重扫一遍纯属浪费。
+    老书(该字段出现前导入的)没有 lexile,退回现场计算,行为不变。
+    """
+    v = data.get('lexile')
+    if isinstance(v, int) and not isinstance(v, bool) and 0 < v < 2001:
+        return v
+    return calc_lexile(data)
+
+
 # 阅读密度:每屏放几句。
 # 密度不该由「孩子的水平」单独决定 —— 同一本 500 蓝思的书,700 的孩子该看到
 # 一整页,400 的孩子该逐句啃。真正决定密度的是书与孩子的**差值** gap。
@@ -685,7 +698,7 @@ def register_routes(app):
         if 'cover' in book:
             book['cover'] = _cover_url(book['cover'])
         # 阅读密度要按「书的难度 - 孩子的水平」算,前端拿不到书的蓝思值就没法算。
-        book['lexile'] = calc_lexile(book)
+        book['lexile'] = _book_lexile(book)
         return jsonify({"success": True, "book": book})
 
     @app.route('/api/child/profile')
@@ -732,7 +745,7 @@ def register_routes(app):
                 # 书架页的进度条要知道「读到全书第几句」,光有总数算不出来。
                 # 章数少(几十)体积可忽略,换来的是进度条不说谎。
                 "chapter_sentences": chapter_sentences,
-                "lexile": calc_lexile(data),
+                "lexile": _book_lexile(data),
                 "cover": _cover_url(data.get('cover')),  # R11: 兼容旧绝对路径
             })
         _BOOKS_LIST_CACHE['data'] = books
@@ -1054,6 +1067,8 @@ def register_routes(app):
                 "rights": opf_meta.get('rights'),
                 "toc": toc_entries,  # 真 TOC, 无则 []
             }
+            # 蓝思值导入时算一次存起来,列表/详情接口直接读,不再每次全量扫句子
+            book_data['lexile'] = calc_lexile(book_data)
             conn = get_db()
             now = int(time.time() * 1000)
             conn.execute(
