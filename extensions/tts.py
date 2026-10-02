@@ -94,40 +94,81 @@ def _touch_atime(audio_path: Path):
 # 预生成过程统计: pregenerate_all_tts 写, /api/tts/status 读
 _pregen_state = {'running': False, 'attempted': 0, 'succeeded': 0, 'failed': 0, 'last_error': None}
 
+# 预生成并发数。串行合成一本 800 句的书要 10+ 分钟,孩子早开读了;
+# 开太高又容易把 edge-tts 上游打到限流。4 是稳的,SHADOW_TTS_PREGEN_CONCURRENCY 可调。
+_PREGEN_CONCURRENCY_DEFAULT = 4
+_PREGEN_CONCURRENCY_MAX = 16
+
+
+def _pregen_concurrency() -> int:
+    raw = os.environ.get('SHADOW_TTS_PREGEN_CONCURRENCY', '')
+    try:
+        v = int(raw)
+    except ValueError:
+        return _PREGEN_CONCURRENCY_DEFAULT
+    return max(1, min(v, _PREGEN_CONCURRENCY_MAX))
+
+
+def _collect_pregen_texts() -> list:
+    """从 SQLite 收集需要预生成的书内句子,全局去重后返回。
+
+    历史 bug: 这里原来扫 data/books/*.json,但 Phase 3a 之后书全在 SQLite 里,
+    目录只剩空壳 —— 「预生成电子书音频」实际一次都没跑过,孩子每点一句
+    都要现场等 edge-tts。修法: 和 books.py 同源,直接读 books 表。
+
+    跨书重复的句子(常见: 同系列书里重复句型)只合成一次;
+    >500 字符的跳过,与运行时路径的行为一致。
+    """
+    from extensions.db import get_db
+    texts = {}  # dict 当有序 set 用,稳定输出顺序方便日志
+    for row in get_db().execute('SELECT data_json FROM books').fetchall():
+        try:
+            book_data = json.loads(row['data_json'])
+        except Exception as e:
+            logger.warning(f'预生成跳过一本书 (data_json 解析失败): {e}')
+            continue
+        before = len(texts)
+        for chapter in book_data.get('chapters', []):
+            for sent in chapter.get('sentences', []):
+                text = sent['text'] if isinstance(sent, dict) else sent
+                if not text or len(text) > 500:
+                    continue
+                texts[text] = None
+        logger.info(f"  {book_data.get('book', '?')[:40]}: 新增 {len(texts) - before} 句")
+    return list(texts)
+
 
 def pregenerate_all_tts():
     """预生成所有电子书和语法音频 (仅默认音色,避免启动时磁盘爆)。
 
     失败可见: _pregen_state.failed / last_error 由 /api/tts/status 暴露, 日志也写 warning。
     之前 except Exception: pass 静默, 预生成全挂也察觉不到。
+    合成用 semaphore 收并发(见 _pregen_concurrency),单事件循环内跑,
+    _pregen_state 的计数只在 await 间隙更新,无线程竞争。
     """
     async def generate():
         _pregen_state.update({'running': True, 'attempted': 0, 'succeeded': 0, 'failed': 0, 'last_error': None})
         try:
             TTS_DIR.mkdir(parents=True, exist_ok=True)
-            books_dir = Path(__file__).resolve().parent.parent / 'data' / 'books'
 
-            # 1. 遍历所有电子书
+            # 1. 电子书句子 (从 SQLite 收集,全局去重)
             logger.info("正在预生成电子书音频...")
-            for book_file in books_dir.glob('*.json'):
-                try:
-                    book_data = json.loads(book_file.read_text())
-                    sentences_count = 0
-                    for chapter in book_data.get("chapters", []):
-                        for sent in chapter.get("sentences", []):
-                            text = sent["text"] if isinstance(sent, dict) else sent
-                            if not text or len(text) > 500:
-                                continue
-                            sentences_count += 1
-                            await _pregen_synthesize(text)
-                    logger.info(f"  {book_data.get('book', book_file.stem)[:40]}: {sentences_count}句")
-                except Exception as e:
-                    logger.warning(f"  {book_file}: {e}")
+            texts = dict.fromkeys(_collect_pregen_texts())
 
-            # 2. 生成语法讲解音频
+            # 2. 语法讲解音频 (也进全局去重,书里可能恰好有同样的句子)
             logger.info("正在预生成语法讲解音频...")
             for grammar_text in GRAMMAR_EXPLANATIONS:
-                await _pregen_synthesize(grammar_text)
+                texts.setdefault(grammar_text, None)
+
+            concurrency = _pregen_concurrency()
+            logger.info(f"共 {len(texts)} 段待合成, 并发 {concurrency}")
+            sem = asyncio.Semaphore(concurrency)
+
+            async def one(text):
+                async with sem:
+                    await _pregen_synthesize(text)
+
+            await asyncio.gather(*(one(t) for t in texts))
         finally:
             _pregen_state['running'] = False
             logger.info(
