@@ -574,7 +574,11 @@ def register_routes(app):
         ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'sync')
         if not ok:
             return jsonify({"success": False, "error": f"上报过快, {retry} 秒后再试"}), 429
-        limit = min(int(request.args.get('limit', 20)), 50)
+        try:
+            limit = int(request.args.get('limit', 20))
+        except (TypeError, ValueError):
+            limit = 20
+        limit = max(1, min(limit, 50))
         due = _get_due_reviews(limit=limit)
         return jsonify({
             "success": True,

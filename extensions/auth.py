@@ -19,10 +19,24 @@ LOCKOUT_SEC = 900   # 锁定 15 分钟
 _AUTH_LOCK = threading.Lock()  # 保护 _LOGIN_WINDOW (Phase 2 加锁)
 
 
+def _sweep_stale_login(now: float) -> int:
+    """删掉窗口内已无有效尝试的 IP,返回删了几条 (调用方持有 _AUTH_LOCK)。
+
+    _LOGIN_WINDOW 之前只增不减:设备换 WiFi、DHCP 轮换 IP 都会留下永久条目,
+    和 _API_RATE 是同一种慢性泄漏。登录是低频操作,每次全扫一遍无所谓。
+    """
+    stale = [ip for ip, ts in _LOGIN_WINDOW.items()
+             if all(now - t >= LOCKOUT_SEC for t in ts)]
+    for ip in stale:
+        del _LOGIN_WINDOW[ip]
+    return len(stale)
+
+
 def _login_rate_limit_ok(ip):
     """返回 (ok, retry_after_sec). 锁定时返回 (False, 至少 1 秒)"""
     with _AUTH_LOCK:
         now = time.time()
+        _sweep_stale_login(now)
         arr = _LOGIN_WINDOW.get(ip, [])
         arr = [t for t in arr if now - t < LOCKOUT_SEC]
         if len(arr) >= MAX_ATTEMPTS:

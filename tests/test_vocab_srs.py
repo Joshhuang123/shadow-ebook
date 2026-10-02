@@ -434,3 +434,18 @@ def test_weak_words_cache_per_limit(tmp_db):
     r_limit_5 = parent_data.get_weak_words(limit=5)
     assert len(r_limit_1) == 1
     assert len(r_limit_5) == 3
+
+
+# === review-queue limit 参数 (曾因 int() 未兜底 500) ===
+def test_review_queue_limit_non_numeric_returns_200(client):
+    """limit=abc 曾经直接 int() 炸成 500 —— 查询参数是外部输入,不能信。"""
+    r = client.get('/api/vocab/review-queue?limit=abc')
+    assert r.status_code == 200
+    assert r.json['success'] is True
+
+
+def test_review_queue_limit_clamped(client):
+    for raw in ('0', '-5', '999'):
+        r = client.get(f'/api/vocab/review-queue?limit={raw}')
+        assert r.status_code == 200, f'limit={raw} 不该炸'
+        assert len(r.json['queue']) <= 50

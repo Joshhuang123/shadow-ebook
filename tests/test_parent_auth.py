@@ -5,6 +5,7 @@
 """
 import importlib
 import json
+import time
 
 import pytest
 
@@ -172,3 +173,31 @@ def test_reset_clears_data(client):
     assert r.json['success'] is True
     r = client.get('/api/parent/data')
     assert r.json['data']['stats'] == {}
+
+# === _LOGIN_WINDOW 过期清理 (只增不减的慢性泄漏) ===
+def test_login_window_sweeps_stale_entries():
+    from extensions import auth
+    ip = '203.0.113.99'
+    with auth._AUTH_LOCK:
+        auth._LOGIN_WINDOW.clear()
+        # 两条早已过期 (> LOCKOUT_SEC) + 一条新鲜的
+        auth._LOGIN_WINDOW[ip] = [0.0, 1.0]
+        auth._LOGIN_WINDOW['fresh-ip'] = [time.time()]
+        removed = auth._sweep_stale_login(time.time())
+    assert removed == 1
+    with auth._AUTH_LOCK:
+        assert ip not in auth._LOGIN_WINDOW
+        assert 'fresh-ip' in auth._LOGIN_WINDOW
+
+
+def test_login_window_sweep_keeps_locked_ip():
+    """锁定中的 IP (窗口内仍有失败记录) 不能被清,否则限流被绕过。"""
+    from extensions import auth
+    ip = '203.0.113.100'
+    with auth._AUTH_LOCK:
+        auth._LOGIN_WINDOW.clear()
+        auth._LOGIN_WINDOW[ip] = [time.time() - 1] * auth.MAX_ATTEMPTS
+        removed = auth._sweep_stale_login(time.time())
+    assert removed == 0
+    with auth._AUTH_LOCK:
+        assert ip in auth._LOGIN_WINDOW
