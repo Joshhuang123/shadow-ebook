@@ -3,6 +3,7 @@
 <head>
     <link rel="stylesheet" href="/styles/tokens.css">
     <link rel="stylesheet" href="/styles/base.css">
+    <link rel="stylesheet" href="/styles/icons.css">
     <link rel="stylesheet" href="/styles/components.css">
     <script src="/js/dispatcher.js"></script>
 <script src="/theme.js"></script>
@@ -24,24 +25,27 @@
     <!-- 顶部导航 -->
     <nav class="top-nav">
         <div class="nav-brand">
-            <div class="logo">📖</div>
+            <div class="logo"><span class="ico ico-book" aria-hidden="true"></span></div>
             <span>影子电子书</span>
         </div>
         <div class="nav-links">
-            <a href="/tutor" class="nav-link">跟读学习</a>
-            <a href="/grammar" class="nav-link">语法学习</a>
-            <a href="/stats" class="nav-link">📊 统计</a>
-            <a href="/parent" class="nav-link nav-link-parent">🔐 家长</a>
-            <select class="voice-select" id="voice-select">
-                <option value="en-US-AriaNeural">🔊 Aria (女声)</option>
-                <option value="en-US-JennyNeural">🔊 Jenny (女声)</option>
-                <option value="en-US-EmmaNeural">🔊 Emma (女声)</option>
-                <option value="en-US-AndrewNeural">🔊 Andrew (男声)</option>
-                <option value="en-US-BrianNeural">🔊 Brian (男声)</option>
-                <option value="en-US-GuyNeural">🔊 Guy (男声)</option>
-            </select>
+            <a href="/tutor" class="nav-link"><span class="ico ico-mic" aria-hidden="true"></span>跟读学习</a>
+            <a href="/grammar" class="nav-link"><span class="ico ico-quote" aria-hidden="true"></span>语法学习</a>
+            <a href="/stats" class="nav-link"><span class="ico ico-chart" aria-hidden="true"></span>统计</a>
+            <a href="/parent" class="nav-link nav-link-parent"><span class="ico ico-lock" aria-hidden="true"></span>家长</a>
+            <span class="voice-picker">
+                <span class="ico ico-speaker" aria-hidden="true"></span>
+                <select class="voice-select" id="voice-select" aria-label="朗读音色">
+                    <option value="en-US-AriaNeural">Aria (女声)</option>
+                    <option value="en-US-JennyNeural">Jenny (女声)</option>
+                    <option value="en-US-EmmaNeural">Emma (女声)</option>
+                    <option value="en-US-AndrewNeural">Andrew (男声)</option>
+                    <option value="en-US-BrianNeural">Brian (男声)</option>
+                    <option value="en-US-GuyNeural">Guy (男声)</option>
+                </select>
+            </span>
         </div>
-    <button id="themeBtn" class="theme-btn" data-action="cycleTheme">日</button>
+    <button id="themeBtn" class="theme-btn" data-action="cycleTheme"><span class="ico ico-moon" aria-hidden="true"></span></button>
         </nav>
 
     <div class="main-container">
@@ -59,17 +63,15 @@
                         <span class="continue-pos" id="continue-pos"></span>
                     </div>
                 </div>
-                <button class="continue-btn" data-action="loadBook" data-arg="" id="continue-btn">▶ 继续读</button>
+                <button class="continue-btn" data-action="loadBook" data-arg="" id="continue-btn"><span class="ico ico-arrow-right-wide" aria-hidden="true"></span>继续读</button>
             </section>
 
             <!-- 空状态:一本书都没有时才出现 -->
             <section class="shelf-empty" id="shelf-empty" hidden>
-                <div class="shelf-empty-art" aria-hidden="true">
-                    <span>📖</span>
-                </div>
+                <div class="shelf-empty-art" aria-hidden="true"><span class="ico ico-book ico--xl" aria-hidden="true"></span></div>
                 <h2 class="shelf-empty-title">开始你的第一本书吧!</h2>
                 <p class="shelf-empty-sub">点下面的「导入书籍」,把你的一本书加进来。</p>
-                <button class="btn btn-primary shelf-empty-btn" data-action="clickTriggerImportFile">📥 导入书籍</button>
+                <button class="btn btn-primary shelf-empty-btn" data-action="clickTriggerImportFile"><span class="ico ico-download" aria-hidden="true"></span>导入书籍</button>
                 <p class="shelf-empty-hint" id="shelf-empty-hint"></p>
             </section>
 
@@ -84,7 +86,9 @@
         <!-- 阅读器页 (R24 按设计稿重排:顶栏定位 / 中间大字号 / 底栏三个动作 / 抽屉收纳) -->
         <div class="reader-page" id="reader-page">
             <header class="reader-bar">
-                <a href="#" class="reader-back" data-action="showBookList">← 书架</a>
+                <a href="#" class="reader-back" data-action="showBookList">
+                    <span class="ico ico-arrow-left" aria-hidden="true"></span><span>书架</span>
+                </a>
                 <div class="reader-bar-mid">
                     <div class="reader-title" id="reader-title">书名</div>
                     <div class="reader-chapter" id="reader-chapter">第 1 章</div>
@@ -114,13 +118,15 @@
             </main>
 
             <footer class="reader-foot">
-                <div class="page-nav">
-                    <button class="page-btn" data-action="prevPage" title="上一页 (←)">◀ 上一页</button>
-                    <button class="page-btn" data-action="nextPage" title="下一页 (→)">下一页 ▶</button>
-                </div>
-                <div class="font-stepper">
-                    <button class="font-step" data-action="changeFontSize" data-arg="-2" title="缩小字号">A</button>
-                    <button class="font-step font-step--up" data-action="changeFontSize" data-arg="2" title="放大字号">A</button>
+                <div class="reader-foot-left">
+                    <div class="page-nav">
+                        <button class="page-btn" data-action="prevPage" title="上一页 (←)"><span class="ico ico-arrow-left" aria-hidden="true"></span><span class="page-btn-text">上一页</span></button>
+                        <button class="page-btn" data-action="nextPage" title="下一页 (→)"><span class="page-btn-text">下一页</span><span class="ico ico-arrow-right" aria-hidden="true"></span></button>
+                    </div>
+                    <div class="font-stepper">
+                        <button class="font-step" data-action="changeFontSize" data-arg="-2" title="缩小字号" aria-label="缩小字号">A<span class="font-step-sign">−</span></button>
+                        <button class="font-step font-step--up" data-action="changeFontSize" data-arg="2" title="放大字号" aria-label="放大字号">A<span class="font-step-sign">+</span></button>
+                    </div>
                 </div>
 
                 <!-- 朗读区:整个产品最高频的动作,所以是底栏里唯一的实心大按钮。
@@ -128,24 +134,26 @@
                      「连续朗读」则自己往下读,不用一句一句按。 -->
                 <div class="read-cluster">
                     <button class="read-aloud" id="btn-play" data-action="readCurrent" title="朗读当前句,读完自动跳下一句 (空格)">
-                        <span class="read-aloud-icon" id="play-icon">🔊</span>
+                        <span class="read-aloud-icon" id="play-icon"><span class="ico ico-speaker" aria-hidden="true"></span></span>
                         <span class="read-aloud-text">读一句</span>
                     </button>
                     <button class="read-alone" data-action="toggleReadAlone" aria-pressed="false"
                             title="打开后自己往下读,不用一句一句按">
-                        <span class="read-alone-icon">▶▶</span>
+                        <span class="read-alone-icon"><span class="ico ico-repeat" aria-hidden="true"></span></span>
                         <span class="read-alone-text">连续朗读</span>
                     </button>
                 </div>
 
-                <button class="drawer-open" data-action="toggleSidebar" title="更多功能">☰</button>
+                <div class="reader-foot-right">
+                    <button class="drawer-open" data-action="toggleSidebar" title="更多功能" aria-label="更多功能"><span class="ico ico-menu" aria-hidden="true"></span></button>
+                </div>
             </footer>
 
             <!-- 抽屉:目录 + 章节测验 + 跟读 + 翻译 + 生词本 + 阅读等级 -->
             <aside class="reader-drawer" id="sidebar">
                 <div class="drawer-head">
-                    <span>🎛️ 更多</span>
-                    <button class="drawer-close" data-action="toggleSidebar" title="收起">×</button>
+                    <span><span class="ico ico-menu" aria-hidden="true"></span>更多</span>
+                    <button class="drawer-close" data-action="toggleSidebar" title="收起" aria-label="收起"><span class="ico ico-close" aria-hidden="true"></span></button>
                 </div>
 
                 <div class="drawer-body">
@@ -163,17 +171,17 @@
 
                     <!-- 目录 -->
                     <div class="sidebar-card">
-                        <div class="sidebar-title">📑 目录</div>
+                        <div class="sidebar-title"><span class="ico ico-layers" aria-hidden="true"></span>目录</div>
                         <div class="toc-list" id="toc-list"></div>
                     </div>
 
                     <button class="btn btn-secondary quiz-btn" id="btn-comp" data-action="showComprehensionModal">
-                        📖 章节测验
+                        <span class="ico ico-target" aria-hidden="true"></span>章节测验
                     </button>
 
                     <!-- 跟读评分 -->
                     <div class="pronunciation-card">
-                        <div class="sidebar-title">🎤 跟读评分</div>
+                        <div class="sidebar-title"><span class="ico ico-mic" aria-hidden="true"></span>跟读评分</div>
 
                         <div class="mode-toggle">
                             <button class="mode-btn active" id="mode-read" data-action="setMode" data-arg="read">阅读</button>
@@ -181,7 +189,7 @@
                         </div>
 
                         <div class="record-wrap">
-                            <button class="record-btn" id="btn-record" data-action="toggleRecord">🎙️</button>
+                            <button class="record-btn" id="btn-record" data-action="toggleRecord"><span class="ico ico-mic ico--lg" aria-hidden="true"></span></button>
                         </div>
 
                         <div id="score-display">
@@ -205,7 +213,7 @@
                     </div>
 
                     <div class="sidebar-card">
-                        <div class="sidebar-title">📝 句子翻译</div>
+                        <div class="sidebar-title"><span class="ico ico-quote" aria-hidden="true"></span>句子翻译</div>
                         <div class="translation-content" id="translation-content">
                             点击上方句子，查看翻译
                         </div>
@@ -213,18 +221,18 @@
 
                     <div class="sidebar-card">
                         <div class="sidebar-title">
-                            📚 生词本
+                            <span class="ico ico-pencil" aria-hidden="true"></span>生词本
                             <span id="vocab-count">(0)</span>
-                            <span id="review-badge" class="review-badge hidden" data-action="startReview">🔔 待复习 <span id="review-count">0</span></span>
+                            <span id="review-badge" class="review-badge hidden" data-action="startReview"><span class="ico ico-bell" aria-hidden="true"></span>待复习 <span id="review-count">0</span></span>
                         </div>
-                        <button id="btn-start-review" class="btn-vocab" data-action="startReview">📝 开始复习</button>
+                        <button id="btn-start-review" class="btn-vocab" data-action="startReview"><span class="ico ico-pencil" aria-hidden="true"></span>开始复习</button>
                         <div class="vocab-list" id="vocab-list">
                             <div class="vocab-empty">点击单词加入生词本</div>
                         </div>
                     </div>
 
                     <div class="sidebar-card sidebar-card--tappable" data-action="showARPanel">
-                        <div class="sidebar-title">📊 阅读等级</div>
+                        <div class="sidebar-title"><span class="ico ico-trend" aria-hidden="true"></span>阅读等级</div>
                         <div class="ar-level">
                             <div class="ar-level-value" id="ar-display">--</div>
                         </div>
@@ -242,7 +250,7 @@
 
                     <!-- 字号在底栏了,这里只留章节跳转 -->
                     <div class="sidebar-card sidebar-card--tight">
-                        <div class="sidebar-title sidebar-title--sm">📖 章节</div>
+                        <div class="sidebar-title sidebar-title--sm"><span class="ico ico-book" aria-hidden="true"></span>章节</div>
                         <div class="chapter-jump">
                             <button class="page-btn" data-action="prevChapter">⏮ 上一章</button>
                             <button class="page-btn" data-action="nextChapter">下一章 ⏭</button>
@@ -272,7 +280,7 @@
                 </div>
             </div>
             <div class="word-modal-actions">
-                <button class="btn-translate" data-action="playPronunciation">🔊 发音</button>
+                <button class="btn-translate" data-action="playPronunciation"><span class="ico ico-speaker" aria-hidden="true"></span>发音</button>
                 <button class="btn-vocab" id="btn-add-vocab" data-action="addToVocab">+ 生词本</button>
             </div>
         </div>
@@ -282,7 +290,7 @@
     <div class="word-modal-overlay" id="ar-modal" data-action="closeARPanel">
         <div class="word-modal" data-action="clickStopPropagate">
             <div class="word-modal-header">
-                <div class="sidebar-title">📊 阅读等级评估</div>
+                <div class="sidebar-title"><span class="ico ico-trend" aria-hidden="true"></span>阅读等级评估</div>
                 <button class="word-modal-close" data-action="closeARPanel">×</button>
             </div>
             <div class="ar-level">
@@ -314,7 +322,7 @@
     <div class="word-modal-overlay" id="comp-modal">
         <div class="word-modal word-modal--narrow">
             <div class="word-modal-header">
-                <div class="word-modal-word">📖 章节理解测验</div>
+                <div class="word-modal-word"><span class="ico ico-target" aria-hidden="true"></span>章节理解测验</div>
                 <button class="word-modal-close" data-action="closeCompModal">×</button>
             </div>
             <div id="comp-content">
@@ -327,7 +335,7 @@
     <div class="word-modal-overlay" id="review-modal">
         <div class="word-modal word-modal--compact">
             <div class="word-modal-header">
-                <div class="word-modal-word" id="review-title">📝 词汇复习</div>
+                <div class="word-modal-word" id="review-title"><span class="ico ico-pencil" aria-hidden="true"></span>词汇复习</div>
                 <button class="word-modal-close" data-action="closeReviewModal">×</button>
             </div>
             <div id="review-content">

@@ -11,10 +11,21 @@ import os
 import threading
 import uuid
 from pathlib import Path
-import edge_tts
-from flask import jsonify, request, send_from_directory
 
-from extensions.auth import _api_rate_limit_ok
+# edge_tts 真正的使用点在 tts_providers(按需 import),这里只保留一个引用,
+# 原因有两个:
+#   1) 测试会 monkeypatch `extensions.tts.edge_tts.Communicate`。两边拿到的是
+#      **同一个模块对象**,所以老测试的打桩照样生效,不用改。
+#   2) 保持 edge-tts 可选:将来想跑纯本地部署(不装微软那套依赖)时,
+#      这个文件仍然能 import 成功。
+try:
+    import edge_tts  # noqa: F401
+except ImportError:  # pragma: no cover - 只在没装 edge-tts 的机器上触发
+    edge_tts = None
+from flask import jsonify, request, send_from_directory, session
+
+from extensions.auth import _api_rate_limit_ok, require_parent_auth
+from extensions import tts_providers
 
 
 logger = logging.getLogger(__name__)
@@ -29,6 +40,46 @@ TTS_TIMEOUT_SEC = 15  # edge-tts 卡死时 worker 也不能无限等
 
 
 # === TTS 缓存淘汰 (真正的 LRU: 基于 atime, mtime 不可靠) ===
+# provider 支持的音频容器。opus 存成 .ogg(浏览器认这个扩展名)。
+_AUDIO_SUFFIXES = ('.mp3', '.ogg', '.aac', '.flac', '.wav', '.pcm')
+
+
+def _audio_files() -> list:
+    """列出缓存里的音频文件。
+
+    只认真音频文件:不能无脑 `glob('*')` —— 目录、写入中的 .tmp、
+    以及任何被丢进这个目录的别的东西都会被数进去,状态页的计数就骗人了。
+    """
+    if not TTS_DIR.exists():
+        return []
+    out = []
+    for f in TTS_DIR.iterdir():
+        try:
+            if (f.is_file() and not f.name.startswith('.')
+                    and f.suffix.lower() in _AUDIO_SUFFIXES):
+                out.append(f)
+        except OSError:
+            continue
+    return out
+
+
+def _cache_key(text: str, voice: str = '', settings: dict = None) -> str:
+    """缓存文件名(不含扩展名)。
+
+    刻意把 provider 指纹算进去:家长把引擎从微软换成自建服务之后,
+    旧音频是**孤儿** —— 永远不会被命中,但还占着磁盘,而且听起来
+    "设置没生效"。key 里带着引擎,新旧音频就天然分开了。
+
+    提取成函数而不是在两处各写一遍:重复的 md5 公式迟早会被改歪。
+    """
+    settings = settings if settings is not None else tts_providers.get_settings()
+    # 指纹跟随「当前已保存的设置」,而不是这次传进来的 settings:
+    # 缓存文件必须在保存设置之前就已存在,不然第一次合成就会算到另一个 key。
+    fp = tts_providers.cache_fingerprint()
+    used_voice = voice or tts_providers.voice_for(settings)
+    return hashlib.md5(f'{fp}|{used_voice}|{text}'.encode()).hexdigest()[:12]
+
+
 def _evict_tts_cache(audio_dir: Path):
     """超过 TTS_CACHE_MAX_BYTES / TTS_CACHE_MAX_FILES 时,按 atime 删最旧访问的文件。
 
@@ -146,8 +197,23 @@ def pregenerate_all_tts():
     合成用 semaphore 收并发(见 _pregen_concurrency),单事件循环内跑,
     _pregen_state 的计数只在 await 间隙更新,无线程竞争。
     """
+    if _pregen_state.get('running'):
+        logger.info("TTS 预生成已在运行,跳过这次触发")
+        return
+
+    settings = tts_providers.get_settings()
+    if settings['provider'] == 'device':
+        # 家长选了「用平板自带语音」——服务端一个音频都不该合成,
+        # 否则会白跑一遍几千条,还占几个 GB 磁盘。
+        logger.info("TTS provider=device,跳过服务端预生成(前端用平板自带语音)")
+        _pregen_state.update({'running': False, 'attempted': 0, 'succeeded': 0,
+                              'failed': 0, 'last_error': None,
+                              'skipped': 'device'})
+        return
+
     async def generate():
-        _pregen_state.update({'running': True, 'attempted': 0, 'succeeded': 0, 'failed': 0, 'last_error': None})
+        _pregen_state.update({'running': True, 'attempted': 0, 'succeeded': 0,
+                              'failed': 0, 'last_error': None, 'skipped': None})
         try:
             TTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -188,22 +254,42 @@ async def _pregen_synthesize(text: str) -> bool:
 
     提到模块级便于测试直接调 — 之前是 pregenerate_all_tts 内部闭包, 测不到。
     """
-    text_hash = hashlib.md5((text + DEFAULT_VOICE).encode()).hexdigest()[:12]
-    audio_path = TTS_DIR / f'{text_hash}.mp3'
+    settings = tts_providers.get_settings()
+    voice = tts_providers.voice_for(settings)
+    ext = tts_providers.audio_ext(settings)
+    text_hash = _cache_key(text, voice, settings)
+    audio_path = TTS_DIR / f'{text_hash}.{ext}'
     if audio_path.exists():
         _pregen_state['attempted'] += 1
         _pregen_state['succeeded'] += 1
         return True
+
+    # 预生成是后台线程,不能阻塞。provider 合成是同步的(urllib / edge-tts),
+    # 所以丢进线程池跑,别占住事件循环。
+    def _synth():
+        data, _ext = tts_providers.synthesize(text, voice=voice, settings=settings)
+        tmp = audio_path.with_name(f'.{audio_path.name}.{uuid.uuid4().hex}.tmp')
+        try:
+            with open(tmp, 'wb') as f:
+                f.write(data)
+            os.replace(tmp, audio_path)
+        finally:
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+
     try:
-        await edge_tts.Communicate(text, voice=DEFAULT_VOICE).save(str(audio_path))
+        await asyncio.to_thread(_synth)
         _pregen_state['attempted'] += 1
         _pregen_state['succeeded'] += 1
         return True
     except Exception as e:
         _pregen_state['attempted'] += 1
         _pregen_state['failed'] += 1
-        _pregen_state['last_error'] = f'{type(e).__name__}: {e}'[:200]
-        logger.warning(f'TTS 预生成失败: text={text[:30]!r} err={type(e).__name__}')
+        detail = e.detail if isinstance(e, tts_providers.TTSError) else f'{type(e).__name__}: {e}'
+        _pregen_state['last_error'] = detail[:200]
+        logger.warning(f'TTS 预生成失败: text={text[:30]!r} err={detail[:120]}')
         return False
 
 
@@ -228,7 +314,11 @@ def start_tts_pregeneration():
 def register_routes(app):
     @app.route('/api/tts', methods=['POST'])
     def text_to_speech():
-        """TTS 语音合成 - 使用 edge-tts, 缓存到本地"""
+        """TTS 语音合成 —— 引擎由家长在家长页配置(edge / 自建服务 / 平板自带)。
+
+        缓存文件名里带 provider 指纹:换了引擎之后旧音频不会继续被命中,
+        否则会出现「设置改了但读的 还是老声音」。
+        """
         ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'tts')
         if not ok:
             return jsonify({
@@ -240,7 +330,7 @@ def register_routes(app):
 
         data = request.get_json()
         text = data.get('text', '')
-        voice = data.get('voice', DEFAULT_VOICE)
+        voice = data.get('voice', '')
 
         if not text:
             return jsonify({
@@ -249,39 +339,48 @@ def register_routes(app):
                 "retryable": False,  # 用户输入问题, 重试也没用
                 "retry_after": 0,
             })
-        # 生成唯一文件名 (包含音色的 hash)
-        text_hash = hashlib.md5((text + voice).encode()).hexdigest()[:12]
+
+        settings = tts_providers.get_settings()
+        if settings['provider'] == 'device':
+            # 家长选了「用平板自带语音」——服务端不合成,前端会直接用
+            # speechSynthesis。这里返回明确指令而不是 500,免得前端以为是故障。
+            return jsonify({
+                "success": False,
+                "error": "当前使用平板自带语音,服务端不合成",
+                "use_device_voice": True,
+                "retryable": False,
+                "retry_after": 0,
+            }), 409
+
+        used_voice = tts_providers.voice_for(settings) if not voice else voice
+        # 生成唯一文件名 (provider 指纹 + 音色 + 文本)
+        text_hash = _cache_key(text, used_voice, settings)
         TTS_DIR.mkdir(parents=True, exist_ok=True)
-        audio_path = TTS_DIR / f'{text_hash}.mp3'
+        ext = tts_providers.audio_ext(settings)
+        audio_path = TTS_DIR / f'{text_hash}.{ext}'
 
         # 如果已存在:更新 atime (LRU 跟踪) + 直接返回
         if audio_path.exists():
             _touch_atime(audio_path)
-            return jsonify({"success": True, "audio_url": f"/audio/tts/{text_hash}.mp3"})
+            return jsonify({"success": True, "audio_url": f"/audio/tts/{text_hash}.{ext}"})
 
         temp_path = audio_path.with_name(f'.{audio_path.name}.{uuid.uuid4().hex}.tmp')
 
-        async def generate():
-            # 临时文件不匹配 *.mp3,避免后台 LRU 删除仍在写入的音频。
-            await asyncio.wait_for(
-                edge_tts.Communicate(text, voice=voice).save(str(temp_path)),
-                timeout=TTS_TIMEOUT_SEC,
-            )
-            if temp_path.exists() and temp_path.stat().st_size > 0:
-                os.replace(temp_path, audio_path)
-
         try:
-            asyncio.run(generate())
-        except asyncio.TimeoutError:
-            logger.warning(f'TTS 超时 ({TTS_TIMEOUT_SEC}s): text={text[:30]!r}')
+            audio, _ext = tts_providers.synthesize(text, voice=used_voice, settings=settings)
+            with open(temp_path, 'wb') as f:
+                f.write(audio)
+            os.replace(temp_path, audio_path)
+        except tts_providers.TTSError as e:
+            # 原始异常进日志, 不暴露给前端 (可能含 token / path)
+            logger.warning(f'TTS error: {e.detail}')
             return jsonify({
                 "success": False,
-                "error": "语音合成超时, 请稍后再试",
+                "error": e.message,
                 "retryable": True,
-                "retry_after": 5,
-            }), 504
+                "retry_after": e.retry_after,
+            }), e.http_status
         except Exception as e:
-            # 原始异常进日志, 不暴露给前端 (可能含 token / path)
             logger.warning(f'TTS error: {type(e).__name__}: {e}')
             return jsonify({
                 "success": False,
@@ -298,8 +397,7 @@ def register_routes(app):
         if audio_path.exists():
             # 异步触发 LRU 淘汰 (不阻塞响应)
             threading.Thread(target=_evict_tts_cache, args=(TTS_DIR,), name='tts-evict', daemon=True).start()
-            return jsonify({"success": True, "audio_url": f"/audio/tts/{text_hash}.mp3"})
-        # edge-tts 没抛异常但也没写出文件 — 服务端静默失败
+            return jsonify({"success": True, "audio_url": f"/audio/tts/{text_hash}.{ext}"})
         logger.warning(f'TTS 无音频: text={text[:30]!r}')
         return jsonify({
             "success": False,
@@ -324,13 +422,150 @@ def register_routes(app):
                 "retryable": True,
                 "retry_after": retry,
             }), 429
-        count = sum(1 for _ in TTS_DIR.glob('*.mp3')) if TTS_DIR.exists() else 0
+        files = _audio_files()
+        count = len(files)
+        size = sum(f.stat().st_size for f in files)
+        settings = tts_providers.get_settings()
         return jsonify({
             "success": True,
             "status": "ok",
             "audio_files": count,
+            "audio_bytes": size,
             "pregenerate": dict(_pregen_state),
+            # device 模式下服务端不合成,预生成统计没有意义,前端据此隐藏进度。
+            "provider": settings['provider'],
+            "server_synthesis": settings['provider'] != 'device',
         })
+
+    # === TTS 设置(家长配置) ===
+    # 读接口公开(孩子端要知道该不该调 /api/tts),但**只返回不含密钥的摘要**。
+    # 写接口必须家长登录。
+    @app.route('/api/tts/settings', methods=['GET'])
+    def tts_settings_get():
+        """孩子端和家长端共用一个 GET。
+
+        分成两个同路径的 GET 是没用的 —— Flask 只会命中先注册的那个,
+        家长视图将永远取不到。公开字段(能不能调服务端合成)人人都能看;
+        家长额外拿端点/模型/格式。
+        """
+        ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'tts_settings')
+        if not ok:
+            return jsonify({"success": False, "error": "请求过快", "retry_after": retry}), 429
+        data = {"success": True, **tts_providers.public_settings()}
+        if session.get('parent_auth'):
+            data["settings"] = tts_providers.parent_settings_view()
+        return jsonify(data)
+
+    @app.route('/api/tts/settings', methods=['POST'])
+    @require_parent_auth
+    def tts_settings_save():
+        """保存设置。api_key 传空字符串 = 清空密钥(用整段覆盖而不是增量合并,
+        否则家长在表单里删掉密钥会存不进去)。"""
+        body = request.get_json(silent=True) or {}
+        try:
+            tts_providers.save_settings(body)
+        except ValueError as e:
+            return jsonify({"success": False, "error": str(e)}), 400
+        except Exception as e:
+            logger.error('TTS 设置保存失败: %s', e)
+            return jsonify({"success": False, "error": '保存失败'}), 500
+        # 这里**不**自动开一轮全量预生成:
+        #   - 家长刚换引擎时最想干的是「听一句」,那是 /api/tts/test 的事;
+        #   - 几千条全量合成会立刻把家里那台 TTS 服务打满,还可能刷屏报错;
+        #   - 连按两次保存会起两个预生成线程互相踩 _pregen_state。
+        # 想整本预生成,跟读页点「预下载音频」。
+        return jsonify({"success": True, "settings": tts_providers.parent_settings_view()})
+
+    @app.route('/api/tts/pregenerate', methods=['POST'])
+    def tts_pregenerate():
+        """启动一轮后台预生成,立即返回。
+
+        跟读页的「预下载音频」按钮调的就是这个。之前**这个路由根本不存在**
+        (前端调了,后端 404),按钮点了只会报错。
+        """
+        ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'pregenerate')
+        if not ok:
+            return jsonify({
+                "success": False,
+                "error": f"请求过快, {retry} 秒后再试",
+                "retryable": True,
+                "retry_after": retry,
+            }), 429
+
+        settings = tts_providers.get_settings()
+        if settings['provider'] == 'device':
+            return jsonify({
+                "success": False,
+                "error": "当前使用平板自带语音,服务端不生成音频",
+            }), 409
+        if _pregen_state.get('running'):
+            return jsonify({
+                "success": True,
+                "error": "已经在生成了",
+                "pregenerate": dict(_pregen_state),
+            })
+        threading.Thread(target=pregenerate_all_tts, name='tts-pregenerate', daemon=True).start()
+        return jsonify({"success": True, "pregenerate": dict(_pregen_state)})
+
+    @app.route('/api/tts/cache', methods=['POST'])
+    @require_parent_auth
+    def tts_cache_clear():
+        """清空服务端音频缓存。
+
+        换引擎之后旧音频是**孤儿**:缓存 key 带了 provider 指纹,永远不会再被命中,
+        但文件还占着磁盘(预生成过的书能有几个 GB)。换引擎之后清一次是合理动作。
+        """
+        removed, freed = 0, 0
+        if TTS_DIR.exists():
+            for f in list(TTS_DIR.iterdir()):
+                try:
+                    if f.is_file():
+                        freed += f.stat().st_size
+                        f.unlink()
+                        removed += 1
+                except OSError:
+                    pass
+        logger.info(f'TTS 缓存已清空: {removed} 个文件 / {freed / 1048576:.1f} MB')
+        return jsonify({"success": True, "removed": removed, "freed_bytes": freed})
+
+    @app.route('/api/tts/settings/clear-key', methods=['POST'])
+    @require_parent_auth
+    def tts_settings_clear_key():
+        tts_providers.clear_api_key()
+        return jsonify({"success": True, "settings": tts_providers.parent_settings_view()})
+
+    @app.route('/api/tts/settings', methods=['DELETE'])
+    @require_parent_auth
+    def tts_settings_reset():
+        tts_providers.clear_settings()
+        return jsonify({"success": True, "settings": tts_providers.parent_settings_view()})
+
+    @app.route('/api/tts/test', methods=['POST'])
+    @require_parent_auth
+    def tts_test():
+        """试听:合成一句短文本,返回耗时和体积。
+
+        家长手填端点/密钥时最需要的就是「到底通没通、哪里错了」,
+        所以失败必须带可读原因(地址错 / 密钥错 / 接口不存在),不是抛栈。
+        """
+        body = request.get_json(silent=True) or {}
+        # 允许试听「表单里还没保存的草稿」:点了就听见,不用先保存再试。
+        draft = {k: v for k, v in body.items() if k in tts_providers.DEFAULTS}
+        if draft:
+            base = tts_providers.get_settings()
+            base.update({k: v for k, v in draft.items() if v not in (None, '')})
+            if 'api_key' in body:
+                base['api_key'] = body['api_key']
+            settings = base
+        else:
+            settings = tts_providers.get_settings()
+        result = tts_providers.check_connection(settings, with_audio=True)
+        code = 200 if result['success'] else 502
+        if result['success']:
+            logger.info('TTS 试听成功: %sms %sB', result['ms'], result['bytes'])
+        else:
+            logger.warning('TTS 试听失败: %s', result.get('detail'))
+        return jsonify(result), code
 
     @app.route('/audio/<path:filename>')
     def serve_audio(filename):

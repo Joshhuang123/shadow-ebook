@@ -3,6 +3,7 @@
 <head>
     <link rel="stylesheet" href="/styles/tokens.css">
     <link rel="stylesheet" href="/styles/base.css">
+    <link rel="stylesheet" href="/styles/icons.css">
     <link rel="stylesheet" href="/styles/components.css">
     <script src="/js/dispatcher.js"></script>
 <script src="/theme.js"></script>
@@ -20,36 +21,40 @@
 </head>
 <body>
     <nav class="top-nav">
-        <div class="nav-brand">📖 影子电子书</div>
-        <div class="nav-links">
-            <a href="/" class="nav-link">电子书</a>
-            <a href="/tutor" class="nav-link active">跟读学习</a>
-            <a href="/grammar" class="nav-link">语法学习</a>
-            <a href="/stats" class="nav-link">📊 统计</a>
-            <a href="/parent" class="nav-link nav-link-parent">🔐 家长</a>
+        <div class="nav-brand">
+            <div class="logo"><span class="ico ico-book" aria-hidden="true"></span></div>
+            <span>影子电子书</span>
         </div>
-    <button id="themeBtn" class="theme-btn" data-action="cycleTheme">&#xD83D;&#xDD0C;</button>
+        <div class="nav-links">
+            <a href="/" class="nav-link"><span class="ico ico-book" aria-hidden="true"></span>电子书</a>
+            <a href="/tutor" class="nav-link active">跟读学习</a>
+            <a href="/grammar" class="nav-link"><span class="ico ico-quote" aria-hidden="true"></span>语法学习</a>
+            <a href="/stats" class="nav-link"><span class="ico ico-chart" aria-hidden="true"></span>统计</a>
+            <a href="/parent" class="nav-link nav-link-parent"><span class="ico ico-lock" aria-hidden="true"></span>家长</a>
+        </div>
+    <button id="themeBtn" class="theme-btn" data-action="cycleTheme"><span class="ico ico-moon" aria-hidden="true"></span></button>
         </nav>
     <div class="container">
-        <header>
-<h1>🦊 英语跟读辅导</h1>
-            <p id="header-subtitle">选择学习内容开始跟读练习</p>
+        <header class="page-head">
+            <span class="page-head-icon"><span class="ico ico-mic" aria-hidden="true"></span></span>
+            <h1 class="page-head-title">英语跟读辅导</h1>
+            <p class="page-head-sub" id="header-subtitle">选择学习内容开始跟读练习</p>
         </header>
 
         <!-- 书籍选择 -->
         <div id="book-selection" class="card">
-            <h2>📚 选择学习内容</h2>
+            <h2 class="card-title"><span class="ico ico-books" aria-hidden="true"></span>选择学习内容</h2>
             <div class="unit-list">
                 <div class="unit-item" data-action="selectBook" data-arg="nc2a">
-                    <span class="unit-name">📖 新概念英语青少版2A</span>
+                    <span class="unit-name"><span class="ico ico-book" aria-hidden="true"></span>新概念英语青少版2A</span>
                     <span class="unit-count">9个单元 · 语法跟读</span>
                 </div>
                 <div class="unit-item" data-action="selectBook" data-arg="mth29">
-                    <span class="unit-name">🎄 Magic Tree House #29<br><small>Christmas in Camelot 圣诞奇案</small></span>
+                    <span class="unit-name"><span class="ico ico-tree" aria-hidden="true"></span>Magic Tree House #29<br><small>Christmas in Camelot 圣诞奇案</small></span>
                     <span class="unit-count">7个章节 · 故事跟读</span>
                 </div>
                 <div class="unit-item" data-action="showVocabReview" id="vocab-review-entry">
-                    <span class="unit-name">🔁 今日复习 <span id="vocab-due-badge">0</span></span>
+                    <span class="unit-name"><span class="ico ico-repeat" aria-hidden="true"></span>今日复习 <span id="vocab-due-badge">0</span></span>
                     <span class="unit-count">间隔重复 · 巩固查过的词</span>
                 </div>
             </div>
@@ -57,26 +62,26 @@
 
         <!-- R12: 词汇复习视图 -->
         <div id="vocab-review-view" class="card hidden">
-            <h2>🔁 今日复习</h2>
+            <h2 class="card-title"><span class="ico ico-repeat" aria-hidden="true"></span>今日复习</h2>
             <div id="vocab-flashcard"></div>
         </div>
 
         <!-- 单元选择 (NC2A) -->
         <div id="unit-selection" class="card hidden">
-            <h2>📚 选择学习单元 <button class="btn btn-secondary btn-inline-back" data-action="showBooks">← 返回选择</button></h2>
+            <h2 class="card-title"><span class="ico ico-books" aria-hidden="true"></span>选择学习单元 <button class="btn btn-secondary btn-inline-back" data-action="showBooks"><span class="ico ico-arrow-left" aria-hidden="true"></span>返回选择</button></h2>
             <div class="unit-list" id="unit-list"></div>
         </div>
 
         <!-- 章节选择 (Magic Tree House) -->
         <div id="chapter-selection" class="card hidden">
-            <h2>🎄 Christmas in Camelot <button class="btn btn-secondary btn-inline-back" data-action="showBooks">← 返回选择</button></h2>
+            <h2 class="card-title"><span class="ico ico-tree" aria-hidden="true"></span>Christmas in Camelot <button class="btn btn-secondary btn-inline-back" data-action="showBooks"><span class="ico ico-arrow-left" aria-hidden="true"></span>返回选择</button></h2>
             <p class="chapter-desc">Jack和Annie收到Morgan的邀请，去卡米洛特过圣诞节！跟读故事句子，学习地道的英语表达。</p>
             <div class="unit-list" id="chapter-list"></div>
         </div>
 
         <!-- 跟读界面 -->
         <div id="practice-view" class="card hidden">
-            <h2 id="unit-title">📖 Unit 1-2: 现在进行时</h2>
+            <h2 id="unit-title"><span class="ico ico-book" aria-hidden="true"></span>Unit 1-2: 现在进行时</h2>
 
             <div class="progress-bar">
                 <div class="progress-fill" id="progress-fill"></div>
@@ -91,10 +96,10 @@
 
             <div class="controls">
                 <button class="btn btn-primary" id="btn-listen" data-action="playSentence">
-                    🔊 听标准发音
+                    <span class="ico ico-speaker" aria-hidden="true"></span>听标准发音
                 </button>
                 <button class="btn btn-secondary" id="btn-pregenerate" data-action="pregenerateAudio">
-                    📥 预下载音频
+                    <span class="ico ico-arrow-right-wide" aria-hidden="true"></span>预下载音频
                 </button>
             </div>
 
@@ -118,26 +123,26 @@
             <div class="waveform-comparison hidden" id="waveform-comparison">
                 <div class="waveform-row">
                     <div class="waveform-label">
-                        <span>🔊 原音</span>
-                        <button class="waveform-play-btn" id="btn-play-original" data-action="playOriginal">▶ 播放</button>
+                        <span class="wave-label"><span class="ico ico-speaker" aria-hidden="true"></span>原音</span>
+                        <button class="waveform-play-btn" id="btn-play-original" data-action="playOriginal"><span class="ico ico-play" aria-hidden="true"></span>播放</button>
                     </div>
                     <canvas id="waveform-original" class="waveform-canvas"></canvas>
                 </div>
                 <div class="waveform-row">
                     <div class="waveform-label">
-                        <span>🎤 你的录音</span>
-                        <button class="waveform-play-btn" id="btn-play-recorded" data-action="playRecorded">▶ 播放</button>
+                        <span class="wave-label"><span class="ico ico-mic" aria-hidden="true"></span>你的录音</span>
+                        <button class="waveform-play-btn" id="btn-play-recorded" data-action="playRecorded"><span class="ico ico-play" aria-hidden="true"></span>播放</button>
                     </div>
                     <canvas id="waveform-recorded" class="waveform-canvas"></canvas>
                 </div>
                 <div class="waveform-tips">
-                    💡 蓝色是原音，绿色是你的录音。播放对比听听差异！
+                    <span class="ico ico-bulb" aria-hidden="true"></span>蓝色是原音，绿色是你的录音。播放对比听听差异！
                 </div>
             </div>
 
             <div class="controls">
                 <button class="btn btn-danger" id="btn-record" data-action="startRecording">
-                    🎤 开始跟读
+                    <span class="ico ico-mic" aria-hidden="true"></span>开始跟读
                 </button>
                 <button class="btn btn-success hidden" id="btn-stop" data-action="stopRecording">
                     ⏹ 停止录音
@@ -146,7 +151,7 @@
 
             <!-- 反馈 -->
             <div class="feedback hidden" id="feedback">
-                <h3>📝 发音反馈</h3>
+                <h3 class="feedback-title"><span class="ico ico-pencil" aria-hidden="true"></span>发音反馈</h3>
                 <div id="feedback-content"></div>
             </div>
 

@@ -103,10 +103,11 @@
 
         .stat-card {
             background: var(--bg-card);
-            border: 1px solid var(--border);
+            border: 1px solid var(--rule);
             border-radius: 16px;
             padding: 24px;
             text-align: center;
+            box-shadow: var(--shadow-sm);
         }
 
         .stat-icon {

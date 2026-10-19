@@ -2,6 +2,9 @@
         // 状态
         let bookData = null;
         let currentBookId = null;
+        // 书架列表拉到的阅读进度。loadBook 要用「继续读」接着上次的位置,
+        // 但 loadBook 不一定有列表数据(直接从别的入口进来),所以单独存一份。
+        let shelfProgress = {};
         let currentChapterIndex = 0;
         let currentSentenceIndex = 0;
         let sentences = [];
@@ -27,6 +30,43 @@
         let currentAudioUrl = null;  // 当前 audioElement 的 blob URL, 用于 revoke
         let isPlaying = false;
         let ttsRequestSeq = 0;  // 单调递增, 丢弃过期响应, 防止双击叠音
+
+        // 服务端要不要合成?家长在家长页可以把语音来源换成「平板自带语音」,
+        // 那时服务端一个音频都不该生成,前端直接用 speechSynthesis 念。
+        // 读一次就够 —— 设置变了刷新页面即可,不值得为此做实时推送。
+        let serverSynthesis = true;
+        let ttsProvider = 'edge';      // 服务端当前用的引擎
+        let serverVoice = '';          // 家长在家长页配的音色
+        async function loadTtsMode() {
+            try {
+                const r = await fetch('/api/tts/settings');
+                const j = await r.json();
+                if (j && j.success) {
+                    if (typeof j.server_synthesis === 'boolean') serverSynthesis = j.server_synthesis;
+                    if (j.provider) ttsProvider = j.provider;
+                    if (typeof j.voice === 'string') serverVoice = j.voice;
+                }
+            } catch (e) {
+                serverSynthesis = true;  // 拉不到就按原样,别把朗读弄坏
+            }
+            syncVoicePicker();
+        }
+
+        // 顶栏那个「朗读音色」下拉列的是微软的音色名。
+        // 家长换成自建服务或系统语音之后,这个下拉就没有意义了 ——
+        // 留着会让人以为选它有用,其实请求里根本不会被采纳。直接藏起来。
+        function syncVoicePicker() {
+            const picker = document.querySelector('.voice-picker');
+            if (!picker) return;
+            picker.style.display = (ttsProvider === 'edge') ? '' : 'none';
+        }
+
+        // 真正要发给服务端的音色:只有微软引擎才用顶栏下拉的值,
+        // 其余引擎一律用家长在家长页配的(serverVoice 由服务端自己决定)。
+        function voiceForRequest() {
+            if (ttsProvider === 'edge') return currentVoice;
+            return serverVoice || '';
+        }
         let currentWord = null;
         let vocabulary = JSON.parse(localStorage.getItem('vocabulary') || '[]');
         let lookedWords = JSON.parse(localStorage.getItem('lookedWords') || '{}');
@@ -65,7 +105,7 @@
             }
 
             async getSentenceId(bookId, sentenceIndex, text) {
-                const textHash = await this.hashText(text + currentVoice);
+                const textHash = await this.hashText(text + (typeof voiceForRequest === 'function' ? voiceForRequest() : currentVoice));
                 return `${bookId}_${sentenceIndex}_${textHash}`;
             }
 
@@ -95,7 +135,7 @@
                     const tx = this.db.transaction(this.storeName, 'readwrite');
                     const request = tx.objectStore(this.storeName).put({
                         id, bookId, sentenceIndex, text, audio: audioBlob,
-                        voice: currentVoice, cachedAt: Date.now()
+                        voice: (typeof voiceForRequest === 'function' ? voiceForRequest() : currentVoice), cachedAt: Date.now()
                     });
                     request.onerror = () => reject(request.error);
                     request.onsuccess = () => {
@@ -175,6 +215,7 @@
         updateVocabCount();
         updateReviewReminder();
         loadBookList();
+        loadTtsMode();
 
         // 显示书籍列表
         function showBookList() {
@@ -243,6 +284,7 @@
                 ]);
                 const booksData = await booksRes.json();
                 const progressMap = (await progressRes.json()).progress || {};
+                shelfProgress = progressMap;
 
                 const books = booksData.success ? booksData.books : [];
                 const continueCard = document.getElementById('continue-card');
@@ -290,7 +332,7 @@
                 if (parentAuthed) {
                     grid.insertAdjacentHTML('beforeend', `
                         <div class="import-card" data-action="clickTriggerImportFile">
-                            <div class="icon">➕</div>
+                            <div class="icon"><span class="ico ico-plus ico--solo" aria-hidden="true"></span></div>
                             <div class="text">导入新书</div>
                             <div class="hint">支持 EPUB 格式</div>
                         </div>
@@ -431,7 +473,7 @@
                 try {
                     const progress = await audioCache.getBookProgress(bookId);
                     if (progress.total > 0 && progress.cached > 0) {
-                        badge.textContent = `🔊 ${progress.cached}/${progress.total}`;
+                        badge.innerHTML = `<span class="ico ico-speaker" aria-hidden="true"></span>${progress.cached}/${progress.total}`;
                         badge.style.display = 'inline-block';
                     } else {
                         badge.style.display = 'none';
@@ -444,6 +486,7 @@
 
         // 缓存整本书的音频（后台执行）
         async function cacheBookAudio(bookId) {
+            if (!serverSynthesis) return;
             const btn = document.querySelector(`.cache-audio-btn[onclick*="${bookId}"]`);
             if (btn) {
                 btn.classList.add('caching');
@@ -479,7 +522,7 @@
                             const ttsRes = await fetch('/api/tts', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ text, voice: currentVoice })
+                                body: JSON.stringify({ text, voice: voiceForRequest() })
                             });
                             const ttsData = await ttsRes.json();
                             if (ttsData.success && ttsData.audio_url) {
@@ -493,7 +536,7 @@
                         // 更新进度
                         const badge = document.getElementById(`cache-badge-${bookId}`);
                         if (badge) {
-                            badge.textContent = `🔊 ${cached}/${totalSentences}`;
+                            badge.innerHTML = `<span class="ico ico-speaker" aria-hidden="true"></span>${cached}/${totalSentences}`;
                             badge.style.display = 'inline-block';
                         }
                     }
@@ -504,8 +547,43 @@
 
             if (btn) {
                 btn.classList.remove('caching');
-                btn.textContent = '🔊';
+                btn.innerHTML = '<span class="ico ico-speaker" aria-hidden="true"></span>';
             }
+        }
+
+        // 打开一本书时从哪一章开始。
+        //
+        // 两件事,都不是洁癖:
+        // 1) EPUB 前面通常压着版权页、目录、前言。默认从头读,孩子点开
+        //    第一句读到的是 "Text copyright © 2001 by ...",「读一句」这个
+        //    核心功能第一下就教给了他一串 ISBN 号。
+        // 2) 书架上那张卡叫「继续读」,点进去却每次都回到第 1 章,
+        //    名不副实;孩子自己也不知道读到哪了。
+        // 有阅读记录就用记录,没有就跳过开头的前置页。
+        const FRONT_MATTER = /^\s*(cover|copyright|contents|table of contents|title page|titlepage|colophon|imprint|dedication|acknowledg)/i;
+
+        function startChapterFor(book) {
+            const chapters = (book && book.chapters) || [];
+            const saved = shelfProgress[book && book.id];
+
+            // 只在开头找,最多看 6 章:有些书第一章就叫「Prologue」是正文,
+            // 翻过头会把孩子直接送到中段。
+            const limit = Math.min(chapters.length, 6);
+            let firstReal = 0;
+            for (let i = 0; i < limit; i++) {
+                const ch = chapters[i] || {};
+                const name = String(ch.name || ch.title || '');
+                if (!FRONT_MATTER.test(name)) { firstReal = i; break; }
+            }
+
+            if (saved && Number.isFinite(Number(saved.chapter_idx))) {
+                const ch = Math.max(0, Math.min(Number(saved.chapter_idx), chapters.length - 1));
+                // 记录停在版权页/目录页上,说明孩子还没真正开始读这本书。
+                // 这种"进度"钉住不放 —— 每次点「继续读」都落在版权页上,
+                // 打开应用第一眼是一屏法律声明。直接进正文第一页。
+                if (ch >= firstReal) return ch;
+            }
+            return firstReal;
         }
 
         // 加载书籍
@@ -514,7 +592,19 @@
                 const res = await fetch(`/api/book/${bookId}`);
                 const data = await res.json();
 
-                if (data.success) {
+                if (!data.success) {
+                    // 以前这里是「if (data.success) {...}」,条件不满足就什么都不做。
+                    // 结果是:点「继续读」毫无反应、日志里也干干净净,
+                    // 家长只会以为 App 坏了。失败必须出声,而且要说人话。
+                    console.error('loadBook: 服务端返回 success=false', res.status, data);
+                    const msg = res.status === 404 ? '找不到这本书'
+                        : res.ok ? '这本书打不开,请重新导入'
+                        : '连不上服务器,请检查服务是否在运行';
+                    showToast(msg);
+                    return;
+                }
+
+                {
                     bookData = data.book;
                     currentBookId = bookId;
                     document.getElementById('reader-title').textContent = bookData.book;
@@ -527,12 +617,22 @@
 
                     flattenBook(bookData);
                     await applyReadingDensity();
-                    selectChapter(0);
+                    // 书架列表没来得及跑完就直接点进书(或者刷新后直奔阅读器),
+                    // 这时 shelfProgress 是空的,自己补拉一次,免得「继续读」
+                    // 又从版权页开始。
+                    if (!Object.keys(shelfProgress).length) {
+                        try {
+                            const r = await fetch('/api/progress');
+                            shelfProgress = (await r.json()).progress || {};
+                        } catch (e) { /* 拉不到就从头读,不影响 */ }
+                    }
+                    selectChapter(startChapterFor(bookData));
                     showReader();
                     calculateAR();
                 }
             } catch (err) {
                 console.error('Failed to load book:', err);
+                showToast('打开失败,请检查服务器是否还在运行');
             }
         }
 
@@ -543,37 +643,61 @@
             const toc = book.toc || [];
             const chapters = book.chapters || [];
 
+            // 目录里混着封面页 / 版权页 / 扉页。它们不是章节,
+            // 排在最前面只会让孩子对着 "Copyright" 发呆 —— 滤掉。
+            const FRONT_ITEM = /^\s*(cover|title\s*page|titlepage|copyright|contents|table\s*of\s*contents|colophon|imprint|dedication|acknowledg)/i;
+
+            // toc 的第 i 项**不一定**等于 chapters 的第 i 项:
+            // 一本书的 toc 常常比章节多出封面/版权页/扉页,而 chapters
+            // 是从正文开始编的。原来直接拿 i 去 selectChapter,
+            // 点 "Prologue" 会跳到第 5 章去 —— 差了三章。
+            // 现在按标题对齐,对不上再退回按位置。
+            const chapterOf = (entry, i) => {
+                const t = String((entry && entry.title) || '').trim().toLowerCase();
+                const hit = chapters.findIndex(c =>
+                    String(c.name || c.title || '').trim().toLowerCase() === t);
+                return hit >= 0 ? hit : Math.min(i, chapters.length - 1);
+            };
+
             // 优先用真 toc
             if (toc.length > 0) {
-                toc.forEach((entry, i) => {
+                // 章节边界未识别时(扫描版/无 h1),所有点击都落在同一章,
+                // 列出来也没用 —— 给个提示告诉家长真相。
+                const unusable = toc.length > chapters.length * 2;
+                const items = toc
+                    .map((entry, i) => ({ entry, chapter: chapterOf(entry, i) }))
+                    .filter(it => !FRONT_ITEM.test(String(it.entry.title || '')));
+
+                items.forEach((it, n) => {
                     const btn = document.createElement('button');
-                    btn.className = 'toc-item' + (i === 0 ? ' active' : '');
-                    btn.innerHTML = `<div>${entry.title}</div><div class="toc-item-meta">第 ${i + 1} 章</div>`;
+                    btn.className = 'toc-item';
+                    btn.dataset.chapter = String(it.chapter);
+                    btn.innerHTML =
+                        `<span class="toc-num">${n + 1}</span>` +
+                        `<span class="toc-title">${escapeHtml(it.entry.title)}</span>`;
                     btn.onclick = () => {
-                        // 真 toc 的 href 跟 chapters 数组里没严格对应, 但顺序一般对得上
-                        // 找不到匹配的 chapter 时, fall back 到第 i 个
-                        const idx = Math.min(i, chapters.length - 1);
-                        // R10: toc 项数远大于 chapter 数(扫描版/无 h1 的书)时,
-                        // 所有点击都落到 chapter 0, 视觉上"没用"。给个提示告诉家长真相。
-                        if (toc.length > chapters.length * 2) {
+                        if (unusable) {
                             showToast('此书未识别章节边界,目录仅供参考');
                             return;
                         }
-                        selectChapter(idx);
+                        selectChapter(it.chapter);
                     };
                     list.appendChild(btn);
                 });
                 // 章节边界未识别时, 在 list 底部再放一次提示
-                if (toc.length > chapters.length * 2) {
+                if (unusable) {
                     list.insertAdjacentHTML('beforeend',
-                        '<div class="toc-empty">⚠️ 此书未识别章节边界,目录仅供参考</div>');
+                        '<div class="toc-empty">此书未识别章节边界,目录仅供参考</div>');
                 }
             } else if (chapters.length > 0) {
                 // 降级: 用 chapter.name 当目录项
                 chapters.forEach((ch, i) => {
                     const btn = document.createElement('button');
-                    btn.className = 'toc-item' + (i === 0 ? ' active' : '');
-                    btn.textContent = ch.name || `第 ${i + 1} 章`;
+                    btn.className = 'toc-item';
+                    btn.dataset.chapter = String(i);
+                    btn.innerHTML =
+                        `<span class="toc-num">${i + 1}</span>` +
+                        `<span class="toc-title">${escapeHtml(ch.name || `第 ${i + 1} 章`)}</span>`;
                     btn.onclick = () => selectChapter(i);
                     list.appendChild(btn);
                 });
@@ -607,8 +731,8 @@
             const meta = document.getElementById('book-info-meta');
             const parts = [];
             if (book.creator) parts.push(`<span>👤 ${book.creator}</span>`);
-            if (book.publisher) parts.push(`<span>📚 ${book.publisher}</span>`);
-            if (book.year) parts.push(`<span>📅 ${book.year}</span>`);
+            if (book.publisher) parts.push(`<span><span class="ico ico-books" aria-hidden="true"></span>${book.publisher}</span>`);
+            if (book.year) parts.push(`<span><span class="ico ico-calendar" aria-hidden="true"></span>${book.year}</span>`);
             if (book.language) parts.push(`<span>🌐 ${book.language}</span>`);
             if (book.identifier) parts.push(`<span>🆔 ${book.identifier}</span>`);
             meta.innerHTML = parts.join('') || '<span>无出版信息</span>';
@@ -738,9 +862,14 @@
         // 必须每次重绘都重算,否则读到下一章首句时章名还停在上一章。
         function updateChapterChrome() {
             currentChapterIndex = chapterIndexOf(currentSentenceIndex);
-            document.querySelectorAll('.toc-item').forEach((item, i) => {
+            // 目录项已经滤掉封面/版权页,DOM 顺序和章节序号对不上了,
+            // 所以用元素上记的 data-chapter 认领当前章。
+            document.querySelectorAll('.toc-item').forEach((item) => {
                 item.className = item.className.replace(/\s*active/g, '');
-                if (i === currentChapterIndex) item.className += ' active';
+                const ch = Number(item.dataset.chapter);
+                if (Number.isFinite(ch) && ch === currentChapterIndex) {
+                    item.className += ' active';
+                }
             });
             const last = (bookData && bookData.chapters ? bookData.chapters.length : 1) - 1;
             document.querySelectorAll('[data-action="prevChapter"]')
@@ -1132,7 +1261,7 @@
 
             content.innerHTML = `
                 <div class="review-done">
-                    <div class="review-done-icon">${accuracy >= 80 ? '🎉' : accuracy >= 50 ? '👍' : '💪'}</div>
+                    <div class="review-done-icon">${accuracy >= 80 ? '<span class="ico ico-trophy ico--xl" aria-hidden="true"></span>' : accuracy >= 50 ? '<span class="ico ico-check ico--xl" aria-hidden="true"></span>' : '<span class="ico ico-spark ico--xl" aria-hidden="true"></span>'}</div>
                     <h3>${accuracy >= 80 ? '太棒了！' : accuracy >= 50 ? '不错！' : '继续加油！'}</h3>
                     <p class="done-sub">本次复习完成</p>
                     <div class="review-stats">
@@ -1264,8 +1393,95 @@
                 return;
             }
 
-            // 2. 缓存没有，使用Web Speech API
+            // 2. 缓存没有 —— 先问服务端要一段高质量音频。
+            //
+            // 这一步是「读一句」听起来自不自然的关键:早先阅读器**从不**
+            // 调服务端,直接用平板的 speechSynthesis,所以家长在家长页
+            // 配了再好的引擎,核心朗读功能也还是那把机械音。
+            // 现在服务端有引擎时优先用服务端的,失败才退回设备语音。
+            if (serverSynthesis) {
+                const played = await playWithServerTTS(text, onEnd);
+                if (played) return;
+                if (myToken !== ttsRequestSeq) return;   // 已被新调用覆盖
+            }
+
+            // 3. 都没有 —— 用设备自带语音(离线时的兜底)
             playWithWebSpeech(text, onEnd);
+        }
+
+        // 向服务端要一段音频并播放。返回 true = 已经安排上播放了。
+        async function playWithServerTTS(text, onEnd) {
+            const btn = document.getElementById('btn-play');
+            const status = document.getElementById('status-playing');
+            const myToken = ++ttsRequestSeq;
+            try {
+                const res = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, voice: voiceForRequest() })
+                });
+                const data = await res.json();
+                if (myToken !== ttsRequestSeq) return true;
+                if (data.use_device_voice) {
+                    // 服务端说「该用平板自带语音」(家长选了 device 模式)
+                    serverSynthesis = false;
+                    return false;
+                }
+                if (!data.success || !data.audio_url) return false;
+
+                if (audioElement) audioElement.pause();
+                if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
+                currentAudioUrl = data.audio_url;
+                audioElement = new Audio(currentAudioUrl);
+                isPlaying = true;
+
+                audioElement.onended = () => {
+                    isPlaying = false;
+                    btn.disabled = false;
+                    btn.classList.remove('playing');
+                    setReadAloudLabel(false);
+                    status.classList.add('hidden');
+                    if (onEnd) onEnd();
+                    cacheNextSentence();
+                };
+                audioElement.onerror = () => {
+                    // 音频文件坏了 —— 退回设备语音,别让孩子卡在「正在朗读…」
+                    audioElement = null;
+                    if (myToken !== ttsRequestSeq) return;
+                    playWithWebSpeech(text, onEnd);
+                };
+                audioElement.play().catch(() => {
+                    if (myToken !== ttsRequestSeq) return;
+                    playWithWebSpeech(text, onEnd);
+                });
+                return true;
+            } catch (e) {
+                console.warn('服务端 TTS 失败,改用设备语音:', e);
+                return false;
+            }
+        }
+
+        // 挑一个最好的英文音色。
+        //
+        // 原来只是 `voices.find(v => v.lang.startsWith('en'))` —— 拿到的
+        // 往往是列表里第一个,可能是个很糙的音色。系统里装了
+        // "Enhanced / Premium / Natural / Siri" 这类高质量音色的,
+        // 应该优先用它们;没有再退到普通 en-US。
+        function pickEnglishVoice() {
+            const voices = speechSynthesis.getVoices() || [];
+            const en = voices.filter(v => (v.lang || '').replace('_', '-').toLowerCase().startsWith('en'));
+            if (!en.length) return null;
+            const score = (v) => {
+                const name = (v.name || '').toLowerCase();
+                const local = v.localService ? 1 : 0;
+                if (/siri|natural|neural/.test(name)) return 100 + local;
+                if (/premium/.test(name)) return 90 + local;
+                if (/enhanced/.test(name)) return 80 + local;
+                if (/samantha|alex|ava|serena|allison|karen|daniel|moira/.test(name)) return 70 + local;
+                return 50 + local;
+            };
+            const best = en.slice().sort((a, b) => score(b) - score(a))[0];
+            return best || en[0];
         }
 
         // 使用Web Speech API播放
@@ -1283,13 +1499,12 @@
 
             speechSynthesis.cancel();
 
-            // 等待音色加载
-            const voices = speechSynthesis.getVoices();
-            const voice = voices.find(v => v.lang.startsWith('en')) || voices[0];
+            const voice = pickEnglishVoice();
 
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'en-US';
-            utterance.rate = 0.9;
+            // 0.85:刚开始学英语的孩子,标准语速偏快。慢一点更容易跟读。
+            utterance.rate = 0.85;
             utterance.voice = voice;
 
             utterance.onend = () => {
@@ -1320,8 +1535,15 @@
         function setReadAloudLabel(playing) {
             const icon = document.getElementById('play-icon');
             const label = document.querySelector('.read-aloud-text');
-            if (icon) icon.textContent = playing ? '⏸' : '🔊';
-            if (label) label.textContent = playing ? '停止' : '朗读';
+            // 图标是 <span class="ico ico-speaker"> 这种 mask 元素,
+            // 这里只能换 class —— 直接写 textContent 会把图标整个抹掉。
+            if (icon) {
+                icon.classList.toggle('ico-speaker', !playing);
+                icon.classList.toggle('ico-stop', playing);
+            }
+            // 空闲时固定叫「读一句」,不叫「朗读」——
+            // 按钮说的是「按一下会做什么」,孩子看一眼就知道下一步。
+            if (label) label.textContent = playing ? '停止' : '读一句';
         }
 
         // 朗读当前句。读完自动把游标推到下一句(不自动播)——
@@ -1436,7 +1658,7 @@
 
         // 缓存当前句子
         async function cacheCurrentSentence() {
-            if (!sentences || !currentBookId) return;
+            if (!sentences || !currentBookId || !serverSynthesis) return;
             const text = sentences[currentSentenceIndex];
             if (!text || text.length > 500) return;
 
@@ -1460,7 +1682,7 @@
                     const res = await fetch('/api/tts', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text, voice: currentVoice })
+                        body: JSON.stringify({ text, voice: voiceForRequest() })
                     });
                     const data = await res.json();
                     if (data.success && data.audio_url) {
@@ -1478,7 +1700,7 @@
 
         // 缓存下一句（后台）
         async function cacheNextSentence() {
-            if (!sentences || !currentBookId) return;
+            if (!sentences || !currentBookId || !serverSynthesis) return;
             const nextIndex = currentSentenceIndex + 1;
             if (nextIndex >= sentences.length) return;
 
@@ -1495,7 +1717,7 @@
                     const res = await fetch('/api/tts', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text, voice: currentVoice })
+                        body: JSON.stringify({ text, voice: voiceForRequest() })
                     });
                     const data = await res.json();
                     if (data.success && data.audio_url) {
@@ -1514,7 +1736,7 @@
             const progress = await audioCache.getBookProgress(currentBookId);
             const badge = document.getElementById(`cache-badge-${currentBookId}`);
             if (badge && progress.total > 0) {
-                badge.textContent = `🔊 ${progress.cached}/${progress.total}`;
+                badge.innerHTML = `<span class="ico ico-speaker" aria-hidden="true"></span>${progress.cached}/${progress.total}`;
                 badge.style.display = progress.cached > 0 ? 'inline-block' : 'none';
             }
         }
@@ -1768,14 +1990,14 @@
 
             } catch (err) {
                 console.error('麦克风错误:', err);
-                document.getElementById('record-hint').textContent = '❌ 无法访问麦克风';
+                document.getElementById('record-hint').textContent = '无法访问麦克风';
                 return;
             }
 
             isRecording = true;
             document.getElementById('btn-record').classList.add('recording');
-            document.getElementById('btn-record').textContent = '⏹';
-            document.getElementById('record-hint').textContent = '🎤 正在听，请说话...';
+            document.getElementById('btn-record').innerHTML = '<span class="ico ico-stop" aria-hidden="true"></span>';
+            document.getElementById('record-hint').textContent = '正在听，请说话...';
 
             // 开始语音识别
             recognition = new SpeechRecognition();
@@ -1799,7 +2021,7 @@
                 }
                 // 更新提示
                 if (interimTranscript) {
-                    document.getElementById('record-hint').textContent = '🎤 听到: ' + interimTranscript;
+                    document.getElementById('record-hint').textContent = '听到: ' + interimTranscript;
                 }
             };
 
@@ -1849,7 +2071,7 @@
         function stopRecording() {
             isRecording = false;
             document.getElementById('btn-record').classList.remove('recording');
-            document.getElementById('btn-record').textContent = '🎙️';
+            document.getElementById('btn-record').innerHTML = '<span class="ico ico-mic" aria-hidden="true"></span>';
 
             if (recognition) {
                 try { recognition.stop(); } catch(e) {}
@@ -1929,10 +2151,10 @@
         // 获取评分等级
         function getScoreLevel(score) {
             if (score >= 90) return { text: '🌟 非常棒！', class: 'excellent', color: '#6B8A52' };
-            if (score >= 75) return { text: '👍 很棒！', class: 'great', color: '#6B8A52' };
-            if (score >= 60) return { text: '📚 不错！', class: 'good', color: '#D4A574' };
+            if (score >= 75) return { text: '很棒！', class: 'great', color: '#6B8A52' };
+            if (score >= 60) return { text: '不错！', class: 'good', color: '#D4A574' };
             if (score >= 40) return { text: '💪 继续加油', class: 'practice', color: '#D4A574' };
-            return { text: '📖 多读几遍', class: 'try', color: '#C25B56' };
+            return { text: '多读几遍', class: 'try', color: '#C25B56' };
         }
 
         // ========== 学习统计 ==========
@@ -2062,7 +2284,7 @@
 
             content.innerHTML = `
                 <div class="comp-done">
-                    <div class="comp-done-icon">${accuracy >= 80 ? '🎉' : accuracy >= 60 ? '👍' : '📚'}</div>
+                    <div class="comp-done-icon">${accuracy >= 80 ? '<span class="ico ico-trophy ico--xl" aria-hidden="true"></span>' : accuracy >= 60 ? '<span class="ico ico-check ico--xl" aria-hidden="true"></span>' : '<span class="ico ico-book ico--xl" aria-hidden="true"></span>'}</div>
                     <h3>${accuracy >= 80 ? '太棒了！' : accuracy >= 60 ? '还不错！' : '继续加油！'}</h3>
                     <p class="done-sub">本章理解测验完成</p>
                     <div class="comp-stats">
@@ -2095,15 +2317,23 @@
         }
 
         // ========== 儿童模式切换 ==========
+        // 放在导航栏里(和主题按钮并排),不浮在页面左下角:
+        // 浮在角上的按钮会跟内容抢位置,看着像没做完的半成品。
         const kidModeToggle = document.createElement('button');
         kidModeToggle.className = 'kid-mode-toggle';
-        kidModeToggle.innerHTML = '👦';
+        kidModeToggle.innerHTML = '<span class="ico ico-user" aria-hidden="true"></span>';
         kidModeToggle.title = '切换儿童模式';
+        kidModeToggle.setAttribute('aria-label', '切换儿童模式');
         kidModeToggle.onclick = () => {
             document.body.classList.toggle('kid-mode');
             localStorage.setItem('kidMode', document.body.classList.contains('kid-mode'));
         };
-        document.body.appendChild(kidModeToggle);
+        const themeBtn = document.getElementById('themeBtn');
+        if (themeBtn && themeBtn.parentNode) {
+            themeBtn.parentNode.insertBefore(kidModeToggle, themeBtn);
+        } else {
+            document.body.appendChild(kidModeToggle);
+        }
 
         // 恢复儿童模式状态
         if (localStorage.getItem('kidMode') === 'true') {

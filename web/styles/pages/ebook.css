@@ -533,7 +533,7 @@
             border-color: var(--color-primary);
             background: var(--tint-primary);
         }
-        .import-card .icon { font-size: 2em; }
+        .import-card .icon { font-size: 2em; line-height: 1; }
         .import-card .text {
             color: var(--text-primary);
             font-size: var(--text-base);
@@ -655,7 +655,9 @@
             width: 56px;
             height: 56px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #C25B56, #C8835A);
+            /* 原来是一颗红橙渐变球 —— 全站唯一的高饱和渐变块,
+               和「纸 + 墨」的基调冲突。压成实心赤陶,层次交给阴影。 */
+            background: var(--primary-fill);
             border: none;
             color: white;
             font-size: 20px;
@@ -674,8 +676,9 @@
 
         .record-btn.recording {
             animation: pulse 1.5s ease infinite;
-            background: linear-gradient(135deg, var(--danger), #A04B47);
+            background: var(--danger);
         }
+        .record-btn .ico { width: 26px; height: 26px; margin: 0; }
 
         @keyframes pulse {
             0%, 100% { box-shadow: 0 0 0 0 rgba(194, 91, 86, 0.4); }
@@ -937,10 +940,15 @@
             padding: 40px;
         }
 
+        /* 完成页的大标记原来是 4em 的 emoji(🎉/👍/💪),现在是线性图标,
+           尺寸直接给到图标本身,避免 font-size 变化影响描边粗细。 */
         .review-done-icon {
-            font-size: 4em;
+            display: flex;
+            justify-content: center;
             margin-bottom: 20px;
         }
+        .review-done-icon .ico,
+        .comp-done-icon .ico { width: 76px; height: 76px; margin: 0; color: var(--primary-fill); }
 
         .review-stats {
             display: flex;
@@ -1006,7 +1014,8 @@
             text-align: center;
         }
         .comp-done-icon {
-            font-size: 3em;
+            display: flex;
+            justify-content: center;
             margin-bottom: 10px;
         }
         .comp-stats {
@@ -1332,7 +1341,12 @@
             display: none;
             position: fixed;
             inset: 0;
-            background: var(--bg);
+            /* 整屏就是一张纸:正文和上下两条玻璃条都压在同一张纸上,
+               层次来自玻璃条的半透明,不是来自"页面分区"。
+               这是"像书不像 App"最关键的一步 —— 原来顶栏/正文/底栏
+               是三块不同底色的方框,一眼就是网页布局。 */
+            background: var(--bg-card);
+            background-image: var(--paper-grain);
             /* 必须高于 .top-nav 的 z-index:100,否则导航会压在阅读器上面,
                顶栏的「书名 · 章节 · N/M」直接被吃掉。 */
             z-index: 200;
@@ -1342,43 +1356,65 @@
         }
         .reader-page.active { display: grid; }
 
-        /* --- 顶栏 --- */
+        /* --- 顶栏:浮在纸面上的一层玻璃 ---
+           原来是一整条实心 --bg-card 加 --border,像后台系统的工具条。
+           现在整屏是一张纸,顶栏是半透明的玻璃压在纸上,
+           背景模糊让纸纹从条底下透出来 —— 层次感就是这么来的。
+           (不支持 backdrop-filter 的浏览器会退化成半透明纯色,一样能用。) */
         .reader-bar {
             grid-area: bar;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: var(--space-4);
-            padding: var(--space-3) var(--space-5);
-            background: var(--bg-card);
-            border-bottom: 1px solid var(--border);
+            min-height: 60px;
+            padding: var(--space-2) var(--space-5);
+            background: var(--bg-glass);
+            -webkit-backdrop-filter: blur(16px) saturate(1.35);
+            backdrop-filter: blur(16px) saturate(1.35);
+            border-bottom: 1px solid var(--bg-glass-line);
         }
         .reader-back {
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 0.9em;
-            white-space: nowrap;
-            min-height: 48px;
             display: inline-flex;
             align-items: center;
+            gap: 7px;
             flex-shrink: 0;
+            min-height: 48px;
+            padding: 0 15px 0 11px;
+            margin-left: -11px;
+            border-radius: var(--radius-pill);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-family: var(--font-ui);
+            font-size: var(--text-sm);
+            font-weight: var(--font-medium);
+            white-space: nowrap;
+            transition: background-color var(--duration-fast) var(--ease-out),
+                        color var(--duration-fast) var(--ease-out);
         }
-        .reader-back:hover { color: var(--color-primary); }
+        .reader-back:hover { color: var(--color-primary); background: var(--tint-primary); }
+        .reader-back .ico { width: 16px; height: 16px; }
+
         .reader-bar-mid {
             flex: 1;
             min-width: 0;
             text-align: center;
-            line-height: 1.3;
+            line-height: 1.25;
         }
         .reader-title {
-            font-size: 1em;
-            font-weight: var(--font-semibold);
+            /* 书名用衬线:页眉也是"书"的一部分,不是工具条上的一个字段 */
+            font-family: var(--font-display);
+            font-size: 15.5px;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            color: var(--text-primary);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
         .reader-chapter {
-            font-size: 0.78em;
+            font-size: 11.5px;
+            letter-spacing: 0.06em;
             color: var(--text-secondary);
             white-space: nowrap;
             overflow: hidden;
@@ -1386,25 +1422,48 @@
         }
         .reader-pos {
             flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            height: 28px;
+            padding: 0 12px;
+            border-radius: var(--radius-pill);
+            background: var(--tint-primary);
+            color: var(--color-primary);
+            font-family: var(--font-ui);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
             font-variant-numeric: tabular-nums;
-            color: var(--text-secondary);
-            font-size: 0.9em;
         }
 
-        /* --- 进度条:贴着顶栏的一条细线 --- */
+        /* --- 进度条:顶栏下沿的一根细线,末端带一个小圆点 --- */
         .reader-progress {
             grid-area: prog;
             height: 3px;
-            background: var(--divider);
+            background: var(--rule);
         }
         .reader-progress-fill {
+            position: relative;
             height: 100%;
             width: 0;
             background: var(--color-primary);
             transition: width var(--duration-base) var(--ease-out);
         }
+        /* 末端的小圆点:读到哪一眼看得见,不用去数右上角那个数字 */
+        .reader-progress-fill::after {
+            content: '';
+            position: absolute;
+            right: -4px;
+            top: 50%;
+            width: 8px;
+            height: 8px;
+            margin-top: -4px;
+            border-radius: 50%;
+            background: var(--color-primary);
+            box-shadow: 0 0 0 3px var(--bg-card);
+        }
 
-        /* --- 中间:大字号英文 --- */
+        /* --- 中间:一张纸 --- */
         .reader-stage {
             grid-area: stage;
             overflow-y: auto;
@@ -1412,12 +1471,14 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            padding: var(--space-6) var(--space-5);
+            padding: var(--space-7) var(--space-5) var(--space-6);
             gap: var(--space-4);
         }
         .reading-column {
             width: 100%;
-            max-width: var(--container-md);
+            /* focus 模式一行 40~50 字符最舒服。再宽的话,28px 的句子
+               拖成一条长带,眼睛从行尾扫回行首更容易串行。 */
+            max-width: 24em;
             font-size: var(--sentence-font-size, 28px);
             /* 行高从 1.7 提到 1.85 —— 杂志/书籍排版的行距经验值。
                1.7 在大字号下会让上下两行咬住,孩子扫行时更容易串行。 */
@@ -1431,19 +1492,27 @@
         }
         .sentence-item {
             display: block;
-            margin-bottom: 0.5em;
+            margin-bottom: 0.62em;
             color: var(--text-primary);
             cursor: pointer;
             border-radius: var(--radius-md);
-            padding: 0.1em 0.35em;
-            margin-left: -0.35em;
+            padding: 0.16em 0.4em;
+            margin-left: -0.4em;
             transition: color var(--duration-fast) var(--ease-out),
                         opacity var(--duration-base) var(--ease-out),
-                        background-color var(--duration-base) var(--ease-out);
+                        background-color var(--duration-base) var(--ease-out),
+                        box-shadow var(--duration-base) var(--ease-out);
         }
         /* 非当前句压暗但不清零 —— 孩子要能看到上下文,又知道焦点在哪 */
         .sentence-item.read { color: var(--text-secondary); opacity: 0.75; }
-        .sentence-item.active { color: var(--text-primary); font-weight: var(--font-medium); }
+        /* 当前句:一道极淡的底色,像书页上被按住的一行。
+           颜色很轻,不会盖过正文。 */
+        .sentence-item.active {
+            color: var(--text-primary);
+            font-weight: var(--font-medium);
+            background: var(--tint-active);
+            box-shadow: inset 2px 0 0 var(--color-primary-light);
+        }
         .sentence-item:hover { color: var(--color-primary); }
 
         /* 正在朗读的那一句:底下一道细高亮,像书页上被按住的一行。
@@ -1466,13 +1535,17 @@
         }
 
         .reader-hint {
-            font-size: var(--text-sm);
+            font-size: 12.5px;
+            line-height: 1.7;
+            letter-spacing: 0.02em;
             color: var(--text-disabled);
             text-align: center;
+            max-width: 46em;
         }
 
         .density-hint {
-            font-size: var(--text-sm);
+            font-size: 12.5px;
+            letter-spacing: 0.02em;
             color: var(--text-disabled);
             text-align: center;
             opacity: 0.8;
@@ -1488,7 +1561,14 @@
             align-items: stretch;
         }
         .mode-book .reading-column {
-            max-width: var(--container-lg, 860px);
+            /* 书籍行长经验值:一行 60~75 个字符最舒服,超过 80 眼睛
+               从行尾扫回行首就容易串行。
+               原来这里是 --container-lg(1200px),在 1180px 的屏上等于
+               一行 110+ 字符 —— 这是「网页」而不是「书」最硬的几何证据。
+               改成 34em:跟着字号走,20px 时约 66 字符,孩子把字调到 30px
+               仍然是约 66 字符,行长不会因为他放大字就失控。 */
+            max-width: 34em;
+            margin-inline: auto;
             /* 字号必须跟着 --sentence-font-size 走。之前这里写死了
                clamp(17px, 1.35vw, 21px),结果书页模式下 A- / A+ 两个按钮
                改了变量却没有任何样式读它 —— 按钮看着能点,字纹丝不动。
@@ -1512,19 +1592,34 @@
         }
         .mode-book .sentence-item.active {
             font-weight: var(--font-medium);
-            background: var(--tint-primary);
+            /* 书页模式下的一句话可能就是一整段。左侧色条只会在第一行
+               露一截(内联盒跨行时阴影不会重复画),底色又会把整段
+               刷成一块荧光 —— 两种标记都撤掉,只留极淡的底色。 */
+            background: var(--tint-active);
+            box-shadow: none;
             border-radius: 3px;
         }
 
+        /* 「正在朗读」:浮在纸面底部的一枚小徽标。
+           原来它跟着正文排在流里,一出现就把整页文字顶下去一截。
+           现在吸在底部(滚到底也不掉),正文位置不会跳。 */
         .status-playing {
+            position: sticky;
+            bottom: 0;
+            align-self: center;
+            z-index: 2;
             display: flex;
             align-items: center;
-            gap: var(--space-2);
-            padding: var(--space-2) var(--space-4);
+            gap: 9px;
+            padding: 7px 16px 7px 13px;
             border-radius: var(--radius-pill);
-            background: var(--tint-primary);
-            color: var(--color-primary);
-            font-size: var(--text-sm);
+            background: var(--bg-card);
+            border: 1px solid var(--rule);
+            color: var(--text-secondary);
+            font-family: var(--font-ui);
+            font-size: 12.5px;
+            letter-spacing: 0.04em;
+            box-shadow: var(--shadow-md);
         }
         .audio-bars { display: flex; gap: 3px; align-items: flex-end; height: 16px; }
         .audio-bar {
@@ -1542,87 +1637,154 @@
             50%      { transform: scaleY(1); }
         }
 
-        /* --- 底栏:三个动作 --- */
+        /* --- 底栏:朗读键真居中 ---
+           左:翻页 + 字号(都是低频、安静的操作)
+           中:朗读(唯一的高频动作,也是唯一一块实心)
+           右:抽屉入口
+
+           中间那一块用绝对定位居中,而不是用 1fr auto 1fr 的三列网格 ——
+           三列网格里左右两列会被内容撑得不一样宽,朗读键其实是偏的;
+           更糟的是 1fr 轨道会把左列压扁,「A− A+」挤成 20px 宽,
+           48px 触控下限当场破掉。绝对居中 + 窄屏分层,两边都不会被挤。 */
         .reader-foot {
             grid-area: foot;
+            position: relative;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: var(--space-3);
             padding: var(--space-3) var(--space-5);
-            background: var(--bg-card);
-            border-top: 1px solid var(--border);
+            background: var(--bg-glass);
+            -webkit-backdrop-filter: blur(16px) saturate(1.35);
+            backdrop-filter: blur(16px) saturate(1.35);
+            border-top: 1px solid var(--bg-glass-line);
             padding-bottom: max(var(--space-3), env(safe-area-inset-bottom));
         }
-        .font-stepper { display: flex; align-items: center; gap: var(--space-1); }
+        .reader-foot-left {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            min-width: 0;
+            flex: none;
+        }
+        .reader-foot-right { display: flex; justify-content: flex-end; flex: none; }
+
+        .page-nav { display: flex; align-items: center; gap: var(--space-2); }
+        .page-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 48px;
+            padding: 0 15px;
+            background: transparent;
+            border: 1px solid var(--rule-strong);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-family: var(--font-ui);
+            font-size: var(--text-sm);
+            font-weight: var(--font-medium);
+            white-space: nowrap;
+            cursor: pointer;
+            transition: background-color var(--duration-fast) var(--ease-out),
+                        color var(--duration-fast) var(--ease-out),
+                        border-color var(--duration-fast) var(--ease-out);
+        }
+        .page-btn:hover {
+            color: var(--color-primary);
+            border-color: var(--color-primary);
+            background: var(--tint-primary);
+        }
+        .page-btn .ico { width: 15px; height: 15px; }
+
+        /* 字号:两个按钮拼成一段,中间一根发丝线 —— 像一个整体控件,
+           而不是两个孤零零的方块。 */
+        .font-stepper {
+            display: flex;
+            align-items: stretch;
+            border: 1px solid var(--rule-strong);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
         .font-step {
             min-width: 48px;
             min-height: 48px;
             background: none;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
+            border: none;
             color: var(--text-secondary);
+            font-family: var(--font-ui);
             font-weight: var(--font-semibold);
             font-size: var(--text-lg);
             cursor: pointer;
+            transition: background-color var(--duration-fast) var(--ease-out),
+                        color var(--duration-fast) var(--ease-out);
         }
-        .font-step--up { font-size: var(--text-xl); }
-        .font-step:hover { border-color: var(--color-primary); color: var(--color-primary); }
+        .font-step + .font-step { border-left: 1px solid var(--rule-strong); }
+        .font-step:hover { color: var(--color-primary); background: var(--tint-primary); }
 
         /* --- 朗读区:整个产品最高频的动作,底栏里唯一的实心大按钮。
-               「读一句」60px(孩子在 iPad 上的主操作档),「连续朗读」是次级,
-               挨着它放,拇指一次移动就到,不用瞄准。 --- */
+               「读一句」是主操作档,「连续朗读」是次级,挨着它放,
+               拇指一次移动就到,不用瞄准。 --- */
         .read-cluster {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
             display: flex;
             align-items: stretch;
             gap: var(--space-2);
-            flex: 1;
-            max-width: 460px;
             min-width: 0;
         }
 
         .read-aloud {
-            flex: 1;
-            min-width: 0;
-            min-height: 60px;                 /* md 档 = 孩子的主动作 */
+            min-width: 152px;
+            min-height: 56px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: var(--space-2);
+            gap: 9px;
+            padding: 0 26px;
             background: var(--primary-fill);
             color: var(--text-on-primary);
             border: none;
-            border-radius: var(--radius-pill);
+            /* 圆角矩形而不是全药丸:实心键有"键帽"的实体感,
+               全圆角会变成一个漂浮的标签。 */
+            border-radius: 16px;
             font-size: var(--text-lg);
             font-weight: var(--font-semibold);
+            letter-spacing: 0.03em;
             font-family: var(--font-ui);
             cursor: pointer;
-            /* 只动背景和阴影,不碰 transform —— 按下去时按钮缩一下会让
-               10 岁孩子以为点歪了 */
+            /* 顶部一道内高光 + 底下两层投影:光从上面照下来的实心键 */
+            box-shadow: var(--fill-shadow), var(--fill-inset);
             transition: background-color var(--duration-fast) var(--ease-out),
-                        box-shadow var(--duration-base) var(--ease-out);
+                        box-shadow var(--duration-base) var(--ease-out),
+                        transform var(--duration-fast) var(--ease-out);
         }
         .read-aloud:hover:not(:disabled) {
             background: var(--primary-fill-hover);
-            box-shadow: var(--shadow-md);
+            box-shadow: var(--fill-shadow-hover), var(--fill-inset);
         }
-        .read-aloud:active:not(:disabled) { transform: scale(0.98); }
-        .read-aloud:disabled { opacity: 0.75; cursor: default; }
+        /* 按下去 = 往下沉 1px,阴影收紧。不是缩放 ——
+           缩一下孩子会以为点歪了。 */
+        .read-aloud:active:not(:disabled) {
+            transform: translateY(1px);
+            box-shadow: 0 1px 1px rgba(45, 42, 38, 0.12), var(--fill-inset);
+        }
+        .read-aloud:disabled { opacity: 0.7; cursor: default; }
         .read-aloud.playing { background: var(--primary-fill-hover); }
         .read-aloud-icon { font-size: 1.15em; line-height: 1; }
 
         .read-alone {
             flex-shrink: 0;
-            min-height: 60px;
-            padding: 0 var(--space-4);
+            min-height: 56px;
+            padding: 0 20px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 7px;
             background: transparent;
             color: var(--text-secondary);
-            border: 1px solid var(--border-strong);
-            border-radius: var(--radius-pill);
+            border: 1px solid var(--rule-strong);
+            border-radius: 16px;
             font-size: var(--text-sm);
             font-weight: var(--font-medium);
             font-family: var(--font-ui);
@@ -1638,20 +1800,29 @@
             border-color: var(--color-primary);
             color: var(--color-primary);
         }
-        .read-alone-icon { font-size: 11px; letter-spacing: -1px; }
+        .read-alone .ico { width: 15px; height: 15px; }
 
         .drawer-open {
-            min-width: 48px;
-            min-height: 48px;
-            background: none;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
+            width: 48px;
+            height: 48px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: 1px solid var(--rule-strong);
+            border-radius: 50%;
             color: var(--text-secondary);
-            font-size: var(--text-xl);
-            line-height: 1;
             cursor: pointer;
+            transition: background-color var(--duration-fast) var(--ease-out),
+                        color var(--duration-fast) var(--ease-out),
+                        border-color var(--duration-fast) var(--ease-out);
         }
-        .drawer-open:hover { border-color: var(--color-primary); color: var(--color-primary); }
+        .drawer-open:hover {
+            color: var(--color-primary);
+            border-color: var(--color-primary);
+            background: var(--tint-primary);
+        }
+        .drawer-open .ico { width: 19px; height: 19px; }
 
         /* --- 抽屉 --- */
         .reader-drawer {
@@ -1724,10 +1895,12 @@
             gap: 2px;
         }
         .toc-item {
-            display: block;
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
             width: 100%;
             text-align: left;
-            padding: var(--space-2) var(--space-3);
+            padding: 9px var(--space-3);
             background: none;
             border: none;
             border-radius: var(--radius-sm);
@@ -1736,9 +1909,27 @@
             font-size: var(--text-sm);
             cursor: pointer;
             min-height: 40px;
+            transition: background-color var(--duration-fast) var(--ease-out),
+                        color var(--duration-fast) var(--ease-out);
+        }
+        /* 序号:像书后面的目录页那样,左边一列编号 */
+        .toc-num {
+            flex: none;
+            width: 20px;
+            text-align: right;
+            font-family: var(--font-sans);
+            font-size: 11.5px;
+            font-variant-numeric: tabular-nums;
+            color: var(--text-disabled);
+        }
+        .toc-title {
+            flex: 1;
+            min-width: 0;
+            line-height: 1.5;
         }
         .toc-item:hover { background: var(--bg-dark); color: var(--text-primary); }
         .toc-item.active { background: var(--tint-primary); color: var(--color-primary); font-weight: var(--font-medium); }
+        .toc-item.active .toc-num { color: var(--color-primary); }
         .toc-item-meta { font-size: var(--text-xs); color: var(--text-disabled); }
         .toc-item.active .toc-item-meta { color: var(--color-primary); }
         .toc-empty {
@@ -1817,4 +2008,341 @@
             .reader-stage { padding: var(--space-5) var(--space-4); }
             .reading-column { font-size: calc(var(--sentence-font-size, 28px) * 0.82); }
             .reader-hint { display: none; }
+        }
+
+        /* 窄屏:翻页按钮只留箭头(省下 ~110px),
+           朗读键和字号档依然完整 —— 这两个不能省。 */
+        @media (max-width: 900px) {
+            .page-btn { padding: 0 12px; }
+            .page-btn-text { display: none; }
+        }
+        @media (max-width: 760px) {
+            .read-alone { padding: 0 14px; }
+            .read-alone-text { display: none; }
+            .read-aloud { min-width: 118px; padding: 0 18px; }
+        }
+        /* 手机竖屏:中间那一块和两边实在挤不到一行了,
+           朗读键单独占一整行 —— 它是主操作,不能被挤没。 */
+        @media (max-width: 560px) {
+            .reader-foot {
+                display: grid;
+                grid-template-columns: 1fr auto;
+                grid-template-areas:
+                    "left  right"
+                    "cluster cluster";
+                row-gap: 10px;
+            }
+            .reader-foot-left { grid-area: left; }
+            .reader-foot-right { grid-area: right; }
+            .read-cluster {
+                position: static;
+                transform: none;
+                grid-area: cluster;
+                justify-content: center;
+            }
+            .read-aloud { flex: 1; max-width: 280px; }
+        }
+
+        /* 缩小/放大字号两个按钮原本都只写一个「A」,只靠字号大小区分 ——
+           孩子看不出来哪个是变小。补上 −/+ 符号,一眼可辨。 */
+        .font-step {
+            display: inline-flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 1px;
+        }
+        .font-step-sign {
+            font-size: 0.62em;
+            line-height: 1;
+            transform: translateY(-0.28em);
+            opacity: 0.85;
+        }
+
+        /* ============================================================
+           书架重做:别再是「一堆白卡片」
+           ------------------------------------------------------------
+           原来的样子:一个圆角白盒子 + 四列网格,每张卡都带一张软阴影。
+           这套组合是 2015 年以后所有后台管理模板的默认长相,一眼就"不高级"。
+           换成:书立在架子上 —— 封面有自己的投影,文字安静地排在下面,
+           排与排之间用一根发丝线断开(架子本身)。
+
+           规则没变:触控目标 48px 下限、每页一个焦点、低饱和。
+           ============================================================ */
+
+        .book-list-page {
+            background-image: var(--paper-grain);
+            background-attachment: fixed;
+        }
+
+        /* ---- 分区标题:小标签 + 发丝线,像书里的扉页 ---- */
+        .book-list-page .section-title {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+            font-family: var(--font-display);
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            color: var(--text-primary);
+            margin: 0 0 20px;
+        }
+        .book-list-page .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--rule);
+        }
+        .shelf-count {
+            font-family: var(--font-sans);
+            font-size: 13px;
+            font-weight: 400;
+            color: var(--text-tertiary, var(--text-secondary));
+        }
+
+        /* ---- 书格:封面在上,文字在下 ---- */
+        .book-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 30px 26px;
+            margin-bottom: var(--space-7);
+            align-items: start;
+        }
+
+        .shelf-card {
+            position: relative;
+            cursor: pointer;
+            transition: transform 260ms var(--ease-out);
+        }
+        .shelf-card:hover { transform: translateY(-3px); }
+        .shelf-card:active { transform: translateY(-1px); }
+
+        /* 封面:书的投影,比卡片投影更硬 —— 立体的东西影子才硬 */
+        .shelf-card-cover {
+            width: 100%;
+            aspect-ratio: 3 / 4;
+            border-radius: 3px 8px 8px 3px;   /* 书脊在左 */
+            overflow: hidden;
+            background: var(--bg-dark);
+            border: none;
+            border-left: 3px solid rgba(45, 42, 38, 0.10);
+            box-shadow: var(--shadow-book);
+            transition: box-shadow 260ms var(--ease-out);
+        }
+        .shelf-card:hover .shelf-card-cover { box-shadow: var(--shadow-book-hover); }
+        .shelf-card-cover img { width: 100%; height: 100%; object-fit: cover; }
+
+        .shelf-card-title {
+            font-family: var(--font-display);
+            font-size: 15.5px;
+            font-weight: 600;
+            line-height: 1.35;
+            color: var(--text-primary);
+            margin: 12px 0 3px;
+            /* 书名最多两行,多了会把架子挤歪 */
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .shelf-card-author {
+            font-size: 12.5px;
+            color: var(--text-secondary);
+            margin: 0 0 9px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .shelf-card-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11.5px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        /* 进度:一根细线,不再是一块彩色条 */
+        .shelf-card-bar {
+            height: 2px;
+            background: var(--rule);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .shelf-card-fill {
+            height: 100%;
+            background: var(--color-primary);
+            border-radius: 2px;
+            transition: width 400ms var(--ease-out);
+        }
+        .shelf-card-del {
+            position: absolute;
+            top: -7px;
+            right: -7px;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            line-height: 1;
+            color: var(--text-secondary);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 200ms var(--ease-out);
+        }
+        .shelf-card:hover .shelf-card-del { opacity: 1; }
+
+        /* ============================================================
+           「继续读」:整页唯一的焦点,按「摊开的一本书」来做
+           ------------------------------------------------------------
+           原来是一个大圆角白盒子,封面缩在左边 104px,右边一大片空白,
+           按钮孤零零挂在最右。信息是散的,没有"正在读的这一本"的感觉。
+           现在:左边是能看出厚度的书,右边是书名/作者/进度,
+           进度用一根细线表示读到哪,按钮紧跟在书名下面。
+           ============================================================ */
+
+        .continue-card {
+            display: grid;
+            grid-template-columns: 168px minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 32px;
+            background: var(--bg-card);
+            border: 1px solid var(--rule);
+            border-radius: 18px;
+            padding: 28px 30px;
+            margin-bottom: 38px;
+            /* 不占满 1200px:一张 1160px 宽的卡,书名占 1/4、
+               按钮贴在最右,中间空出一大片,看着像加载没加载完。
+               收到 1000px 居中,像书封上的一条推荐。 */
+            max-width: 1000px;
+            margin-inline: auto;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+        }
+        /* 纸纹 + 一点点暖光,让这张卡和别的卡片不是同一个东西 */
+        .continue-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: var(--paper-grain);
+            pointer-events: none;
+        }
+        .continue-card::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg,
+                rgba(184, 106, 78, 0.55), rgba(184, 106, 78, 0.06));
+            pointer-events: none;
+        }
+
+        .continue-cover {
+            width: 168px;
+            height: 224px;
+            flex-shrink: 0;
+            border-radius: 3px 9px 9px 3px;
+            overflow: hidden;
+            background: var(--bg-dark);
+            border: none;
+            border-left: 4px solid rgba(45, 42, 38, 0.12);
+            box-shadow: var(--shadow-book);
+        }
+        .continue-cover img { width: 100%; height: 100%; object-fit: cover; }
+
+        .continue-body { min-width: 0; position: relative; }
+
+        .continue-eyebrow {
+            margin: 0 0 6px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--color-primary);
+        }
+        .continue-title {
+            font-family: var(--font-display);
+            font-size: 30px;
+            line-height: 1.18;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 7px;
+            letter-spacing: 0.005em;
+        }
+        .continue-author {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin: 0 0 22px;
+        }
+        .continue-progress {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .continue-bar {
+            flex: 1;
+            max-width: 260px;
+            height: 2px;
+            background: var(--rule);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .continue-fill {
+            height: 100%;
+            background: var(--color-primary);
+            border-radius: 2px;
+            transition: width 500ms var(--ease-out);
+        }
+        .continue-pos {
+            font-size: 12.5px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .continue-btn {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            min-height: 52px;
+            padding: 0 26px;
+            background: var(--primary-fill);
+            color: var(--text-on-primary);
+            border: none;
+            border-radius: 14px;
+            font-size: 15.5px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(45, 42, 38, 0.10), 0 6px 18px rgba(165, 90, 64, 0.22);
+            transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out),
+                        background-color 200ms var(--ease-out);
+        }
+        .continue-btn:hover {
+            background: var(--primary-fill-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(45, 42, 38, 0.10), 0 10px 24px rgba(165, 90, 64, 0.26);
+        }
+        .continue-btn:active { transform: translateY(0); }
+        .continue-btn .ico { width: 17px; height: 17px; margin: 0; }
+
+        /* 只有一本书时(继续读卡片),整页就是空的。
+           让它垂直居中 —— 顶上放一张卡、下面空 500px,看着像没加载完。 */
+        .book-list-page:has(#book-grid:empty) {
+            min-height: calc(100vh - 76px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .book-list-page:has(#book-grid:empty) .continue-card { margin-bottom: 0; }
+
+        /* 进度条 0% 时也要看得见那根"轨道",
+           否则只剩一句孤零零的「第 1 章 / 共 21 章」浮在空白里。 */
+        .continue-bar,
+        .shelf-card-bar {
+            background: var(--rule-strong);
         }

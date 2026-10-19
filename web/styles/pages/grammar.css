@@ -128,10 +128,13 @@
             transition: opacity 0.3s;
         }
 
+        /* hover:只抬 2px、描边转暖、投影收紧。
+           原来那条「赤陶→草绿」的渐变顶条会在鼠标扫过一排卡片时
+           闪出一条彩带,和整站「纸 + 墨 + 赤陶」的低饱和基调冲突。 */
         .grammar-card:hover {
-            border-color: var(--color-primary);
-            transform: translateY(-4px);
-            box-shadow: 0 12px 40px rgba(204, 120, 92, 0.2);
+            border-color: rgba(184, 106, 78, 0.42);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-book);
         }
 
         .grammar-card:hover::before {
@@ -165,19 +168,26 @@
         }
 
         /* 考试板块头部 */
+        /* 原来是 135° 暖色渐变。这类渐变是「网页模板感」的主要来源之一,
+           而且它让这一块的视觉重量超过了页头 —— 页面上真正的主角应该是
+           页头和下面的语法卡。改成纯纸面 + 发丝描边。 */
         .exam-header {
-            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(204, 120, 92, 0.1) 100%);
+            background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 32px;
-            margin-bottom: 32px;
+            border-radius: 18px;
+            padding: 30px 32px 32px;
+            margin-bottom: 28px;
             text-align: center;
+            box-shadow: var(--shadow-sm);
         }
 
         .exam-header h2 {
             font-size: 1.6em;
             margin-bottom: 8px;
         }
+        /* .card-title 是 flex 容器,内容默认靠左。考试区整体是居中排版的,
+           这里要跟着居中,否则标题贴左边、副标题和页签在中间,像没对齐。 */
+        .exam-header .card-title { justify-content: center; }
 
         .exam-tabs {
             display: flex;

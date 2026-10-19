@@ -198,7 +198,7 @@
                     const tag = interestLabels[meta.interest] || '冒险';
                     return `
                     <div class="book-rec-item" data-action="clickGoHref" data-arg="/ebook">
-                        <div class="book-rec-icon">📖</div>
+                        <div class="book-rec-icon"><span class="ico ico-book" aria-hidden="true"></span></div>
                         <div class="book-rec-info">
                             <div class="book-rec-title">${escapeHtml(book.title.replace(/_/g, ' '))}</div>
                             <div class="book-rec-meta">${Number(book.chapters) || 0}章节 · ${Number(book.sentences) || 0}句子</div>
@@ -340,22 +340,22 @@
                     <div class="stat-label">总学习时长</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">📚</div>
+                    <div class="stat-icon"><span class="ico ico-books" aria-hidden="true"></span></div>
                     <div class="stat-value">${stats.wordsLearned}</div>
                     <div class="stat-label">学习词汇</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">🗣️</div>
+                    <div class="stat-icon"><span class="ico ico-quote" aria-hidden="true"></span></div>
                     <div class="stat-value">${stats.sentencesPracticed}</div>
                     <div class="stat-label">跟读句子</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">✅</div>
+                    <div class="stat-icon"><span class="ico ico-check" aria-hidden="true"></span></div>
                     <div class="stat-value">${stats.wordsMastered}</div>
                     <div class="stat-label">掌握词汇</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">📖</div>
+                    <div class="stat-icon"><span class="ico ico-book" aria-hidden="true"></span></div>
                     <div class="stat-value">${stats.chapterRead}</div>
                     <div class="stat-label">读完章节</div>
                 </div>
@@ -420,7 +420,7 @@
             section.innerHTML = `
                 <div class="progress-item">
                     <div class="progress-header">
-                        <span>📚 词汇掌握</span>
+                        <span><span class="ico ico-pencil" aria-hidden="true"></span>词汇掌握</span>
                         <span>${stats.wordsMastered} / ${stats.wordsLearned} 词</span>
                     </div>
                     <div class="progress-bar">
@@ -429,7 +429,7 @@
                 </div>
                 <div class="progress-item">
                     <div class="progress-header">
-                        <span>📖 语法练习</span>
+                        <span><span class="ico ico-quote" aria-hidden="true"></span>语法练习</span>
                         <span>${grammarTotal} / ${grammarMax} 题</span>
                     </div>
                     <div class="progress-bar">
@@ -438,7 +438,7 @@
                 </div>
                 <div class="progress-item">
                     <div class="progress-header">
-                        <span>🗣️ 跟读练习</span>
+                        <span><span class="ico ico-quote" aria-hidden="true"></span>跟读练习</span>
                         <span>${stats.sentencesPracticed} 句</span>
                     </div>
                     <div class="progress-bar">

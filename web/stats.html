@@ -3,6 +3,7 @@
 <head>
     <link rel="stylesheet" href="/styles/tokens.css">
     <link rel="stylesheet" href="/styles/base.css">
+    <link rel="stylesheet" href="/styles/icons.css">
     <link rel="stylesheet" href="/styles/components.css">
     <script src="/js/dispatcher.js"></script>
 <script src="/theme.js"></script>
@@ -22,29 +23,30 @@
 <body>
     <nav class="top-nav">
         <div class="nav-brand">
-            <div class="logo">📖</div>
+            <div class="logo"><span class="ico ico-book" aria-hidden="true"></span></div>
             <span>影子电子书</span>
         </div>
         <div class="nav-links">
-            <a href="/" class="nav-link">电子书</a>
-            <a href="/tutor" class="nav-link">跟读学习</a>
-            <a href="/grammar" class="nav-link">语法学习</a>
-            <a href="/stats" class="nav-link active">📊 统计</a>
-            <a href="/parent" class="nav-link nav-link-parent">🔐 家长</a>
+            <a href="/" class="nav-link"><span class="ico ico-book" aria-hidden="true"></span>电子书</a>
+            <a href="/tutor" class="nav-link"><span class="ico ico-mic" aria-hidden="true"></span>跟读学习</a>
+            <a href="/grammar" class="nav-link"><span class="ico ico-quote" aria-hidden="true"></span>语法学习</a>
+            <a href="/stats" class="nav-link active"><span class="ico ico-chart" aria-hidden="true"></span>统计</a>
+            <a href="/parent" class="nav-link nav-link-parent"><span class="ico ico-lock" aria-hidden="true"></span>家长</a>
         </div>
-    <button id="themeBtn" class="theme-btn" data-action="cycleTheme">&#xD83D;&#xDD0C;</button>
+    <button id="themeBtn" class="theme-btn" data-action="cycleTheme"><span class="ico ico-moon" aria-hidden="true"></span></button>
         </nav>
 
     <div class="main-container">
-        <div class="hero">
-<h1 class="hero-title">📊 学习统计</h1>
-            <p class="hero-subtitle">记录你的每一步成长</p>
+        <div class="page-head">
+            <span class="page-head-icon"><span class="ico ico-chart" aria-hidden="true"></span></span>
+            <h1 class="page-head-title">学习统计</h1>
+            <p class="page-head-sub">记录你的每一步成长</p>
         </div>
 
         <!-- 这一页唯一的视觉焦点(照设计稿):连续学习天数大数字。
              原来 6 个等大卡片并排,没有焦点 —— 违反 DESIGN.md「每页只能有一个视觉焦点」。 -->
         <section class="streak-hero" aria-labelledby="streak-hero-label">
-            <div class="streak-hero-crown" aria-hidden="true">👑</div>
+            <div class="streak-hero-crown" aria-hidden="true"><span class="ico ico-fire ico--lg" aria-hidden="true"></span></div>
             <div class="streak-hero-value" id="streak-value">0</div>
             <h2 class="streak-hero-label" id="streak-hero-label">连续学习天数</h2>
             <p class="streak-hero-note" id="streak-note">今天读一点点,也算数</p>
@@ -52,7 +54,7 @@
 
         <!-- 学习时长图表 -->
         <div class="chart-section">
-            <div class="section-title">📈 近7天学习时长</div>
+            <div class="section-title"><span class="ico ico-trend" aria-hidden="true"></span>近7天学习时长</div>
             <div class="bar-chart" id="time-chart">
                 <!-- 动态填充 -->
             </div>
@@ -60,7 +62,7 @@
 
         <!-- 词汇量测试 -->
         <div class="chart-section" id="vocab-test-section">
-            <div class="section-title">📚 词汇量测试</div>
+            <div class="section-title"><span class="ico ico-pencil" aria-hidden="true"></span>词汇量测试</div>
             <div id="vocab-test-content">
                 <p class="vocab-test-intro">测试你的词汇水平，获得个性化书单推荐</p>
                 <button class="btn btn-primary" data-action="startVocabTest">开始测试</button>
@@ -69,7 +71,7 @@
 
         <!-- 词汇量测试题目 -->
         <div class="chart-section hidden" id="vocab-test-question">
-            <div class="section-title">📚 词汇量测试</div>
+            <div class="section-title"><span class="ico ico-pencil" aria-hidden="true"></span>词汇量测试</div>
             <div class="vocab-test-progress" id="vocab-test-progress">1 / 20</div>
             <div class="vocab-test-question" id="vocab-test-q">Which word means "重要的"?</div>
             <div class="vocab-test-options" id="vocab-test-options">
@@ -79,7 +81,7 @@
 
         <!-- 书单推荐 -->
         <div class="chart-section hidden" id="book-rec-section">
-            <div class="section-title">📖 推荐书单</div>
+            <div class="section-title"><span class="ico ico-book" aria-hidden="true"></span>推荐书单</div>
             <div class="book-rec-level" id="book-rec-level">你的词汇水平: 初级 (500-1000词)</div>
             <div id="interest-filter">
                 <p class="interest-filter-title">兴趣筛选：</p>
@@ -106,7 +108,7 @@
 
         <!-- 掌握进度 -->
         <div class="chart-section">
-            <div class="section-title">🎯 掌握进度</div>
+            <div class="section-title"><span class="ico ico-target" aria-hidden="true"></span>掌握进度</div>
             <div class="progress-section" id="progress-section">
                 <!-- 动态填充 -->
             </div>
@@ -114,7 +116,7 @@
 
         <!-- 重置按钮 -->
         <div class="reset-actions">
-            <button class="reset-btn" data-action="resetStats">🗑️ 重置所有数据</button>
+            <button class="reset-btn" data-action="resetStats"><span class="ico ico-trash" aria-hidden="true"></span>重置所有数据</button>
         </div>
     </div>
 

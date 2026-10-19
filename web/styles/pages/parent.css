@@ -62,10 +62,11 @@
 
         .card {
             background: var(--bg-card);
-            border-radius: 20px;
+            border: 1px solid var(--rule);
+            border-radius: 16px;
             padding: 24px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 20px rgba(115, 99, 78, 0.15);
+            box-shadow: var(--shadow-sm);
         }
 
         .card-title {
@@ -84,10 +85,20 @@
             padding: 60px 20px;
         }
 
+        /* 原来是个 4em 的裸 emoji 🔒,又大又黑又居中,像一记警告。
+           换成淡染底的圆角方块 + 主色图标 —— 和页头图标同一套语言。 */
         .lock-icon-large {
-            font-size: 4em;
-            margin-bottom: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 64px;
+            height: 64px;
+            border-radius: 20px;
+            background: var(--tint-primary);
+            color: var(--primary-fill);
+            margin-bottom: 22px;
         }
+        .lock-icon-large .ico { width: 30px; height: 30px; }
 
         .login-section h2 {
             font-size: 1.8em;
@@ -132,17 +143,22 @@
             display: none;
         }
 
+        /* 「默认密码 0000」是提醒,不是警告。原来套了个橙色描边框,
+           视觉上和「密码错误」撞色,家长第一眼以为出错了。
+           改成一行安静的提示文字。 */
         .default-pwd-hint {
-            background: var(--tint-accent);
-            border: 2px solid var(--color-accent);
-            border-radius: 12px;
-            padding: 15px;
-            margin-top: 20px;
+            margin-top: 26px;
+            padding-top: 18px;
+            border-top: 1px solid var(--border);
             text-align: center;
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
         }
 
         .default-pwd-hint strong {
-            color: var(--warning);
+            color: var(--text-primary);
+            font-weight: var(--font-semibold);
+            letter-spacing: 0.08em;
         }
 
         /* Stats Grid */
@@ -756,3 +772,85 @@
     color: var(--text-disabled);
     padding: 12px;
 }
+
+        /* ===== 朗读声音 (TTS provider 配置) =====
+           复用 .setting-item 的「左说明 / 右控件」结构,但输入框比开关宽得多,
+           所以这里让长文本的 setting-item 改成上下堆叠。 */
+        #ttsCard .setting-item {
+            align-items: flex-start;
+            gap: 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+        }
+        #ttsCard .setting-item > div:first-child { flex: 1; min-width: 0; }
+        #ttsCard .setting-item .desc { margin-top: 4px; line-height: 1.55; }
+        #ttsCard .setting-item code {
+            background: var(--bg-dark);
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-size: 0.92em;
+        }
+
+        .form-input,
+        .form-select {
+            width: 300px;
+            max-width: 46%;
+            min-height: 48px;
+            padding: 10px 12px;
+            font: inherit;
+            font-size: 0.92em;
+            color: var(--text-primary);
+            background: var(--bg-card);
+            border: 1px solid var(--border-strong);
+            border-radius: 10px;
+        }
+        .form-input:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px var(--tint-primary);
+        }
+
+        .tts-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        /* 试听结果:成功/失败分色。没有它的话,家长只能靠"有没有听到声音"
+           来猜,填错地址和填对地址在界面上长得一模一样。 */
+        .tts-status {
+            margin-top: 12px;
+            font-size: 0.88em;
+            color: var(--text-secondary);
+            min-height: 1.4em;
+        }
+        .tts-status.is-ok { color: var(--success, #6B8A52); }
+        .tts-status.is-error { color: var(--danger); }
+        .tts-status.is-busy { color: var(--text-secondary); }
+
+        @media (max-width: 700px) {
+            #ttsCard .setting-item { flex-direction: column; align-items: stretch; }
+            .form-input, .form-select { width: 100%; max-width: 100%; }
+        }
+
+        .link-btn {
+            background: none;
+            border: none;
+            padding: 2px 4px;
+            margin-left: 6px;
+            font: inherit;
+            font-size: 0.82em;
+            color: var(--color-primary);
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .link-btn:hover { color: var(--color-primary-dark); }
+
+        .tts-cache {
+            margin: 10px 0 0;
+            font-size: 0.84em;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }

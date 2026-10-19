@@ -18,6 +18,19 @@ import pytest
 
 
 @pytest.fixture
+def pinned_edge_provider(monkeypatch):
+    """把 TTS provider 钉成 edge(默认),不碰数据库。
+
+    合成走哪个引擎是**运行时配置**决定的:家长在家长页把语音来源换成
+    macos_say 之后,这些靠 monkeypatch `edge_tts.Communicate` 模拟失败的
+    测试就会真的去调 `say`,于是"该失败"变成了"成功" —— 而且它还依赖
+    这台机器上次被配成什么样,不是取决于被测代码。必须钉住。
+    """
+    from extensions import tts_providers
+    monkeypatch.setattr(tts_providers, 'get_settings',
+                        lambda: dict(tts_providers.DEFAULTS))
+
+@pytest.fixture
 def client(tmp_db, clear_api_rate, tmp_path):
     """tmp_db 隔离 DB; clear_api_rate 清 TTS/sync 限流; reload app 让 module-level 状态干净
 

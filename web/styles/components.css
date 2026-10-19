@@ -259,3 +259,175 @@ header p, .page-header p { color: var(--text-secondary); }
     min-width: 48px;
 }
 .theme-btn:hover { background: var(--primary-fill-hover); }
+
+/* ============================================================
+   外壳重做 (2026-10-19)
+   ------------------------------------------------------------
+   这次只动「页面骨架」:导航、品牌、页头、卡片标题、主题按钮。
+   理由是截图对比后最扎眼的三件事:
+     1. 导航里混着彩色 emoji 和一个实心赤陶方块,谁都在抢;
+     2. 每个页面的标题都是「emoji + 一行字」,没有层次;
+     3. 品牌 logo 用了 135° 渐变,和整站「纸 + 墨」的低饱和基调冲突。
+
+   下面这些规则刻意用 .top-nav / .page-head 这类多一层选择器:
+   pages/*.css 里每页都有一份 .nav-link / .logo,加载顺序在
+   components.css 之后,同等特异性会输,所以必须压一个层级。
+   ============================================================ */
+
+/* ---- 品牌 logo:去掉渐变,改成「纸面上的印记」 ---- */
+.top-nav .nav-brand .logo {
+    background: var(--tint-primary);
+    border: 1px solid rgba(184, 106, 78, 0.16);
+    border-radius: 13px;
+}
+.top-nav .nav-brand .logo .ico {
+    width: 21px;
+    height: 21px;
+    color: var(--primary-fill);
+}
+
+/* ---- 导航链接:图标 + 文字 ---- */
+.top-nav .nav-link .ico {
+    width: 18px;
+    height: 18px;
+    color: currentColor;
+    opacity: 0.72;
+}
+.top-nav .nav-link.active .ico { opacity: 1; }
+
+/* active 原来是一整块实心 --color-primary,整条导航最响的就是它,
+   压过页面真正的标题。改成淡染底 + 主色字:一样一眼看出在哪,
+   但回到「提示」的分量。 */
+.top-nav .nav-link.active {
+    background: var(--tint-primary);
+    color: var(--primary-fill);
+    font-weight: var(--font-semibold);
+}
+.top-nav .nav-link:hover:not(.active) { background: var(--bg-dark); }
+
+/* ---- 音色选择:图标从 <option> 里搬出来 ----
+   <option> 只能放纯文本,原来只能靠 🔊 字符,一整套选项都带彩色
+   emoji。现在外面套一层,图标用真图标,选项文字干净。 */
+.voice-picker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: var(--space-3);
+}
+.voice-picker .ico {
+    width: 18px;
+    height: 18px;
+    color: var(--text-secondary);
+}
+
+/* ---- 主题按钮:原来是最响的实心块,改成安静的纸面按钮 ----
+   它只是「换外观」,不该比页面标题还显眼。 */
+.theme-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    padding: 0;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 13px;
+}
+.theme-btn .ico { width: 20px; height: 20px; }
+.theme-btn:hover {
+    background: var(--tint-primary);
+    border-color: rgba(184, 106, 78, 0.28);
+}
+
+/* ---- 页头:全站统一的一个模式 ----
+   图标块 + 衬线大标题 + 灰副标题。之前每页各写一套
+   (hero / header / exam-header),字号、间距、居中方式都不一样。 */
+.page-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+    padding: 18px 0 26px;
+}
+.page-head-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: var(--tint-primary);
+    color: var(--primary-fill);
+    margin-bottom: 2px;
+}
+.page-head-icon .ico { width: 24px; height: 24px; }
+.page-head-title {
+    font-family: var(--font-display);
+    font-size: 30px;
+    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--text-primary);
+    margin: 0;
+}
+.page-head-sub {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    margin: 0;
+    max-width: 34em;
+}
+
+/* ---- 卡片 / 分区标题:图标跟着文字走 ---- */
+.card-title,
+.section-title,
+.sidebar-title {
+    display: flex;
+    align-items: center;
+}
+.card-title .ico,
+.section-title .ico,
+.sidebar-title .ico {
+    width: 19px;
+    height: 19px;
+    color: var(--primary-fill);
+    opacity: 0.9;
+}
+
+/* ---- 儿童模式开关 ----
+   index.js 动态插到导航栏里(主题按钮旁边),之前是 append 到 body,
+   浮在视口左下角,像从别的页面掉下来的零件。
+   现在它是导航里的一个安静方钮,和主题按钮成对。 */
+.kid-mode-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    padding: 0;
+    margin-left: var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background-color var(--duration-fast) var(--ease-out),
+                border-color var(--duration-fast) var(--ease-out),
+                color var(--duration-fast) var(--ease-out);
+}
+.kid-mode-toggle .ico { width: 20px; height: 20px; }
+.kid-mode-toggle:hover {
+    background: var(--tint-primary);
+    border-color: rgba(184, 106, 78, 0.28);
+}
+body.kid-mode .kid-mode-toggle {
+    background: var(--tint-primary);
+    border-color: rgba(184, 106, 78, 0.30);
+    color: var(--primary-fill);
+}

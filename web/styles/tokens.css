@@ -56,6 +56,11 @@
     --tint-danger:    rgba(194, 91, 86, 0.10);
     --tint-info:      rgba(122, 139, 159, 0.10);
 
+    /* 「当前句」专用底色:比 --tint-primary 再淡一档。
+       单独开一个是因为当前句可能一整段那么长 —— 用 --tint-primary
+       会把整段刷成一块荧光板,像被马克笔涂过。 */
+    --tint-active:   rgba(184, 106, 78, 0.075);
+
     /* ===== 字体栈 =====
        这是「像书不像 App」最关键的一处改动。
        书里的英文句子用衬线,界面用无衬线,两者分开。
@@ -108,7 +113,40 @@
     --space-8: 64px;
     --space-9: 96px;
 
-    /* ===== 圆角 ===== */
+    /* ===== 纸面质感 =====
+       纯色底看着像后台管理系统,不像"一本书"。加一层极淡的纸纹:
+       两个 45°/135° 的重复渐变叠在一起,肉眼几乎看不出来,但大面积的
+       背景不再是一块死板的纯色。
+       幅度必须小 —— 超过 1.5% 就会变成"脏",那是做旧,不是质感。 */
+    --paper-grain:
+        repeating-linear-gradient(115deg,
+            rgba(45, 42, 38, 0.014) 0px,
+            rgba(45, 42, 38, 0.014) 1px,
+            transparent 1px,
+            transparent 3px),
+        repeating-linear-gradient(35deg,
+            rgba(45, 42, 38, 0.010) 0px,
+            rgba(45, 42, 38, 0.010) 1px,
+            transparent 1px,
+            transparent 4px);
+
+    /* 发丝线:比 border 更淡,用于"分隔"而不是"描边" */
+    --rule: rgba(45, 42, 38, 0.09);
+    --rule-strong: rgba(45, 42, 38, 0.16);
+
+    /* 玻璃底:悬浮在纸面上的横条用它 —— 半透明 + 背景模糊,
+       读起来像一块浮在书页上的玻璃条,而不是一条实心色带。
+       模糊在下面这层铺的纸上生效,所以滚动时纸纹会从条下透出来。 */
+    --bg-glass: rgba(244, 241, 234, 0.72);
+    --bg-glass-line: rgba(45, 42, 38, 0.07);
+
+    /* 主按钮的"触感":顶部一道内高光(像被光从上面照到的实心键)
+       + 底下两层投影(接触影 + 弥散影)。只有实心键需要,幽灵键不需要。 */
+    --fill-inset: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    --fill-shadow: 0 1px 2px rgba(45, 42, 38, 0.10), 0 6px 18px rgba(165, 90, 64, 0.24);
+    --fill-shadow-hover: 0 2px 4px rgba(45, 42, 38, 0.10), 0 10px 26px rgba(165, 90, 64, 0.30);
+
+    /* 圆角 ===== */
     --radius-none: 0;
     --radius-sm:   4px;
     --radius-md:   8px;
@@ -118,10 +156,15 @@
     --radius-pill: 9999px;
 
     /* ===== 阴影 ===== */
-    --shadow-sm: 0 1px 2px rgba(45, 42, 38, 0.06);
-    --shadow-md: 0 2px 8px rgba(45, 42, 38, 0.08);
-    --shadow-lg: 0 4px 16px rgba(45, 42, 38, 0.10);
-    --shadow-xl: 0 8px 32px rgba(45, 42, 38, 0.12);
+    /* 阴影:发丝边 + 紧一点的投影,比"一团大模糊"贵气。
+       大而散的阴影是网页模板感的主要来源。 */
+    --shadow-sm: 0 1px 2px rgba(45, 42, 38, 0.05);
+    --shadow-md: 0 1px 2px rgba(45, 42, 38, 0.04), 0 4px 12px rgba(45, 42, 38, 0.05);
+    --shadow-lg: 0 1px 2px rgba(45, 42, 38, 0.05), 0 8px 24px rgba(45, 42, 38, 0.07);
+    --shadow-xl: 0 2px 4px rgba(45, 42, 38, 0.05), 0 16px 48px rgba(45, 42, 38, 0.09);
+    /* 书立在架子上:接触影更硬一点,悬空感更强 */
+    --shadow-book: 0 1px 1px rgba(45, 42, 38, 0.10), 0 6px 16px rgba(45, 42, 38, 0.10);
+    --shadow-book-hover: 0 2px 3px rgba(45, 42, 38, 0.10), 0 14px 30px rgba(45, 42, 38, 0.14);
 
     /* ===== 动效·时长 ===== */
     --duration-fast:   100ms;
@@ -184,10 +227,28 @@
     --tint-danger:    rgba(194, 91, 86, 0.18);
     --tint-info:      rgba(122, 139, 159, 0.18);
 
+    /* 暗色下底色比浅色显眼得多,当前句的底色要压得更淡 */
+    --tint-active:   rgba(216, 155, 126, 0.08);
+
+    /* 发丝线:暗色下要用「白墨」,深墨在深底上完全看不见。
+       这条是踩过的坑 —— 进度条的轨道在暗色下直接消失。 */
+    --rule:        rgba(237, 230, 218, 0.10);
+    --rule-strong: rgba(237, 230, 218, 0.20);
+
+    --bg-glass: rgba(26, 23, 20, 0.72);
+    --bg-glass-line: rgba(237, 230, 218, 0.08);
+
+    /* 暗色下主色是浅色,内高光要换成"压暗",否则按钮顶部会发白 */
+    --fill-inset: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    --fill-shadow: 0 1px 2px rgba(0, 0, 0, 0.40), 0 6px 18px rgba(0, 0, 0, 0.44);
+    --fill-shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.44), 0 10px 26px rgba(0, 0, 0, 0.52);
+
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
-    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.40);
-    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.50);
-    --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.60);
+    --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.28), 0 4px 12px rgba(0, 0, 0, 0.30);
+    --shadow-lg: 0 1px 2px rgba(0, 0, 0, 0.30), 0 8px 24px rgba(0, 0, 0, 0.36);
+    --shadow-xl: 0 2px 4px rgba(0, 0, 0, 0.32), 0 16px 48px rgba(0, 0, 0, 0.42);
+    --shadow-book: 0 1px 1px rgba(0, 0, 0, 0.40), 0 6px 16px rgba(0, 0, 0, 0.44);
+    --shadow-book-hover: 0 2px 3px rgba(0, 0, 0, 0.44), 0 14px 30px rgba(0, 0, 0, 0.52);
 }
 
 /* 浅色不变(可选,显式声明浅色) */
@@ -212,6 +273,17 @@
 
         --border:        #3D372F;
         --border-strong: #5A544C;
+
+        /* 暗色下的发丝线用白墨(见 :root[data-theme="dark"] 的说明) */
+        --rule:        rgba(237, 230, 218, 0.10);
+        --rule-strong: rgba(237, 230, 218, 0.20);
+
+        --bg-glass: rgba(26, 23, 20, 0.72);
+        --bg-glass-line: rgba(237, 230, 218, 0.08);
+
+        --fill-inset: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+        --fill-shadow: 0 1px 2px rgba(0, 0, 0, 0.40), 0 6px 18px rgba(0, 0, 0, 0.44);
+        --fill-shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.44), 0 10px 26px rgba(0, 0, 0, 0.52);
         --divider:       #2D2A26;
 
         --color-primary:       #D89B7E;
@@ -229,6 +301,8 @@
         --tint-accent:    rgba(212, 165, 116, 0.20);
         --tint-danger:    rgba(194, 91, 86, 0.18);
         --tint-info:      rgba(122, 139, 159, 0.18);
+
+        --tint-active:   rgba(216, 155, 126, 0.08);
 
         --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
         --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.40);

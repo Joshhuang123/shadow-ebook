@@ -25,30 +25,54 @@
         }
         header h1 { font-size: 2.2em; margin-bottom: 8px; }
         header p { opacity: 0.7; }
+        /* 卡片壳:原来 20px 圆角 + 一大团 40px 的散投影 ——
+           这套组合是所有模板的默认长相,一眼就"不高级"。
+           改成:16px 圆角 + 发丝描边 + 一层极浅的紧投影,
+           边界靠描边和投影说清楚,不靠一团模糊。 */
         .card {
             background: var(--bg-card);
-            border-radius: 20px;
-            padding: 25px;
+            border: 1px solid var(--rule);
+            border-radius: 16px;
+            padding: 24px 26px;
             margin: 15px 0;
-            box-shadow: 0 10px 40px rgba(115,99,78,0.15);
+            box-shadow: var(--shadow-sm);
         }
         .card h2 { color: var(--color-primary); margin-bottom: 15px; font-size: 1.3em; }
 
         /* 单元选择 */
-        .unit-list { display: grid; gap: 10px; }
+        /* 单元列表:不再「一个选项一个白盒子」。
+           白盒套白盒是模板感的主要来源;这里改成书后面目录页的样子 ——
+           一列条目,之间一根发丝线,悬停时整行泛一点暖色。 */
+        .unit-list {
+            display: grid;
+            gap: 0;
+            border-top: 1px solid var(--rule);
+        }
         .unit-item {
-            padding: 15px 20px;
-            background: var(--bg-dark);
-            border-radius: 12px;
+            padding: 16px 12px;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--rule);
+            border-radius: 0;
             cursor: pointer;
-            transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
+            transition: background-color 200ms ease-out, color 200ms ease-out;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 16px;
         }
-        .unit-item:hover { background: var(--bg-dark); transform: translateX(5px); }
-        .unit-name { font-weight: 600; color: var(--text-primary); }
-        .unit-count { color: var(--text-secondary); font-size: 0.9em; }
+        .unit-item:last-child { border-bottom: none; }
+        .unit-item:hover { background: var(--tint-primary); }
+        /* 保持块级排版:第二本书的名字里有一个 <br><small> 副标题,
+           一旦改成 flex 容器,<br> 就失效,副标题会被拉到同一行。 */
+        .unit-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            min-width: 0;
+        }
+        .unit-name .ico { width: 19px; height: 19px; color: var(--primary-fill); }
+        .unit-name small { font-weight: 400; color: var(--text-secondary); }
+        .unit-count { color: var(--text-secondary); font-size: 0.9em; white-space: nowrap; }
 
         /* 跟读界面 */
         .sentence-display {

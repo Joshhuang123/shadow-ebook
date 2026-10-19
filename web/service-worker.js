@@ -1,7 +1,10 @@
-// 改动 CSS/JS 后必须把版本号 +1,否则下面「静态资源缓存优先」会让用户继续看到旧样式。
-// 这是 stale-while-revalidate: 先给缓存,后台再更新,所以同一台机器上
-// 刚改完样式刷新页面可能「看起来没生效」,再刷一次才对 —— 很容易误判成改错了。
-const CACHE_NAME = 'shadow-ebook-v18';
+// 改动 CSS/JS/HTML 后把版本号 +1。activate 时会删掉所有旧版缓存
+// (见下方 CACHE_NAME 过滤),所以老设备不会继续吃旧样式。
+//
+// v19:不只是发版 —— 有浏览器 profile 的缓存里存进了**写坏的文件**
+// (改到一半时被缓存下来),结果是整页白屏、DOM 还在但一个字都不画。
+// 换名 = 一次性把这些坏缓存整体丢掉,不用去教用户怎么清缓存。
+const CACHE_NAME = 'shadow-ebook-v19';
 // R11: 字体从 install 预缓存里拿掉 (5 个 ttf ~ 1-2MB, 用户没开过页面也要下)
 // 改成 runtime cache, 第一次访问页面时才按需缓存
 const STATIC_ASSETS = [
@@ -83,8 +86,31 @@ self.addEventListener('fetch', (event) => {
   // 跳过 Chrome 扩展和其他非 HTTP 请求
   if (!url.protocol.startsWith('http')) return;
 
-  // API 请求使用网络优先策略
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/audio/')) {
+  // API 请求:**纯网络,不缓存**(2026-10-19 改)。
+  //
+  // 原来这里是「网络优先 + 缓存兜底」,并且把响应 cache.put 下来。
+  // 两个问题,第二个是致命的:
+  //   1) /api/ 下全是**可变状态** —— 阅读进度、统计、孩子档案。
+  //      缓存它们等于把「上次看到的数据」当真相,家长刚改完的东西
+  //      可能几秒钟内还是旧的。
+  //   2) 更要命的是实测踩到过:某个浏览器 profile 的缓存里存了一份
+  //      坏掉的 /api/book/<id> 响应。点「继续读」时,请求根本没到服务器
+  //      (服务端日志零记录),前端拿到 success 不为真的响应后**静默什么都不做**,
+  //      表现就是「点了没反应」。用户完全无从判断是网络坏了还是应用坏了。
+  //
+  // 现在不缓存 API,请求要么真到服务器(拿到新鲜数据),要么 reject 让前端
+  // 走 catch 分支弹错误。宁可明着报错,也不要静默地给一份陈旧数据。
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      fetch(request).catch(() => new Response(
+        JSON.stringify({ success: false, error: 'offline' }),
+        { status: 503, headers: { 'Content-Type': 'application/json' } }
+      ))
+    );
+    return;
+  }
+
+  if (url.pathname.startsWith('/audio/')) {
     event.respondWith(
       fetch(request)
         .then((response) => {
@@ -96,9 +122,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => {
-          return caches.match(request);
-        })
+        .catch(() => caches.match(request))
     );
     return;
   }

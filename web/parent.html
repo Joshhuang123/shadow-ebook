@@ -3,6 +3,7 @@
 <head>
     <link rel="stylesheet" href="/styles/tokens.css">
     <link rel="stylesheet" href="/styles/base.css">
+    <link rel="stylesheet" href="/styles/icons.css">
     <link rel="stylesheet" href="/styles/components.css">
     <script src="/js/dispatcher.js"></script>
 <script src="/theme.js"></script>
@@ -21,11 +22,11 @@
 <body>
     <nav class="top-nav">
         <div class="nav-brand">
-            <span class="lock-icon">🔐</span>
+            <span class="lock-icon"><span class="ico ico-lock" aria-hidden="true"></span></span>
             <span>家长监控</span>
         </div>
         <div class="nav-right">
-            <a class="btn btn-secondary nav-ebook-link" href="/ebook">📖 去看书</a>
+            <a class="btn btn-secondary nav-ebook-link" href="/ebook"><span class="ico ico-book" aria-hidden="true"></span>去看书</a>
             <button class="btn btn-secondary" data-action="logout">退出</button>
         </div>
     </nav>
@@ -33,7 +34,7 @@
     <div class="main-container">
         <!-- Login Section -->
         <div id="loginSection" class="card login-section">
-            <div class="lock-icon-large">🔒</div>
+            <div class="lock-icon-large"><span class="ico ico-lock ico--xl" aria-hidden="true"></span></div>
             <h2>家长模式</h2>
             <p>请输入密码以查看学习报告</p>
             
@@ -56,25 +57,25 @@
         <div id="dashboardSection" class="hidden">
             <!-- Overview Stats -->
             <div class="card">
-                <div class="card-title">📊 学习概览</div>
+                <div class="card-title"><span class="ico ico-chart" aria-hidden="true"></span>学习概览</div>
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="icon">📚</div>
+                        <div class="icon"><span class="ico ico-books" aria-hidden="true"></span></div>
                         <div class="value" id="totalBooks">0</div>
                         <div class="label">阅读书籍</div>
                     </div>
                     <div class="stat-card">
-                        <div class="icon">⏱️</div>
+                        <div class="icon"><span class="ico ico-clock" aria-hidden="true"></span></div>
                         <div class="value" id="totalMinutes">0</div>
                         <div class="label">总学习分钟</div>
                     </div>
                     <div class="stat-card success">
-                        <div class="icon">🔥</div>
+                        <div class="icon"><span class="ico ico-fire" aria-hidden="true"></span></div>
                         <div class="value" id="streakDays">0</div>
                         <div class="label">连续学习天数</div>
                     </div>
                     <div class="stat-card warning">
-                        <div class="icon">📝</div>
+                        <div class="icon"><span class="ico ico-pencil" aria-hidden="true"></span></div>
                         <div class="value" id="newWords">0</div>
                         <div class="label">新学单词</div>
                     </div>
@@ -83,7 +84,7 @@
 
             <!-- Weekly Activity Chart -->
             <div class="card">
-                <div class="card-title">📈 本周学习时长</div>
+                <div class="card-title"><span class="ico ico-trend" aria-hidden="true"></span>本周学习时长</div>
                 <div class="activity-chart" id="weeklyChart">
                     <!-- 动态生成 -->
                 </div>
@@ -91,10 +92,10 @@
 
             <!-- Recent Activity -->
             <div class="card">
-                <div class="card-title">🕐 最近活动</div>
+                <div class="card-title"><span class="ico ico-clock" aria-hidden="true"></span>最近活动</div>
                 <ul class="activity-list" id="activityList">
                     <li class="activity-item">
-                        <div class="icon">📖</div>
+                        <div class="icon"><span class="ico ico-book" aria-hidden="true"></span></div>
                         <div class="info">
                             <div class="title">暂无活动记录</div>
                             <div class="time">开始学习后显示</div>
@@ -105,7 +106,7 @@
 
             <!-- Vocabulary Progress -->
             <div class="card">
-                <div class="card-title">📝 词汇进度</div>
+                <div class="card-title"><span class="ico ico-pencil" aria-hidden="true"></span>词汇进度</div>
                 <div class="vocab-progress">
                     <div class="vocab-bar" id="vocabBar">
                     </div>
@@ -136,14 +137,14 @@
                 </div>
                 <!-- R12: 今日到期复习数 -->
                 <div class="due-banner">
-                    <span>🔁 今日待复习</span>
+                    <span><span class="ico ico-repeat" aria-hidden="true"></span>今日待复习</span>
                     <span id="vocabDueNow">0</span>
                 </div>
             </div>
 
             <!-- 孩子档案:决定每页放几句 -->
             <div class="card">
-                <div class="card-title">🧒 孩子档案</div>
+                <div class="card-title"><span class="ico ico-user" aria-hidden="true"></span>孩子档案</div>
                 <p class="profile-desc">
                     填一次,以后所有书自动按「这本书比孩子难多少」决定每页句数。
                     不知道蓝思值就选一个大致的档,随时能改。
@@ -189,13 +190,13 @@
 
             <!-- R12: 阅读进度 -->
             <div class="card">
-                <div class="card-title">📖 阅读进度</div>
+                <div class="card-title"><span class="ico ico-book" aria-hidden="true"></span>阅读进度</div>
                 <div id="bookProgressList"></div>
             </div>
 
             <!-- 知识图谱:孩子卡在哪一层 -->
             <div class="card">
-                <div class="card-title">🧩 知识点顺序</div>
+                <div class="card-title"><span class="ico ico-layers" aria-hidden="true"></span>知识点顺序</div>
                 <p class="kg-hint">语法点不是按难度排的，是按<strong>前置依赖</strong>排的。
                    卡住孩子的通常不是「这个太难」，而是「前面那个还没会」。</p>
                 <div id="kgPathList" class="kg-list">
@@ -204,12 +205,96 @@
                 <div id="kgGapsList" class="kg-list"></div>
             </div>
 
+            <!-- 朗读声音:接自己的 TTS -->
+            <div class="card" id="ttsCard">
+                <div class="card-title"><span class="ico ico-speaker" aria-hidden="true"></span>朗读声音</div>
+                <p class="kg-hint">四种语音来源随便换：Mac 自带的系统语音（免费、离线、语速可调）、
+                   微软 Edge TTS（要联网，音色多）、你自己的语音服务
+                   （Piper / GPT-SoVITS / 任意 OpenAI 兼容接口），或者平板自己的声音。
+                   <strong>密钥只存在这台服务器上</strong>，不会发给平板。</p>
+
+                <div class="settings-group">
+                    <div class="setting-item">
+                        <div>
+                            <div class="label">语音来源</div>
+                            <div class="desc" id="ttsProviderDesc">读取中…</div>
+                        </div>
+                        <select id="ttsProvider" class="form-select">
+                            <option value="edge">微软 Edge TTS（需联网）</option>
+                            <option value="openai_compatible">自建服务（OpenAI 兼容）</option>
+                            <option value="macos_say">系统语音（Mac 自带，离线）</option>
+                            <option value="device">平板自带语音（完全离线）</option>
+                        </select>
+                    </div>
+
+                    <div id="ttsCustomFields" hidden>
+                        <div class="setting-item">
+                            <div>
+                                <div class="label">服务地址</div>
+                                <div class="desc">到 <code>/v1</code> 这一层即可，程序自己拼 <code>/audio/speech</code>。本地服务填局域网地址，例如 <code>http://192.168.1.10:8000/v1</code></div>
+                            </div>
+                            <input type="url" id="ttsBaseUrl" class="form-input" placeholder="http://192.168.1.10:8000/v1">
+                        </div>
+                        <div class="setting-item">
+                            <div>
+                                <div class="label">API Key
+                                    <button class="link-btn" id="ttsClearKey" data-action="ttsClearKey" hidden>清除已保存的</button>
+                                </div>
+                                <div class="desc">本地服务一般留空。<strong>留空 = 不修改</strong>已保存的密钥。</div>
+                            </div>
+                            <input type="password" id="ttsApiKey" class="form-input" placeholder="本地服务可留空" autocomplete="off">
+                        </div>
+                        <div class="setting-item">
+                            <div>
+                                <div class="label">模型名</div>
+                                <div class="desc">OpenAI 官方是 <code>tts-1</code>；自建服务看它自己的文档</div>
+                            </div>
+                            <input type="text" id="ttsModel" class="form-input" placeholder="tts-1">
+                        </div>
+                    </div>
+
+                    <div id="ttsMacFields" hidden>
+                        <div class="setting-item">
+                            <div>
+                                <div class="label">系统音色</div>
+                                <div class="desc">Mac 自带音色名，例如 <code>Samantha</code>、<code>Alex</code>、<code>Karen</code>。<br>在「系统设置 → 辅助功能 → 朗读内容」里可以下载更自然的增强音色。</div>
+                            </div>
+                            <input type="text" id="ttsSayVoice" class="form-input" placeholder="Samantha">
+                        </div>
+                        <div class="setting-item">
+                            <div>
+                                <div class="label">语速</div>
+                                <div class="desc">词/分钟。刚开始学英语的孩子建议 <strong>140~160</strong>，标准是 175。</div>
+                            </div>
+                            <input type="number" id="ttsSayRate" class="form-input" min="100" max="300" step="5" placeholder="160">
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div>
+                            <div class="label">音色</div>
+                            <div class="desc" id="ttsVoiceDesc">微软用 <code>en-US-AriaNeural</code> 这种名字；自建服务看它支持什么</div>
+                        </div>
+                        <input type="text" id="ttsVoice" class="form-input" placeholder="en-US-AriaNeural">
+                    </div>
+                </div>
+
+                <div class="tts-actions">
+                    <button class="btn btn-secondary" data-action="ttsTest">试听一句</button>
+                    <button class="btn btn-primary" data-action="ttsSave">保存</button>
+                    <button class="btn btn-secondary" data-action="ttsReset">恢复默认</button>
+                    <button class="btn btn-secondary" data-action="ttsClearCache">清空音频缓存</button>
+                </div>
+                <p class="tts-cache" id="ttsCacheInfo"></p>
+                <p class="tts-status" id="ttsStatus"></p>
+            </div>
+
             <!-- Settings -->
             <div class="card">
-                <div class="card-title">⚙️ 设置</div>
+                <div class="card-title"><span class="ico ico-gear" aria-hidden="true"></span>设置</div>
                 
                 <div class="settings-group">
-                    <h4>🛡️ 安全设置</h4>
+                    <h4><span class="ico ico-lock" aria-hidden="true"></span>安全设置</h4>
                     
                     <div class="setting-item">
                         <div>
@@ -247,16 +332,16 @@
                 </div>
 
                 <div class="settings-group">
-                    <h4>💾 数据管理</h4>
+                    <h4>数据管理</h4>
                     <div class="export-buttons">
                         <button class="btn btn-export" data-action="exportData" data-arg="json">
-                            📥 导出JSON
+                            <span class="ico ico-download" aria-hidden="true"></span>导出JSON
                         </button>
                         <button class="btn btn-export" data-action="exportData" data-arg="csv">
-                            📊 导出CSV
+                            <span class="ico ico-chart" aria-hidden="true"></span>导出CSV
                         </button>
                         <button class="btn btn-secondary" data-action="resetData">
-                            🗑️ 重置学习记录
+                            <span class="ico ico-trash" aria-hidden="true"></span>重置学习记录
                         </button>
                     </div>
 

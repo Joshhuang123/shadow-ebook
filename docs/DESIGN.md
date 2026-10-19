@@ -72,9 +72,26 @@
               'Segoe UI', Roboto, sans-serif;
 --font-mono:  'SF Mono', Menlo, Consolas, monospace;       /* 单词释义、音标 */
 --font-num:   var(--font-sans);                            /* 数字等宽 = tabular-nums */
+
+/* 三档分工(2026-10-19 补)。「像书不像 App」的关键不是换颜色,
+   是把「读的东西」和「用的东西」分成两套字体。 */
+--font-reading: Georgia, 'Iowan Old Style', 'Palatino',    /* 正文英文句子 */
+               'Times New Roman', 'PingFang SC', sans-serif;
+--font-display: 'Iowan Old Style', 'Palatino', Georgia,    /* 页头 / 大标题 */
+               'Times New Roman', 'PingFang SC', sans-serif;
+--font-ui:      var(--font-sans);                          /* 按钮、导航、标签 */
 ```
 
-**不上 webfont**(局域网/平板场景,加载 webfont 慢且偶尔失败)。
+**为什么正文用系统衬线,而不是项目里已有的 Noto Serif SC**:那三个 ttf
+每个 14MB、共 44MB,而本简报明写「不上 webfont」(局域网/平板加载慢)。
+iPad 与 macOS 自带 Georgia / Iowan Old Style / Palatino,零下载、立刻可用。
+
+**CJK 故意排在最后走 PingFang(黑体)**:手机上宋体细笔画会发虚,
+10 岁孩子在小屏上读中文更难。衬线管英文、黑体管中文,是出版物的标准混排。
+
+**正文行长 ≤ 34em(约 60~75 字符/行)**。超过 80 字符眼睛从行尾扫回行首
+容易串行。必须用 `em` 而不是 `px`:孩子把字放大到 40px 时,行长要跟着缩,
+不能变成一行 40 个大字。`.mode-book .reading-column` 就是这么写的。
 
 ### 3.2 字号 + 行高(8 段)
 
@@ -194,7 +211,33 @@
 
 ---
 
-## 八、组件规范
+## 八、图标规范(2026-10-19 补)
+
+**不用 emoji。** emoji 走系统彩色字体,渲染出来是高饱和的 3D 贴图,和
+「纸 + 墨 + 赤陶」的低饱和基调直接打架,整页一眼就是「拼起来的」。
+它也**无法跟随主题变色**,暗色模式下尤其扎眼。
+
+图标统一放在 `web/styles/icons.css`,24×24 线性描边、1.8px、圆头圆角,
+用 `mask` + `currentColor` 着色 —— 换主题自动跟随,零请求、零 webfont。
+
+```html
+<span class="ico ico-book" aria-hidden="true"></span>继续读
+```
+
+| 规则 | 说明 |
+|---|---|
+| 尺寸 | 默认 `1em`,跟着字号走;`ico--sm/lg/xl` 三档微调 |
+| 单独出现 | 圆角方块 / 圆形按钮里的图标要加 `margin-right: 0`(见 icons.css 的 solo 列表) |
+| 装饰性 | 一律 `aria-hidden="true"`,文字本身已经说明了一切 |
+| 数量 | 语法卡这类「标题 + 副标题 + 徽章」已经够满的卡片**不要挂图标** |
+
+**替代 emoji 时要连带改 JS**:`<span class="ico">` 是元素,
+`textContent = '🔊'` 会把它整个抹掉。要换图标就切 class,
+要换整段内容才用 `innerHTML`。
+
+---
+
+## 九、组件规范
 
 ### 8.1 按钮(4 类 × 3 尺寸)
 
@@ -266,7 +309,7 @@ transition: box-shadow 200ms var(--ease-out);
 
 ---
 
-## 九、信息层级
+## 十、信息层级
 
 每页只能有**一个焦点**(视觉引导):
 
@@ -280,7 +323,7 @@ transition: box-shadow 200ms var(--ease-out);
 
 ---
 
-## 十、状态反馈(默认 / hover / active / focus / disabled / loading)
+## 十一、状态反馈(默认 / hover / active / focus / disabled / loading)
 
 | 状态 | 反馈 |
 |---|---|
@@ -295,7 +338,7 @@ transition: box-shadow 200ms var(--ease-out);
 
 ---
 
-## 十一、暗色模式(R17 已实现,本节补齐规范)
+## 十二、暗色模式(R17 已实现,本节补齐规范)
 
 > 本节在 R17 实现之后补写。此前 DESIGN.md 写着"预留,本期不实现",
 > 但 R17 已把暗色做完并合入 —— 规范滞后于实现,此处对齐。
@@ -357,7 +400,7 @@ R17 完成:token 双轨 + `data-theme` 切换 + `theme.js` + e2e 覆盖
 
 ---
 
-## 十二、迁移路径(R16 实施顺序)
+## 十三、迁移路径(R16 实施顺序)
 
 1. **建立 token 文件** — `web/styles/tokens.css`(所有 CSS 变量)
 2. **建立 base.css** — 重置 + 全局 + R13 polish 增强
@@ -370,7 +413,7 @@ R17 完成:token 双轨 + `data-theme` 切换 + `theme.js` + e2e 覆盖
 
 ---
 
-## 十三、本文档的演进
+## 十四、本文档的演进
 
 - 任何 token / 规范变更,先在本文件改 → PR review → 再写代码
 - 不允许代码先于规范改动
@@ -378,7 +421,82 @@ R17 完成:token 双轨 + `data-theme` 切换 + `theme.js` + e2e 覆盖
 
 ---
 
-## 十四、已知偏差(DESIGN.md ↔ 代码)
+## 十五、阅读器版式(2026-10-20 重做)
+
+### 15.1 核心决定:整屏一张纸
+
+原来的阅读器是三块不同底色的方框 —— 顶栏 `--bg-card`、正文 `--bg`、底栏 `--bg-card`。
+这正是"网页布局"的观感来源:孩子看到的是"一个页面",不是"一页书"。
+
+现在:
+
+| 层 | 做法 |
+|---|---|
+| 纸 | `.reader-page` 铺满整屏,底色 `--bg-card` + `--paper-grain` |
+| 顶栏 / 底栏 | 半透明玻璃 `--bg-glass` + `backdrop-filter: blur(16px)`,压在纸上 |
+| 分界 | 一根 `--bg-glass-line` 发丝线,不是 `--border` |
+
+层次来自**玻璃条的半透明**,不是来自"把页面切成几块"。
+不支持 `backdrop-filter` 的浏览器退化成半透明纯色,不影响可读性。
+
+### 15.2 顶栏
+
+- 左:`← 书架` 图标 + 文字,48px 触控,hover 泛暖色
+- 中:书名(`--font-display` 15.5px)+ 章节(11.5px,字距 0.06em)
+- 右:`N / M` 胶囊,`--tint-primary` 底 + tabular-nums
+
+### 15.3 正文行长
+
+| 模式 | 行宽 | 说明 |
+|---|---|---|
+| `mode-book` | `34em` | 跟着字号走,20px 时约 66 字符 |
+| `mode-focus` | `24em` | 大字号,一行 40~50 字符 |
+
+用 em 不用 px:孩子把字从 20px 调到 30px,行长不变。
+
+### 15.4 当前句标记
+
+- focus 模式:左侧 2px 色条 + `--tint-active` 底色
+- book 模式:**只留底色,去掉色条** —— 一句话可能就是一整段,
+  内联盒跨行时色条只会在第一行露一截,底色又会把整段刷成荧光板
+- 正在朗读:另加 `--tint-accent` 底色 + 3px 实色条(临时的,可以重)
+
+`--tint-active` 单独开一个 token,比 `--tint-primary` 再淡一档,
+暗色下要压得更淡(底色比浅色显眼得多)。
+
+### 15.5 底栏
+
+三列网格 `1fr auto 1fr`,朗读键在几何上真正居中。
+
+- 左:上一页/下一页(幽灵键)+ 字号档(两个按钮拼成一段,中间一根发丝线)
+- 中:「读一句」实心键 —— 底栏里唯一的实心,也是全站唯一的主操作
+- 右:抽屉入口(圆形)
+
+实心键的质感靠 `--fill-inset`(顶部一道内高光)+ `--fill-shadow`(接触影 + 弥散影),
+不是靠渐变。按下时 `translateY(1px)` + 阴影收紧,**不缩放** ——
+缩一下 10 岁孩子会以为点歪了。
+
+### 15.6 列表页:不再白盒套白盒
+
+「跟读学习」的选择列表原来是 3 个白圆角盒套在 1 个大白圆角盒里。
+现在外层卡片保留(16px 圆角 + 发丝描边 + `--shadow-sm`),
+内层条目改成**目录页样式**:条目之间一根 `--rule` 发丝线,悬停整行泛 `--tint-primary`。
+
+同理:家长页 `.card`、统计页 `.stat-card`、语法页 `.grammar-card` 统一到
+`1px solid var(--rule)` + `var(--shadow-sm)`;
+语法卡 hover 时的「赤陶→草绿」渐变顶条删掉(低饱和基调里它是异色)。
+
+### 15.7 目录
+
+- 滤掉封面页 / 版权页 / 扉页 —— 它们不是章节,列在最前面只会让孩子对着 "Copyright" 发呆
+- toc 的第 i 项**不一定**等于 chapters 的第 i 项(toc 常多出前置页),
+  所以按标题对齐,对不上再退回按位置
+- 目录项记 `data-chapter`,高亮时按它认领当前章(不能按 DOM 下标)
+- 打开一本没读过的书:直接进正文第一页,不落在版权页上
+
+---
+
+## 十六、已知偏差(DESIGN.md ↔ 代码)
 
 R16 代码评审时记录。本节列的是**规范与实现不一致**的地方,以及裁决结果。
 修完一条就删一条。

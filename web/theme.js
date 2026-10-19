@@ -20,7 +20,10 @@
 
     var STORAGE_KEY = 'shTheme';
     var VALID_MODES = ['day', 'night', 'auto'];
-    var ICONS = { day: '☀', night: '☾', auto: '◐' };
+    // 图标名(不是字形):和 icons.css 的 .ico-* 对应。
+    // 之前这里塞的是 ☀/☾/◐ 字符,系统彩色 emoji 渲染出来又亮又塑料,
+    // 和顶栏其余部分不是一个体系。
+    var ICONS = { day: 'sun', night: 'moon', auto: 'contrast' };
     var TITLES = { day: '日间模式', night: '夜间模式', auto: '跟随系统' };
 
     function apply(mode) {
@@ -53,7 +56,8 @@
         // 用 data-action 找而不是 getElementById —— grammar.html 有两个主题按钮,
         // 同 id 只会拿到第一个,另一个永远停在初始图标。
         document.querySelectorAll('[data-action="cycleTheme"]').forEach(function (b) {
-            b.textContent = ICONS[mode] || ICONS.auto;
+            var name = ICONS[mode] || ICONS.auto;
+            b.innerHTML = '<span class="ico ico-' + name + '" aria-hidden="true"></span>';
             b.title = TITLES[mode] || TITLES.auto;
             b.setAttribute('aria-label', TITLES[mode] || TITLES.auto);
         });

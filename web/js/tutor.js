@@ -180,6 +180,7 @@
 
         // 显示书籍选择
         function showBooks() {
+            loadTtsMode();   // 每次回到选书页都确认一次语音来源
             document.getElementById('book-selection').classList.remove('hidden');
             document.getElementById('unit-selection').classList.add('hidden');
             document.getElementById('chapter-selection').classList.add('hidden');
@@ -246,7 +247,7 @@
             document.getElementById('quiz-view').classList.add('hidden');
             document.getElementById('completion-view').classList.add('hidden');
 
-            document.getElementById('unit-title').textContent = '🎄 ' + mth29Chapters[chapterId].name;
+            document.getElementById('unit-title').innerHTML = '<span class="ico ico-tree" aria-hidden="true"></span> ' + mth29Chapters[chapterId].name;
             showSentence();
             loadSavedProgress();  // R12: 跳到上次位置
         }
@@ -264,7 +265,7 @@
             document.getElementById('quiz-view').classList.add('hidden');
             document.getElementById('completion-view').classList.add('hidden');
 
-            document.getElementById('unit-title').textContent = '📖 ' + units[unitId].name;
+            document.getElementById('unit-title').innerHTML = '<span class="ico ico-book" aria-hidden="true"></span> ' + units[unitId].name;
             showSentence();
             loadSavedProgress();  // R12: 跳到上次位置
         }
@@ -317,15 +318,62 @@
         let originalAudioUrl = null;  // 原音URL
 
         // 播放标准发音 (优先使用微软edge-tts，备用浏览器TTS)
+        // 服务端要不要合成音频?家长可以在家长页换成「平板自带语音」,
+        // 那时服务端不生成任何音频,直接用设备的 speechSynthesis。
+        let serverSynthesis = true;
+        let ttsProvider = 'edge';
+        async function loadTtsMode() {
+            try {
+                const r = await fetch('/api/tts/settings');
+                const j = await r.json();
+                if (j && j.success) {
+                    if (typeof j.server_synthesis === 'boolean') serverSynthesis = j.server_synthesis;
+                    if (j.provider) ttsProvider = j.provider;
+                    if (!serverSynthesis) hidePregenerateButton();
+                }
+            } catch (e) { /* 拉不到就按原样 */ }
+        }
+
+        // device 模式下服务端不合成,「预下载音频」这个按钮点了必然失败,
+        // 留着只会让家长以为是自己按错了。
+        function hidePregenerateButton() {
+            const btn = document.getElementById('btn-pregenerate');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="ico ico-speaker" aria-hidden="true"></span>当前用平板自带语音';
+                btn.title = '在家长页把「语音来源」改成自建服务或微软,这里才能预下载';
+            }
+        }
+
+        // 挑最好的英文音色:系统里装了 Enhanced / Premium / Siri / Natural
+        // 这类的就用它们,别拿列表里第一个凑合。
+        function pickEnglishVoice() {
+            const voices = (typeof speechSynthesis !== 'undefined' && speechSynthesis.getVoices()) || [];
+            const en = voices.filter(v => (v.lang || '').replace('_', '-').toLowerCase().startsWith('en'));
+            if (!en.length) return null;
+            const score = (v) => {
+                const name = (v.name || '').toLowerCase();
+                const local = v.localService ? 1 : 0;
+                if (/siri|natural|neural/.test(name)) return 100 + local;
+                if (/premium/.test(name)) return 90 + local;
+                if (/enhanced/.test(name)) return 80 + local;
+                if (/samantha|alex|ava|serena|allison|karen|daniel|moira/.test(name)) return 70 + local;
+                return 50 + local;
+            };
+            return en.slice().sort((a, b) => score(b) - score(a))[0] || en[0];
+        }
+
         async function playSentence() {
             const sent = units[currentUnit].sentences[currentSentence];
             const text = typeof sent === 'string' ? sent : sent.text;
             const btn = document.getElementById('btn-listen');
-            btn.textContent = '🔊 播放中...';
+            btn.innerHTML = '<span class="ico ico-speaker" aria-hidden="true"></span>播放中...';
             btn.disabled = true;
 
-            // 优先使用微软edge-tts（音质更好）
+            // 优先用服务端合成(音质更好,也统一了音色)。
+            // 家长选「平板自带语音」时直接跳到下面的降级分支,不必先失败一次。
             try {
+                if (!serverSynthesis) throw new Error('device-voice');
                 const res = await fetch('/api/tts', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -333,6 +381,9 @@
                 });
                 const data = await res.json();
 
+                // 服务端是权威:它说"该用平板自带语音"就照办,
+                // 不管本地那份开关是不是上一版留下的。
+                if (data.use_device_voice) serverSynthesis = false;
                 if (data.success && data.audio_url) {
                     if (currentAudioElement) {
                         currentAudioElement.pause();
@@ -341,13 +392,13 @@
                     originalAudioUrl = data.audio_url;
                     currentAudioElement = new Audio(data.audio_url);
                     currentAudioElement.play();
-                    btn.textContent = '🔊 播放中...';
+                    btn.innerHTML = '<span class="ico ico-speaker" aria-hidden="true"></span>播放中...';
                     currentAudioElement.onended = () => {
-                        btn.textContent = '🔊 听标准发音';
+                        btn.innerHTML = '<span class="ico ico-speaker" aria-hidden="true"></span>听标准发音';
                         btn.disabled = false;
                     };
                     currentAudioElement.onerror = () => {
-                        btn.textContent = '🔊 听标准发音';
+                        btn.innerHTML = '<span class="ico ico-speaker" aria-hidden="true"></span>听标准发音';
                         btn.disabled = false;
                     };
                     return;
@@ -362,17 +413,16 @@
                     speechSynthesis.cancel();
                     const utterance = new SpeechSynthesisUtterance(text);
                     utterance.lang = 'en-US';
-                    utterance.rate = 0.9;
+                    utterance.rate = 0.85;   // 给孩子读,慢一点
                     utterance.pitch = 1;
-                    const voices = speechSynthesis.getVoices();
-                    const englishVoice = voices.find(v => v.lang.startsWith('en-US')) || voices.find(v => v.lang.startsWith('en')) || null;
+                    const englishVoice = pickEnglishVoice();
                     if (englishVoice) utterance.voice = englishVoice;
                     utterance.onend = () => {
-                        btn.textContent = '🔊 听标准发音';
+                        btn.innerHTML = '<span class="ico ico-speaker" aria-hidden="true"></span>听标准发音';
                         btn.disabled = false;
                     };
                     utterance.onerror = () => {
-                        btn.textContent = '🔊 听标准发音';
+                        btn.innerHTML = '<span class="ico ico-speaker" aria-hidden="true"></span>听标准发音';
                         btn.disabled = false;
                     };
                     speechSynthesis.speak(utterance);
@@ -382,7 +432,7 @@
                 }
             }
 
-            btn.textContent = '🔊 听标准发音';
+            btn.innerHTML = '<span class="ico ico-speaker" aria-hidden="true"></span>听标准发音';
             btn.disabled = false;
         }
 
@@ -390,7 +440,7 @@
         async function pregenerateAudio() {
             if (!confirm('这将下载所有音频文件，可能需要几分钟。确定继续吗？')) return;
             const btn = document.getElementById('btn-pregenerate');
-            btn.textContent = '🔄 生成中...';
+            btn.innerHTML = '<span class="ico ico-repeat" aria-hidden="true"></span>生成中...';
             btn.disabled = true;
 
             try {
@@ -401,7 +451,7 @@
                 alert('生成失败: ' + err.message);
             }
 
-            btn.textContent = '📥 预下载音频';
+            btn.innerHTML = '<span class="ico ico-arrow-right-wide" aria-hidden="true"></span>预下载音频';
             btn.disabled = false;
         }
 
@@ -487,14 +537,14 @@
 
             // 总体评价 + 相似度
             html += `<div class="feedback-item">
-                <span class="feedback-icon feedback-good">🎯</span>
+                <span class="feedback-icon feedback-good"><span class="ico ico-target" aria-hidden="true"></span></span>
                 <span><strong>${escapeHtml(fb.overall || '录音完成')}</strong> · 相似度 ${simPct}%</span>
             </div>`;
 
             // 错词列表
             errors.forEach(err => {
                 html += `<div class="feedback-item">
-                    <span class="feedback-icon feedback-bad">💡</span>
+                    <span class="feedback-icon feedback-bad"><span class="ico ico-bulb" aria-hidden="true"></span></span>
                     <span>把 <code>${escapeHtml(err.got)}</code> 读成 <code>${escapeHtml(err.expected)}</code>${err.tip ? ' — ' + escapeHtml(err.tip) : ''}</span>
                 </div>`;
             });
@@ -502,7 +552,7 @@
             // 建议
             if (fb.suggestion) {
                 html += `<div class="feedback-item">
-                    <span class="feedback-icon feedback-good">📝</span>
+                    <span class="feedback-icon feedback-good"><span class="ico ico-pencil" aria-hidden="true"></span></span>
                     <span>${escapeHtml(fb.suggestion)}</span>
                 </div>`;
             }
@@ -510,7 +560,7 @@
             // 鼓励
             if (fb.encouragement) {
                 html += `<div class="feedback-item">
-                    <span class="feedback-icon feedback-good">✨</span>
+                    <span class="feedback-icon feedback-good"><span class="ico ico-spark" aria-hidden="true"></span></span>
                     <span>${escapeHtml(fb.encouragement)}</span>
                 </div>`;
             }
@@ -518,7 +568,7 @@
             // 转写文本(给家长看)
             if (data.transcript) {
                 html += `<div class="feedback-item feedback-item--muted">
-                    <span class="feedback-icon">📝</span>
+                    <span class="feedback-icon"><span class="ico ico-pencil" aria-hidden="true"></span></span>
                     <span>识别: "${escapeHtml(data.transcript)}"</span>
                 </div>`;
             }
@@ -743,7 +793,7 @@
 
             randomTips.forEach(tip => {
                 html += `<div class="feedback-item">
-                    <span class="feedback-icon feedback-bad">💡</span>
+                    <span class="feedback-icon feedback-bad"><span class="ico ico-bulb" aria-hidden="true"></span></span>
                     <span>${tip}</span>
                 </div>`;
             });
@@ -757,7 +807,7 @@
                 "小声跟读也可以，主要模仿语调！🔉"
             ];
             html += `<div class="feedback-item">
-                <span class="feedback-icon feedback-good">✨</span>
+                <span class="feedback-icon feedback-good"><span class="ico ico-spark" aria-hidden="true"></span></span>
                 <span>${encouragements2[Math.floor(Math.random() * encouragements2.length)]}</span>
             </div>`;
 
@@ -897,7 +947,7 @@
                         <div class="review-empty-art">🎉</div>
                         <h2>今日复习完成！</h2>
                         <p class="review-empty-sub">所有词都复习过啦, 明天再来</p>
-                        <button class="btn btn-primary" data-action="showBooks">← 返回</button>
+                        <button class="btn btn-primary" data-action="showBooks"><span class="ico ico-arrow-left" aria-hidden="true"></span>返回</button>
                     </div>`;
                 return;
             }
@@ -912,22 +962,22 @@
                         <div class="review-empty-art">🎉</div>
                         <h2>复习完成！</h2>
                         <p class="review-empty-sub">${reviewQueue.length} 词已巩固, 状态自动推进</p>
-                        <button class="btn btn-primary" data-action="showBooks">← 返回</button>
+                        <button class="btn btn-primary" data-action="showBooks"><span class="ico ico-arrow-left" aria-hidden="true"></span>返回</button>
                     </div>`;
                 refreshVocabBadge();
                 return;
             }
             const w = reviewQueue[reviewIdx];
-            const stateLabels = {learning: '🆕 学习中', practicing: '📚 练习中', familiar: '👍 熟悉', mastered: '⭐ 已掌握'};
+            const stateLabels = {learning: '学习中', practicing: '练习中', familiar: '熟悉', mastered: '已掌握'};
             card.innerHTML = `
                 <div class="vocab-card vocab-card--center">
                     <div class="vocab-card-meta">${reviewIdx + 1} / ${reviewQueue.length} · ${stateLabels[w.state] || w.state}</div>
                     <div class="vocab-card-word">${w.word}</div>
-                    <button class="btn btn-secondary" id="vocab-translate-btn" data-action="lookupWord" data-arg="${w.word}">🔍 查词意</button>
+                    <button class="btn btn-secondary" id="vocab-translate-btn" data-action="lookupWord" data-arg="${w.word}"><span class="ico ico-search" aria-hidden="true"></span>查词意</button>
                     <div id="vocab-translate-result" class="lookup-result"></div>
                     <div class="vocab-card-actions">
-                        <button class="btn btn-danger" data-action="answerVocab" data-arg="false">❌ 忘了</button>
-                        <button class="btn btn-success" data-action="answerVocab" data-arg="true">✅ 记住了</button>
+                        <button class="btn btn-danger" data-action="answerVocab" data-arg="false"><span class="ico ico-close" aria-hidden="true"></span>忘了</button>
+                        <button class="btn btn-success" data-action="answerVocab" data-arg="true"><span class="ico ico-check" aria-hidden="true"></span>记住了</button>
                     </div>
                     <button class="btn btn-secondary vocab-card-skip" data-action="showBooks">稍后再来</button>
                 </div>`;

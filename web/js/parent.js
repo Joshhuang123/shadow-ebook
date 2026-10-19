@@ -19,10 +19,10 @@
             // R11: 后端返的 remaining 字段给家长看"还剩 N 次"
             const box = el('pwdRemaining');
             if (typeof n === 'number' && n > 0 && n <= 4) {
-                box.textContent = `⚠️ 还剩 ${n} 次尝试, 之后会锁定 15 分钟`;
+                box.textContent = `还剩 ${n} 次尝试, 之后会锁定 15 分钟`;
                 box.style.display = 'block';
             } else if (n === 0) {
-                box.textContent = '🔒 已锁定, 请稍后再试';
+                box.textContent = '已锁定, 请稍后再试';
                 box.style.display = 'block';
             } else {
                 box.style.display = 'none';
@@ -157,6 +157,7 @@
             renderDashboard(payload, { vocabStats, bookProgress, booksList });
             loadSettings(payload.settings || {});
             loadKnowledgePath();
+            loadTtsSettings();
         }
 
         // 知识图谱:下一个该练什么 + 哪个前置卡着几个下游。
@@ -285,7 +286,7 @@
                 li.className = 'activity-item';
                 const icon = document.createElement('div');
                 icon.className = 'icon';
-                icon.textContent = act?.icon || '📖';
+                icon.innerHTML = act?.icon || '<span class="ico ico-book" aria-hidden="true"></span>';
                 const info = document.createElement('div');
                 info.className = 'info';
                 const title = document.createElement('div');
@@ -623,5 +624,227 @@
                 else el('backupStatus').textContent = j.error || '删不掉';
             } catch (e) {
                 el('backupStatus').textContent = '删不掉,检查一下网络';
+            }
+        }
+
+        // ========== 朗读声音 (TTS provider) ==========
+        // 三种来源:edge(微软,免费要联网) / openai_compatible(自建,含本地模型)
+        // / device(平板自带,完全离线)。密钥只留在服务器上,前端永远拿不到。
+        const TTS_PROVIDER_DESC = {
+            edge: '微软 Edge TTS:免费、音色多,但要能连外网。断网或被限流时会失败。',
+            openai_compatible: '接你自己的语音服务,局域网里的本地模型或云服务都行。',
+            macos_say: '用这台 Mac 自带的系统语音念:免费、离线、语速可调。音质够用,想要更自然请用自建服务。',
+            device: '平板/电脑用自己的声音念:完全离线、零延迟、不消耗任何额度。'
+        };
+
+        function ttsFormValues() {
+            return {
+                provider: el('ttsProvider').value,
+                base_url: el('ttsBaseUrl').value.trim(),
+                api_key: el('ttsApiKey').value,
+                model: el('ttsModel').value.trim(),
+                voice: el('ttsVoice').value.trim(),
+                say_voice: el('ttsSayVoice').value.trim(),
+                say_rate: parseInt(el('ttsSayRate').value, 10) || 160
+            };
+        }
+
+        function setTtsStatus(text, kind) {
+            const s = el('ttsStatus');
+            s.textContent = text;
+            s.className = 'tts-status' + (kind ? ' is-' + kind : '');
+        }
+
+        // 自建服务的字段只在选中它时出现。device 模式下音色也用不上
+        // (那是平板自己的声音列表),但留着不碍事,切换回来不用重填。
+        function syncTtsFields() {
+            const p = el('ttsProvider').value;
+            el('ttsCustomFields').hidden = (p !== 'openai_compatible');
+            el('ttsMacFields').hidden = (p !== 'macos_say');
+            setText('ttsProviderDesc', TTS_PROVIDER_DESC[p] || '');
+        }
+
+        function applyTtsSettings(s) {
+            el('ttsProvider').value = s.provider || 'edge';
+            el('ttsBaseUrl').value = s.base_url || '';
+            el('ttsModel').value = s.model || '';
+            el('ttsVoice').value = s.voice || '';
+            el('ttsSayVoice').value = s.say_voice || 'Samantha';
+            el('ttsSayRate').value = s.say_rate || 160;
+            // 密钥永远不会下发。已保存过时显示占位符,提示"已设置",
+            // 家长想改就直接填新的,不填就是保持原样(前端传 null 表示不改)。
+            el('ttsApiKey').value = '';
+            el('ttsApiKey').placeholder = s.has_api_key ? '已设置(留空表示不修改)' : '本地服务可留空';
+            el('ttsClearKey').hidden = !s.has_api_key;
+            syncTtsFields();
+        }
+
+        async function loadTtsSettings() {
+            if (!el('ttsCard')) return;
+            try {
+                const r = await fetch('/api/tts/settings', { credentials: 'same-origin' });
+                const j = await r.json();
+                if (j.success && j.settings) {
+                    applyTtsSettings(j.settings);
+                    setTtsStatus('当前:' + (TTS_PROVIDER_DESC[j.settings.provider] || ''), 'ok');
+                } else {
+                    syncTtsFields();
+                }
+            } catch (e) {
+                setTtsStatus('读取设置失败', 'error');
+            }
+            el('ttsProvider').onchange = syncTtsFields;
+            loadTtsCacheInfo();
+        }
+
+        async function ttsSave() {
+            const v = ttsFormValues();
+            // 留空 = 不修改已存的密钥。传空字符串会被服务端当成"清空",
+            // 所以这里必须区分 null(不改)和 ''(清空)。
+            const body = {
+                provider: v.provider,
+                base_url: v.base_url,
+                model: v.model,
+                voice: v.voice,
+                say_voice: v.say_voice,
+                say_rate: v.say_rate,
+                api_key: v.api_key === '' ? null : v.api_key
+            };
+            setTtsStatus('保存中…', 'busy');
+            try {
+                const r = await fetch('/api/tts/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(body)
+                });
+                const j = await r.json();
+                if (j.success) {
+                    applyTtsSettings(j.settings);
+                    setTtsStatus('已保存。正在后台预生成音频,可能要等一会儿。', 'ok');
+                } else {
+                    setTtsStatus(j.error || '保存失败', 'error');
+                }
+            } catch (e) {
+                setTtsStatus('保存失败,检查服务是否在运行', 'error');
+            }
+        }
+
+        async function ttsTest() {
+            const v = ttsFormValues();
+            setTtsStatus('正在合成…', 'busy');
+            const payload = { provider: v.provider, voice: v.voice };
+            if (v.provider === 'openai_compatible') {
+                payload.base_url = v.base_url;
+                payload.model = v.model;
+                payload.api_key = v.api_key === '' ? null : v.api_key;
+            }
+            if (v.provider === 'macos_say') {
+                payload.say_voice = v.say_voice;
+                payload.say_rate = v.say_rate;
+            }
+            try {
+                const r = await fetch('/api/tts/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(payload)
+                });
+                const j = await r.json();
+                if (j.success) {
+                    setTtsStatus(`通了 · ${j.ms} 毫秒 · ${Math.round(j.bytes / 1024)} KB`, 'ok');
+                    if (j.audio_b64) playInlineAudio(j.audio_b64, j.ext);
+                } else {
+                    // 失败原因要能直接指导下一步:地址错 / 密钥错 / 接口不存在,
+                    // 家长不用去翻日志。
+                    setTtsStatus(j.error || '试听失败', 'error');
+                }
+            } catch (e) {
+                setTtsStatus('试听失败,检查服务是否在运行', 'error');
+            }
+        }
+
+        function playInlineAudio(b64, ext) {
+            try {
+                if (window.__ttsPreview) window.__ttsPreview.pause();
+                const bin = atob(b64);
+                const bytes = new Uint8Array(bin.length);
+                for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                const url = URL.createObjectURL(new Blob([bytes], { type: 'audio/' + (ext || 'mpeg') }));
+                const a = new Audio(url);
+                window.__ttsPreview = a;
+                a.onended = () => URL.revokeObjectURL(url);
+            } catch (e) { /* 浏览器不让放就算了,状态行已经显示成功 */ }
+        }
+
+        async function ttsClearKey() {
+            if (!confirm('清除已保存的 API Key?')) return;
+            try {
+                const r = await fetch('/api/tts/settings/clear-key', {
+                    method: 'POST', credentials: 'same-origin'
+                });
+                const j = await r.json();
+                if (j.success) {
+                    applyTtsSettings(j.settings);
+                    setTtsStatus('密钥已清除', 'ok');
+                } else {
+                    setTtsStatus(j.error || '清除失败', 'error');
+                }
+            } catch (e) {
+                setTtsStatus('清除失败', 'error');
+            }
+        }
+
+        async function loadTtsCacheInfo() {
+            const box = el('ttsCacheInfo');
+            if (!box) return;
+            try {
+                const r = await fetch('/api/tts/status', { credentials: 'same-origin' });
+                const j = await r.json();
+                if (j.success) {
+                    const mb = (j.audio_bytes || 0) / 1048576;
+                    box.textContent = `服务器上已缓存 ${j.audio_files || 0} 段音频`
+                        + (mb > 1 ? `（约 ${mb.toFixed(0)} MB）` : '')
+                        + '。换引擎之后旧音频不会被用到,建议清一次。';
+                }
+            } catch (e) { /* 拿不到就算了,不影响配置 */ }
+        }
+
+        async function ttsClearCache() {
+            if (!confirm('清空服务器上已生成的全部音频缓存?\n下次朗读会重新生成,可能要等一下。')) return;
+            setTtsStatus('清理中…', 'busy');
+            try {
+                const r = await fetch('/api/tts/cache', {
+                    method: 'POST', credentials: 'same-origin'
+                });
+                const j = await r.json();
+                if (j.success) {
+                    setTtsStatus(`已清空 ${j.removed} 段音频`
+                        + (j.freed_bytes > 1048576
+                            ? `（释放 ${(j.freed_bytes / 1048576).toFixed(0)} MB）` : ''), 'ok');
+                    loadTtsCacheInfo();
+                } else {
+                    setTtsStatus(j.error || '清理失败', 'error');
+                }
+            } catch (e) {
+                setTtsStatus('清理失败', 'error');
+            }
+        }
+
+        async function ttsReset() {
+            if (!confirm('恢复默认朗读设置?')) return;
+            try {
+                const r = await fetch('/api/tts/settings', {
+                    method: 'DELETE', credentials: 'same-origin'
+                });
+                const j = await r.json();
+                if (j.success) {
+                    applyTtsSettings(j.settings);
+                    setTtsStatus('已恢复默认', 'ok');
+                } else {
+                    setTtsStatus(j.error || '恢复失败', 'error');
+                }
+            } catch (e) {
+                setTtsStatus('恢复失败', 'error');
             }
         }

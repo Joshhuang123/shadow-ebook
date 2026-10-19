@@ -20,6 +20,19 @@ from extensions import tts, auth
 
 
 @pytest.fixture
+def pinned_edge_provider(monkeypatch):
+    """把 TTS provider 钉成 edge(默认),不碰数据库。
+
+    合成走哪个引擎是**运行时配置**决定的:家长在家长页把语音来源换成
+    macos_say 之后,这些靠 monkeypatch `edge_tts.Communicate` 模拟失败的
+    测试就会真的去调 `say`,于是"该失败"变成了"成功" —— 而且它还依赖
+    这台机器上次被配成什么样,不是取决于被测代码。必须钉住。
+    """
+    from extensions import tts_providers
+    monkeypatch.setattr(tts_providers, 'get_settings',
+                        lambda: dict(tts_providers.DEFAULTS))
+
+@pytest.fixture
 def client(tmp_db, clear_api_rate, monkeypatch, tmp_path):
     """每个 test 用独立的 TTS_DIR + 重置 _pregen_state"""
     monkeypatch.setattr('extensions.tts.TTS_DIR', tmp_path / 'tts')
@@ -37,7 +50,12 @@ def reset_pregen_state():
 
 
 def _hash(text, voice=tts.DEFAULT_VOICE):
-    return hashlib.md5((text + voice).encode()).hexdigest()[:12]
+    """缓存 key 由应用自己算(extensions.tts._cache_key)。
+
+    早先这里自己复算 md5(text + voice),provider 指纹加进来之后公式变了,
+    测试却还按老公式放文件 —— 那样测的是"公式没变",不是"缓存命中"。
+    """
+    return tts._cache_key(text, voice)
 
 
 # === cache hit ===
