@@ -81,6 +81,7 @@
         .controls { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 20px 0; position: relative; z-index: 10; }
         .btn {
             padding: 14px 28px;
+            min-height: 48px;
             border: none;
             border-radius: 50px;
             font-size: 1.1em;
@@ -176,6 +177,11 @@
         }
         .waveform-play-btn {
             padding: 4px 12px;
+            /* 波形上的播放键原来是 ~28px 高,孩子基本点不中 */
+            min-height: 48px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
             background: #B86A4E;
             color: white;
             border: none;
@@ -327,6 +333,10 @@
             color: var(--text-secondary);
             text-decoration: none;
             padding: 6px 14px;
+            /* 导航也是孩子点的,原来只有 ~35px 高 */
+            display: inline-flex;
+            align-items: center;
+            min-height: 48px;
             border-radius: 8px;
             font-size: 0.85em;
             transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;

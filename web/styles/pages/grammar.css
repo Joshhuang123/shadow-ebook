@@ -53,6 +53,10 @@
             color: var(--text-secondary);
             text-decoration: none;
             padding: 8px 16px;
+            /* 导航也是孩子点的,原来 8px 上下 padding 只有 ~39px 高 */
+            display: inline-flex;
+            align-items: center;
+            min-height: 48px;
             border-radius: 8px;
             font-size: 0.9em;
             transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
@@ -283,8 +287,9 @@
             position: absolute;
             top: 20px;
             right: 20px;
-            width: 36px;
-            height: 36px;
+            /* 原来 36px —— 孩子手指粗、点不准,关闭按钮尤其要点得到 */
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
             background: var(--bg-dark);
             border: none;
@@ -466,10 +471,12 @@
 
         .practice-btn {
             flex: 1;
-            padding: 8px 12px;
+            padding: 12px 20px;
+            /* DESIGN.md §按钮尺寸:48px 是硬下限,练习区按钮孩子要点得中 */
+            min-height: 48px;
             border: none;
             border-radius: 8px;
-            font-size: 0.85em;
+            font-size: 0.95em;
             font-weight: 500;
             cursor: pointer;
             transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;

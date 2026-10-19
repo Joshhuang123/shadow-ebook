@@ -8,6 +8,7 @@ import json
 import logging
 import random
 import time
+from typing import Optional
 
 from flask import jsonify, request
 
@@ -243,7 +244,7 @@ def _try_static_fallback(key: str, exclude_questions: list[str]):
 
 
 # === R21: SQLite 缓存 ===
-def _get_cached_question(user_id: str, key: str, exclude_questions: list[str]) -> dict | None:
+def _get_cached_question(user_id: str, key: str, exclude_questions: list[str]) -> Optional[dict]:
     """从缓存拿一道还没被 exclude 且没"毕业"的题。
 
     返回 dict: {id, question} 或 None(缓存没货或全被排除)。

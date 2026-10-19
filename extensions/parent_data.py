@@ -25,6 +25,8 @@ import logging
 import re
 import secrets
 import time
+from typing import Optional
+
 from flask import jsonify, request, session, Response
 
 from extensions.auth import (
@@ -134,7 +136,7 @@ def _load_section(name: str, conn=None) -> dict:
         return {}
 
 
-def _save_section(name: str, data: dict, conn=None, now: int | None = None):
+def _save_section(name: str, data: dict, conn=None, now: Optional[int] = None):
     conn = conn or get_db()
     now = now if now is not None else int(time.time() * 1000)
     conn.execute(
@@ -368,7 +370,7 @@ def _record_vocab_lookup(word: str) -> dict:
     return _review_row_to_dict(row)
 
 
-def _record_vocab_review(word: str, correct: bool) -> dict | None:
+def _record_vocab_review(word: str, correct: bool) -> Optional[dict]:
     """孩子答对/答错一词, 推进 SRS 状态机。返回新状态, 词不存在返 None。"""
     word = word.strip().lower()
     now = int(time.time() * 1000)
@@ -481,7 +483,7 @@ def _save_book_progress(book_id: str, chapter_idx: int, sentence_idx: int) -> di
     return {'chapter_idx': chapter_idx, 'sentence_idx': sentence_idx, 'last_open_ts': now}
 
 
-def _get_book_progress(book_id: str) -> dict | None:
+def _get_book_progress(book_id: str) -> Optional[dict]:
     row = get_db().execute(
         'SELECT chapter_idx, sentence_idx, last_open_ts FROM book_progress WHERE book_id = ?',
         (book_id,),
@@ -504,7 +506,7 @@ def _get_all_book_progress() -> dict:
 
 
 def _record_sentence_mastery(book_id: str, chapter_idx: int, sentence_idx: int,
-                              mastery: str, attempts: int = 1) -> dict | None:
+                              mastery: str, attempts: int = 1) -> Optional[dict]:
     """记录某句子的 mastery (fluent / slow / attempted)。
     只升不降 (e.g. fluent 不会被 slow 覆盖), 避免录音抖动反复横跳。
     """

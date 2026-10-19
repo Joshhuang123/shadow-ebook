@@ -104,3 +104,7 @@ certs/server.key
 # 内容、孩子的阅读进度),绝不能进版本库 —— 备份的意义也正在于它是本地私有的。
 backups/
 
+
+# 知识图谱原始数据源(太大,不进仓库;scripts/build_kg.py 可重新下载)
+data/kg/sources/
+data/kg/*.db

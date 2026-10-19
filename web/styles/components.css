@@ -31,10 +31,13 @@
     pointer-events: none;
 }
 
-/* 尺寸 */
-.btn-sm { height: 32px; padding: 0 var(--space-4); font-size: var(--text-sm); }
-.btn-md { height: 40px; padding: 0 var(--space-5); font-size: var(--text-base); }
-.btn-lg { height: 48px; padding: 0 var(--space-6); font-size: var(--text-lg); }
+/* 尺寸
+   FRONTEND_BRIEF §七.1 已裁决「以 48px 为准」:10 岁孩子在 iPad 上点不准小按钮,
+   规范向 kid-touch.css 的实际实现看齐。这三档原先还是 DESIGN.md 初稿的
+   32/40/48,与裁决结果矛盾,这里一并改成 48/60/72。 */
+.btn-sm { height: 48px; padding: 0 var(--space-4); font-size: var(--text-base); }
+.btn-md { height: 60px; padding: 0 var(--space-5); font-size: var(--text-lg); }
+.btn-lg { height: 72px; padding: 0 var(--space-6); font-size: var(--text-2xl); border-radius: 50%; }
 
 /* 类型 */
 .btn-primary {
@@ -109,7 +112,7 @@
 /* ===== 输入框 ========================== */
 .input, input[type="text"], input[type="password"], input[type="number"], input[type="email"], select, textarea {
     width: 100%;
-    height: 40px;
+    height: 48px;   /* 同上,输入框也按 48px 下限 */
     padding: 0 var(--space-4);
     background: var(--bg-card);
     border: 1px solid var(--border);

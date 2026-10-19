@@ -11,11 +11,11 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>学习统计 - Shadow Ebook</title>
+    <title>学习统计 - 影子电子书</title>
     <link rel="apple-touch-icon" href="/icon-192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Shadow Ebook">
+    <meta name="apple-mobile-web-app-title" content="影子电子书">
     <meta name="theme-color" content="#B86F4D">
     <link rel="stylesheet" href="/styles/pages/stats.css">
 </head>
@@ -23,12 +23,14 @@
     <nav class="top-nav">
         <div class="nav-brand">
             <div class="logo">📖</div>
-            <span>Shadow Ebook</span>
+            <span>影子电子书</span>
         </div>
         <div class="nav-links">
             <a href="/" class="nav-link">电子书</a>
             <a href="/tutor" class="nav-link">跟读学习</a>
             <a href="/grammar" class="nav-link">语法学习</a>
+            <a href="/stats" class="nav-link active">📊 统计</a>
+            <a href="/parent" class="nav-link nav-link-parent">🔐 家长</a>
         </div>
     <button id="themeBtn" class="theme-btn" data-action="cycleTheme">&#xD83D;&#xDD0C;</button>
         </nav>
@@ -39,9 +41,21 @@
             <p class="hero-subtitle">记录你的每一步成长</p>
         </div>
 
-        <!-- 主要统计卡片 -->
-        <div class="stats-grid" id="stats-grid">
-            <!-- 动态填充 -->
+        <!-- 这一页唯一的视觉焦点(照设计稿):连续学习天数大数字。
+             原来 6 个等大卡片并排,没有焦点 —— 违反 DESIGN.md「每页只能有一个视觉焦点」。 -->
+        <section class="streak-hero" aria-labelledby="streak-hero-label">
+            <div class="streak-hero-crown" aria-hidden="true">👑</div>
+            <div class="streak-hero-value" id="streak-value">0</div>
+            <h2 class="streak-hero-label" id="streak-hero-label">连续学习天数</h2>
+            <p class="streak-hero-note" id="streak-note">今天读一点点,也算数</p>
+        </section>
+
+        <!-- 学习时长图表 -->
+        <div class="chart-section">
+            <div class="section-title">📈 近7天学习时长</div>
+            <div class="bar-chart" id="time-chart">
+                <!-- 动态填充 -->
+            </div>
         </div>
 
         <!-- 词汇量测试 -->
@@ -85,12 +99,9 @@
             <button class="btn btn-secondary" data-action="retestVocab">重新测试</button>
         </div>
 
-        <!-- 学习时长图表 -->
-        <div class="chart-section">
-            <div class="section-title">📈 近7天学习时长</div>
-            <div class="bar-chart" id="time-chart">
-                <!-- 动态填充 -->
-            </div>
+        <!-- 其余指标:降级成紧凑小卡,只作背景信息,不再和上面的焦点抢注意力 -->
+        <div class="stats-grid stats-grid--minor" id="stats-grid">
+            <!-- 动态填充 -->
         </div>
 
         <!-- 掌握进度 -->

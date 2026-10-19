@@ -217,18 +217,8 @@
             object-fit: cover;
             display: block;
         }
-        .continue-cover.is-empty {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: var(--space-3);
-            text-align: center;
-            background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
-            color: #fff;
-            font-size: var(--text-sm);
-            font-weight: var(--font-semibold);
-            line-height: 1.4;
-        }
+        /* .continue-cover.is-empty 的占位样式统一放到本文件下方的
+           「无封面时的占位」一节,和 .shelf-card-cover.is-empty 共用一套。 */
 
         .continue-body {
             flex: 1;
@@ -365,18 +355,45 @@
             display: block;
             /* 封面图不反色 —— 反色人物会失真 */
         }
-        /* 无封面时的占位:渐变底 + 书名,不让卡片显示空白 */
-        .shelf-card-cover.is-empty {
+        /* 无封面时的占位(设计稿 bs_D):暖米色底 + 线性书本图标,安静不抢注意力。
+           原实现是 primary→accent 高饱和渐变配白字,既违反 DESIGN.md 的
+           「低饱和 / 装饰不抢焦点」,也和 bs_A 真实封面卡片的观感对不上。
+           书名对屏幕阅读器仍可见(visually-hidden),视觉上交给图标。 */
+        .shelf-card-cover.is-empty,
+        .continue-cover.is-empty {
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: var(--space-3);
-            text-align: center;
-            background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
-            color: #fff;
-            font-size: var(--text-sm);
-            font-weight: var(--font-semibold);
-            line-height: 1.4;
+            background: var(--bg-dark);
+            border: 1px dashed var(--border);
+            color: var(--text-disabled);
+        }
+        .shelf-card-cover.is-empty::before,
+        .continue-cover.is-empty::before {
+            content: '';
+            width: 34%;
+            max-width: 72px;
+            min-width: 28px;
+            aspect-ratio: 3 / 4;
+            background: currentColor;
+            /* 线性书本剪影:实心矩形挖出书页与书脊 */
+            -webkit-mask: var(--cover-icon-mask) center / contain no-repeat;
+            mask: var(--cover-icon-mask) center / contain no-repeat;
+            opacity: 0.42;
+        }
+        /* 书名在卡片下方已有一份,这里只留给读屏,不重复占视觉 */
+        .shelf-card-cover.is-empty,
+        .continue-cover.is-empty {
+            font-size: var(--text-xs);
+        }
+        .shelf-card-cover.is-empty > *,
+        .continue-cover.is-empty > * { display: none; }
+        .shelf-card-cover.is-empty:not(:empty),
+        .continue-cover.is-empty:not(:empty) { color: transparent; }
+
+        /* 图标剪影(书本),内联 SVG,只作形状用不需要 aria */
+        :root {
+            --cover-icon-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 32'%3E%3Cpath fill='%23000' d='M2 2h9c1.1 0 2 .9 2 2v26a2 2 0 0 0-2-2H2V2zm20 0h-7v28a2 2 0 0 1 2-2h5V2z'/%3E%3C/svg%3E");
         }
 
         .shelf-card-title {

@@ -1,0 +1,2 @@
+parent_data 单行 blob 拆表迁移于 2026-10-02T17:39:10
+旧 blob 行保留在 parent_data 表作拆表前快照, 不再读写

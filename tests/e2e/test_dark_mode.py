@@ -5,9 +5,8 @@
 
 原一次性脚本在 tests/e2e/_legacy/verify_dark.py,如果还想临时跑单测可以 mv 回去。
 """
-from __future__ import annotations
-
 import re
+from typing import Optional
 
 import pytest
 
@@ -29,7 +28,7 @@ def _hex_to_rgb(s: str):
     return None
 
 
-def _gradient_first_color_brightness(gradient_str: str) -> float | None:
+def _gradient_first_color_brightness(gradient_str: str) -> Optional[float]:
     """取 `linear-gradient(... rgb(...) ...)` 的第一个 RGB,按 NTSC 公式算亮度。"""
     if not gradient_str or 'gradient' not in gradient_str:
         return None
@@ -41,7 +40,7 @@ def _gradient_first_color_brightness(gradient_str: str) -> float | None:
     return (0.299 * r + 0.587 * g + 0.114 * b) / 255
 
 
-def _body_brightness(page) -> float | None:
+def _body_brightness(page) -> Optional[float]:
     """读 body 计算后的 bg-image,fallback bg-color。"""
     bg_img = page.evaluate("() => getComputedStyle(document.body).backgroundImage")
     l = _gradient_first_color_brightness(bg_img or '')

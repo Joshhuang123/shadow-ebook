@@ -116,6 +116,55 @@ CREATE TABLE IF NOT EXISTS sentence_mastery (
   last_attempt_ts INTEGER NOT NULL,
   PRIMARY KEY (book_id, chapter_idx, sentence_idx)
 );
+
+-- ============================================================================
+-- 知识图谱 (kg)
+-- 两张通用表,节点和边各一,靠 kind / rel 区分语义。
+-- 为什么不用一表多列:词/语法/音素三类节点的字段本来就不同
+-- (音素没有释义,语法没有词频),塞进一张宽表会有一堆恒为 NULL 的列。
+-- ============================================================================
+
+-- 节点。id 带类型前缀,天然不会跨类型撞主键。
+--   word:cat        单词        label=词形, level=1..5, attrs 里放音标/词性/词频/考纲
+--   grammar:xxx     语法点      level=KET=1 / PET=2
+--   phoneme:AE1     音素(ARPAbet)
+--   morpheme:xxx    词素/词根
+CREATE TABLE IF NOT EXISTS kg_node (
+  id         TEXT PRIMARY KEY,
+  kind       TEXT NOT NULL,
+  label      TEXT NOT NULL,
+  level      INTEGER,
+  attrs      TEXT NOT NULL DEFAULT '{}',
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_kg_node_kind ON kg_node(kind);
+CREATE INDEX IF NOT EXISTS idx_kg_node_level ON kg_node(level);
+
+-- 边。rel 取值:
+--   requires      学 A 必须先会 B      (语法前置关系 —— 本图谱的核心价值)
+--   contains      A 里含 B            (词→音素, 句子→词)
+--   derives       A 从 B 派生          (时态/单复数 → 原形)
+--   practices     在 A 里练到过 B      (书/句子 → 语法点)
+CREATE TABLE IF NOT EXISTS kg_edge (
+  src        TEXT NOT NULL,
+  rel        TEXT NOT NULL,
+  dst        TEXT NOT NULL,
+  weight     REAL NOT NULL DEFAULT 1.0,
+  reason     TEXT,                       -- 为什么有这条边(人话,可给家长看)
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (src, rel, dst)
+);
+CREATE INDEX IF NOT EXISTS idx_kg_edge_dst ON kg_edge(dst, rel);
+CREATE INDEX IF NOT EXISTS idx_kg_edge_src ON kg_edge(src, rel);
+
+-- 孩子对「知识点」的掌握度。节点级而不是句子级 —— 一句话会同时涉及
+-- 好几个语法点,句级记不住「哪个知识点还欠着」。
+CREATE TABLE IF NOT EXISTS kg_mastery (
+  node_id        TEXT PRIMARY KEY,
+  state          TEXT NOT NULL DEFAULT 'learning',  -- learning / familiar / mastered
+  strength       REAL NOT NULL DEFAULT 0.0,         -- 0..1 衰减后的掌握强度
+  updated_at     INTEGER NOT NULL
+);
 """
 
 
@@ -162,12 +211,26 @@ def write_txn():
 
 
 # === 首次启动:建表 + 一次性 JSON→SQLite 迁移 (per-domain marker) ===
+def _migrate_kg_edge_reason(conn):
+    """给已存在的 kg_edge 补 reason 列。
+
+    CREATE TABLE IF NOT EXISTS 对**已建好**的表不会补列,而这张表在
+    加 reason 之前就已经建在别人机器上了。用 PRAGMA 查一下再 ALTER,
+    幂等,重复跑不会报错。"""
+    cols = {r[1] for r in conn.execute('PRAGMA table_info(kg_edge)')}
+    if 'reason' in cols:
+        return
+    conn.execute('ALTER TABLE kg_edge ADD COLUMN reason TEXT')
+    conn.commit()
+
+
 def init_db():
     """幂等。每个域独立检查自己的 migration marker,任何域没迁就迁,跑过就跳过。"""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH))
     try:
         conn.executescript(SCHEMA)
+        _migrate_kg_edge_reason(conn)
     finally:
         conn.close()
 

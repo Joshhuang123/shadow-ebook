@@ -685,3 +685,74 @@
 .bi-btn--danger {
     color: var(--danger);
 }
+
+/* ===== 知识点顺序(知识图谱)========================
+   家长页专用。刻意做得比孩子页更克制、信息密度更高 ——
+   这是给大人看的诊断,不是给 10 岁孩子看的鼓励。
+   ==================================================== */
+.kg-hint {
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin: 0 0 16px;
+}
+
+.kg-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.kg-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-dark);
+    /* 触控下限:家长页在手机上也会点 */
+    min-height: 48px;
+}
+
+.kg-lv {
+    font-size: 0.72em;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    flex-shrink: 0;
+}
+.kg-lv.ket { background: var(--tint-secondary); color: var(--color-secondary); }
+.kg-lv.pet { background: var(--tint-accent);    color: var(--color-accent); }
+
+.kg-name {
+    font-weight: 600;
+    font-size: 0.95em;
+    color: var(--text-primary);
+}
+
+.kg-ok,
+.kg-blocked,
+.kg-block {
+    font-size: 0.82em;
+    color: var(--text-secondary);
+    margin-left: auto;
+    text-align: right;
+}
+.kg-blocked { color: var(--danger); }
+.kg-block   { color: var(--text-secondary); }
+
+.kg-subtitle {
+    font-size: 0.82em;
+    color: var(--text-secondary);
+    margin: 18px 0 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--divider);
+}
+
+.kg-empty {
+    font-size: 0.85em;
+    color: var(--text-disabled);
+    padding: 12px;
+}

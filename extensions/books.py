@@ -16,6 +16,7 @@ import html
 import time
 import zipfile
 from pathlib import Path
+from typing import Optional
 from flask import abort, jsonify, request, send_from_directory, session
 from werkzeug.utils import secure_filename
 
@@ -305,18 +306,24 @@ def _sanitize_book_id(raw: str) -> str:
     return s
 
 
-def _cover_url(cover_path: str | None) -> str | None:
+def _cover_url(cover_path: Optional[str]) -> Optional[str]:
     """DB 里 cover 字段 → API 响应里给前端的完整 URL。
 
-    兼容两代格式:
-      - 新 (R11+): 'covers/xxx.jpeg' → '/data/covers/xxx.jpeg'
-      - 旧: '/data/covers/xxx.jpeg' → 原样返回
-    这样迁移期混存也没事, 反代改 COVER_URL_PREFIX 一处即可。
+    兼容三代格式(存量的脏数据不迁就,只在读取时归一):
+      - R11+: 'covers/xxx.jpeg'      → '/data/covers/xxx.jpeg'
+      - 更早:  '/data/covers/xxx.jpeg' → 原样返回
+      - 裸文件名 'xxx.jpeg'          → '/data/covers/xxx.jpeg'
+
+    历史 bug: _save_cover 存 'covers/xxx.jpeg',但 COVERS_DIR 本身就是 data/covers,
+    直接拼前缀会得到 '/data/covers/covers/xxx.jpeg',取图 404 → 每本书都掉进占位封面。
+    所以这里先把开头的 'covers/' 剥掉再拼,反代改 COVER_URL_PREFIX 一处即可。
     """
     if not cover_path:
         return None
     if cover_path.startswith('/'):
         return cover_path
+    if cover_path.startswith('covers/'):
+        cover_path = cover_path[len('covers/'):]
     return COVER_URL_PREFIX + cover_path
 
 

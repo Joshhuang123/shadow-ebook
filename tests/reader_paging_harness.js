@@ -104,7 +104,8 @@ vm.runInContext(code, sandbox, { filename: 'index.js' });
 // 所以补一个闭包探针把它们读出来(函数声明是能直接拿到的)。
 vm.runInContext(
   'globalThis.__probe = () => ({ sentences, chapterStarts, ' +
-  'currentSentenceIndex, currentChapterIndex, bookData, sentencesPerPage, readingMode });',
+  'currentSentenceIndex, currentChapterIndex, bookData, sentencesPerPage, readingMode, ' +
+  'vocabulary, currentWord });',
   sandbox);
 const P = () => sandbox.__probe();
 
@@ -316,6 +317,36 @@ const check = (name, cond, extra) => {
   check('查词:自己家的接口也挂掉时提示检查网络',
         modalHtml.includes('网络'), modalHtml.slice(0, 90));
   sandbox.fetch = realFetch;
+
+  // === 收入生词本时抓的释义(用户 2026-10-02 报「查到的词存进来就没释义」)===
+  // 弹窗写的是 .word-meaning-cn, 而 addToVocab 一直在按 .word-meaning-def 找,
+  // 两个 class 对不上 → meaning 恒为空 → 生词本列表和复习卡片全是
+  // 「未找到释义」。这里直接对着弹窗真正写出的 HTML 验抓取结果。
+  // mkEl 的 querySelectorAll 是空壳, 这里给 modal-meanings 装一个真按 class
+  // 找的最小实现, 免得测试验的是壳而不是真逻辑。
+  const meaningItem = (part, cn) => ({
+    textContent: cn,
+    querySelector: sel => sel === '.word-meaning-part'
+      ? (part ? { textContent: part } : null)
+      : (sel === '.word-meaning-cn' ? { textContent: cn } : null),
+  });
+  const meaningsEl = getEl('modal-meanings');
+  meaningsEl._items = [meaningItem('adj.', '迷人的；有魔力的'), meaningItem('', '使着魔')];
+  meaningsEl.querySelectorAll = sel => (sel === '.word-meaning-item' ? meaningsEl._items : []);
+
+  sandbox.fetch = dictResp({ success: true, word: 'enchanted', phonetic: 'x',
+    meanings: [{ part: 'adj.', cn: '迷人的；有魔力的' }, { part: 'v.', cn: '使着魔' }] });
+  await sandbox.lookupWord('enchanted', fakeWordEl, fakeEvent);
+  meaningsEl._items = [meaningItem('adj.', '迷人的；有魔力的'), meaningItem('v.', '使着魔')];
+  sandbox.addToVocab();
+  let saved = P().vocabulary.find(v => v.word === 'enchanted');
+  check('生词本:存进去的释义不是「未找到释义」',
+        saved && saved.meaning.includes('迷人的；有魔力的'),
+        saved ? saved.meaning : '(没存进去)');
+  check('生词本:多条释义都抓到了(不是只有第一条)',
+        saved && saved.meaning.includes('使着魔'), saved ? saved.meaning : '');
+  check('生词本:词性跟着释义一起存',
+        saved && saved.meaning.includes('adj.'), saved ? saved.meaning : '');
 
   console.log(fails === 0 ? '\n全部通过' : `\n${fails} 项失败`);
   process.exit(fails === 0 ? 0 : 1);

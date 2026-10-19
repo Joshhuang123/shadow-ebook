@@ -156,6 +156,47 @@
             ]);
             renderDashboard(payload, { vocabStats, bookProgress, booksList });
             loadSettings(payload.settings || {});
+            loadKnowledgePath();
+        }
+
+        // 知识图谱:下一个该练什么 + 哪个前置卡着几个下游。
+        // 两个接口都独立 catch —— 图谱没灌数据时不该把家长页带崩。
+        async function loadKnowledgePath() {
+            const pathEl = el('kgPathList');
+            const gapsEl = el('kgGapsList');
+            if (!pathEl) return;
+
+            const [path, gaps] = await Promise.all([
+                fetch('/api/kg/path?limit=4').then(r => r.json()).catch(() => null),
+                fetch('/api/kg/gaps').then(r => r.json()).catch(() => null),
+            ]);
+
+            if (!path || !path.success || !path.path.length) {
+                pathEl.innerHTML = '<div class="kg-empty">知识图谱还没初始化</div>';
+                return;
+            }
+
+            pathEl.innerHTML = path.path.map(p => {
+                const blocked = p.ready
+                    ? '<span class="kg-ok">✅ 可以直接练</span>'
+                    : `<span class="kg-blocked">⛔ 先补:${p.blockers.map(b => b.label).join('、')}</span>`;
+                return `<div class="kg-row">
+                    <span class="kg-lv ${p.level_name.toLowerCase()}">${p.level_name}</span>
+                    <span class="kg-name">${p.label}</span>
+                    ${blocked}
+                </div>`;
+            }).join('');
+
+            if (gaps && gaps.success && gaps.gaps.length) {
+                const top = gaps.gaps.slice(0, 3);
+                gapsEl.innerHTML =
+                    '<div class="kg-subtitle">前置缺口(挡住的下游知识点越多越优先)</div>' +
+                    top.map(g => `<div class="kg-row">
+                        <span class="kg-name">${g.label}</span>
+                        <span class="kg-block">挡着 ${g.block_count} 个:
+                            ${g.blocks.map(b => b.label).join('、')}</span>
+                    </div>`).join('');
+            }
         }
 
         function renderDashboard({ stats = {}, vocabulary = {} }, extras = {}) {

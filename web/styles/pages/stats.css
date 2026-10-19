@@ -53,6 +53,10 @@
             color: var(--text-secondary);
             text-decoration: none;
             padding: 8px 16px;
+            /* 导航也是孩子点的,原来 8px 上下 padding 只有 ~39px 高 */
+            display: inline-flex;
+            align-items: center;
+            min-height: 48px;
             border-radius: 8px;
             font-size: 0.9em;
             transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
@@ -122,14 +126,76 @@
             font-size: 0.9em;
         }
 
-        /* 连续打卡 */
-        .streak-card {
-            background: linear-gradient(135deg, var(--bg-card), rgba(212, 165, 116, 0.1));
-            border: 1px solid var(--color-accent);
+        /* ===== 连续天数:这一页唯一的焦点 ===== */
+        .streak-hero {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px 24px 28px;
+            margin-bottom: 24px;
+            text-align: center;
+            /* 极淡的暖色渐晕,把视线收到中间那个数字上;不做光效、不闪烁 */
+            background-image: radial-gradient(
+                ellipse 70% 100% at 50% 0%,
+                var(--tint-accent) 0%,
+                var(--bg-card) 70%
+            );
+        }
+        .streak-hero-crown {
+            font-size: 28px;
+            line-height: 1;
+            margin-bottom: 4px;
+            /* 0 天时不戴皇冠,避免「0 天」还庆祝 */
+            display: none;
+        }
+        .streak-hero.is-active .streak-hero-crown { display: block; }
+
+        .streak-hero-value {
+            font-size: 72px;
+            line-height: 1.05;
+            font-weight: 700;
+            color: var(--primary-fill);
+            /* 数字等宽,9→10 不会左右跳 */
+            font-variant-numeric: tabular-nums;
+        }
+        .streak-hero-label {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 4px 0 0;
+        }
+        .streak-hero-note {
+            margin: 8px 0 0;
+            font-size: 15px;
+            color: var(--text-secondary);
         }
 
-        .streak-card .stat-value {
-            color: var(--color-accent);
+        /* 次要指标:紧凑小卡,5 个一行,只作背景信息 */
+        .stats-grid--minor {
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .stats-grid--minor .stat-card {
+            padding: 16px 12px;
+        }
+        .stats-grid--minor .stat-icon {
+            font-size: 1.5em;
+            margin-bottom: 6px;
+        }
+        .stats-grid--minor .stat-value {
+            font-size: 1.5em;
+            /* 次要信息用弱一档的颜色,不跟上面的大数字抢 */
+            color: var(--text-primary);
+        }
+        .stats-grid--minor .stat-label {
+            font-size: 13px;
+        }
+        @media (max-width: 900px) {
+            .stats-grid--minor { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
+        @media (max-width: 560px) {
+            .stats-grid--minor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .streak-hero-value { font-size: 56px; }
         }
 
         /* 图表区域 */
@@ -244,6 +310,7 @@
         }
         .vocab-test-option {
             padding: 15px;
+            min-height: 48px;
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 10px;
@@ -345,6 +412,7 @@
         .reset-btn {
             margin-top: 20px;
             padding: 10px 20px;
+            min-height: 48px;
             background: rgba(194, 91, 86, 0.2);
             border: 1px solid var(--danger);
             color: var(--danger);
@@ -400,6 +468,8 @@
         /* 按钮样式 */
         .btn {
             padding: 10px 20px;
+            /* 48px 硬下限 —— 统计页的按钮是孩子点的(词汇量测试等) */
+            min-height: 48px;
             border: none;
             border-radius: 8px;
             font-size: 0.95em;

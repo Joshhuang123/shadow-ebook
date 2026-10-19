@@ -312,17 +312,28 @@
         }
 
         // 渲染统计卡片
+        // 焦点(连续天数)单独渲染进 .streak-hero 大数字,这里只放其余的次要指标 ——
+        // 6 个等大卡片并排时孩子不知道该看哪个,现在焦点唯一。
         function renderStats(stats) {
+            const hero = document.getElementById('streak-value');
+            const note = document.getElementById('streak-note');
+            const heroCard = document.querySelector('.streak-hero');
+
+            if (hero) hero.textContent = stats.streakDays;
+            // 0 天不戴皇冠 —— 「连 0 天」不该看起来像在庆祝
+            if (heroCard) heroCard.classList.toggle('is-active', stats.streakDays > 0);
+            if (note) {
+                if (stats.streakDays >= 7) {
+                    note.textContent = '你真棒！继续保持！';
+                } else if (stats.streakDays > 0) {
+                    note.textContent = `已经坚持 ${stats.streakDays} 天,明天也来读一点点`;
+                } else {
+                    note.textContent = '今天读一点点,也算数';
+                }
+            }
+
             const grid = document.getElementById('stats-grid');
-
-            const streakClass = stats.streakDays >= 3 ? 'streak-card' : '';
-
             grid.innerHTML = `
-                <div class="stat-card ${streakClass}">
-                    <div class="stat-icon">🔥</div>
-                    <div class="stat-value">${stats.streakDays}</div>
-                    <div class="stat-label">连续打卡天数</div>
-                </div>
                 <div class="stat-card">
                     <div class="stat-icon">⏱️</div>
                     <div class="stat-value">${formatTime(stats.totalStudyTime)}</div>

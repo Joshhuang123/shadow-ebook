@@ -270,6 +270,19 @@
                     .sort((a, b) => lastOpen(b, progressMap) - lastOpen(a, progressMap));
 
                 renderContinueCard(books.find(b => b.id === currentId), progressMap[currentId]);
+
+                // 只有一本书时它一定在「继续读」卡里,网格就是空的。
+                // 这时别留一个光秃秃的「我的书架 (0)」标题 + 一片空白 ——
+                // 直接把整段收起来,页面就只剩一个焦点。
+                if (rest.length === 0) {
+                    shelfTitle.hidden = true;
+                    grid.innerHTML = '';
+                    bindCoverFallbacks(continueCard);
+                    return;
+                }
+
+                shelfTitle.hidden = false;
+
                 document.getElementById('shelf-count').textContent = `(${rest.length})`;
                 grid.innerHTML = rest.map(b => shelfCardHtml(b, progressMap[b.id])).join('');
 
@@ -293,10 +306,11 @@
                 });
             } catch (err) {
                 console.error('Failed to load book list:', err);
+            } finally {
+                // 用 finally 而不是放在 try 之后:上面「网格为空」那条分支会 return,
+                // 放外面会被跳过,音频缓存徽章就永远不刷新了。
+                updateAllCacheBadges();
             }
-
-            // 更新所有书的音频缓存徽章
-            updateAllCacheBadges();
         }
 
         // 最近打开时间;没打开过返回 0(排最后)
@@ -357,7 +371,10 @@
             const cc = document.getElementById('continue-cover');
             cc.innerHTML = book.cover
                 ? `<img src="${book.cover}" alt="${escapeHtml(book.title)}">`
-                : coverFallbackHtml(book);
+                // 必须是 continue-cover,不能复用 coverFallbackHtml 的 shelf-card-cover:
+                // 后者是 width:100% + aspect-ratio:3/4 的网格卡规格,塞进 .continue-card
+                // 这个 flex 容器会撑满整行,把标题和「继续读」按钮挤成竖排一列字。
+                : makeFallback(book.title, 'continue');
             document.getElementById('continue-fill').style.width = computeProgress(book, p) + '%';
             document.getElementById('continue-pos').textContent =
                 `第 ${(p.chapter_idx || 0) + 1} 章 / 共 ${book.chapters} 章`;
@@ -954,14 +971,18 @@
             if (!currentWord) return;
             if (vocabulary.find(v => v.word === currentWord)) return;
 
-            const meaningEl = document.getElementById('modal-meanings');
-            const parts = meaningEl.querySelectorAll('.word-meaning-part');
-            const defs = meaningEl.querySelectorAll('.word-meaning-def');
-
-            let meaning = '';
-            parts.forEach((p, i) => {
-                if (defs[i]) meaning += `${p.textContent}: ${defs[i].textContent}; `;
-            });
+            // 按 .word-meaning-item 逐条读, 别拿两个 class 并行 indexOf ——
+            // 渲染时释义用的是 .word-meaning-cn(不是 .word-meaning-def),
+            // 按 def 取会全空, 生词本/复习卡就只剩「未找到释义」。
+            const meaning = [...document.getElementById('modal-meanings')
+                .querySelectorAll('.word-meaning-item')]
+                .map(item => {
+                    const part = item.querySelector('.word-meaning-part')?.textContent.trim();
+                    const cn = item.querySelector('.word-meaning-cn')?.textContent.trim();
+                    if (!cn) return '';
+                    return part ? `${part} ${cn}; ` : `${cn}; `;
+                })
+                .join('') || document.getElementById('modal-meanings').textContent.trim();
 
             // 艾宾浩斯：明天复习
             const tomorrow = new Date();

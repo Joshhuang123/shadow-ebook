@@ -8,13 +8,13 @@
 <script src="/theme.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Shadow Learning - 家长监控</title>
+    <title>家长中心 - 影子电子书</title>
     <link rel="stylesheet" href="/kid-touch.css">
     <link rel="stylesheet" href="/fonts/fonts.css">
     <link rel="apple-touch-icon" href="/icon-192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Shadow Ebook">
+    <meta name="apple-mobile-web-app-title" content="影子电子书">
     <meta name="theme-color" content="#B86A4E">
     <link rel="stylesheet" href="/styles/pages/parent.css">
 </head>
@@ -191,6 +191,17 @@
             <div class="card">
                 <div class="card-title">📖 阅读进度</div>
                 <div id="bookProgressList"></div>
+            </div>
+
+            <!-- 知识图谱:孩子卡在哪一层 -->
+            <div class="card">
+                <div class="card-title">🧩 知识点顺序</div>
+                <p class="kg-hint">语法点不是按难度排的，是按<strong>前置依赖</strong>排的。
+                   卡住孩子的通常不是「这个太难」，而是「前面那个还没会」。</p>
+                <div id="kgPathList" class="kg-list">
+                    <div class="kg-empty">加载中…</div>
+                </div>
+                <div id="kgGapsList" class="kg-list"></div>
             </div>
 
             <!-- Settings -->

@@ -1,4 +1,7 @@
-const CACHE_NAME = 'shadow-ebook-v17';
+// 改动 CSS/JS 后必须把版本号 +1,否则下面「静态资源缓存优先」会让用户继续看到旧样式。
+// 这是 stale-while-revalidate: 先给缓存,后台再更新,所以同一台机器上
+// 刚改完样式刷新页面可能「看起来没生效」,再刷一次才对 —— 很容易误判成改错了。
+const CACHE_NAME = 'shadow-ebook-v18';
 // R11: 字体从 install 预缓存里拿掉 (5 个 ttf ~ 1-2MB, 用户没开过页面也要下)
 // 改成 runtime cache, 第一次访问页面时才按需缓存
 const STATIC_ASSETS = [
@@ -139,36 +142,24 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 静态资源使用缓存优先策略
+  // 静态资源(CSS / JS):网络优先,缓存兜底。
+  //
+  // 原来是缓存优先(stale-while-revalidate):先给旧缓存、后台再更新。
+  // 在局域网小工具上这几乎没收益(网络本来就快),代价是**改了样式刷新
+  // 页面看到的还是旧的**,很容易误判成「改错了」——这个坑踩过不止一次
+  // (语法页卡片在暗色模式下一直是白底,源码是对的,就是缓存)。
+  // 网络优先保留了离线兜底,又让改动立刻生效,所以换过来。
+  // 字体仍然缓存优先:内容不可变,缓存命中没坏处。
   event.respondWith(
-    caches.match(request)
-      .then((cachedResponse) => {
-        if (cachedResponse) {
-          // 返回缓存并更新缓存
-          fetch(request)
-            .then((response) => {
-              if (response.ok) {
-                caches.open(CACHE_NAME).then((cache) => {
-                  cache.put(request, response);
-                });
-              }
-            })
-            .catch(() => {});
-          return cachedResponse;
+    fetch(request)
+      .then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
         }
-
-        return fetch(request)
-          .then((response) => {
-            if (response.ok) {
-              const responseClone = response.clone();
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(request, responseClone);
-              });
-            }
-            return response;
-          });
+        return response;
       })
-      .catch(() => new Response('Offline', { status: 503, statusText: 'Offline' }))
+      .catch(() => caches.match(request))
   );
 });
 
