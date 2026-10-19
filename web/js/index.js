@@ -1569,23 +1569,31 @@
             scrollToCurrentSentence();
             highlightSpeakingSentence(currentSentenceIndex);
 
+            // 读完之后的动作:把游标推到下一句。
+            // 返回 false = 已经是最后一句了,没有下一句可推。
             const advance = () => {
                 if (currentSentenceIndex < sentences.length - 1) {
                     currentSentenceIndex++;
                     updateDisplay();
                     scrollToCurrentSentence();
-                } else if (readAloneMode) {
-                    // 读完最后一句:停,不再循环
-                    readAloneMode = false;
-                    setReadAloneLabel(false);
+                    return true;
                 }
+                // 读完最后一句:停,不再循环
+                readAloneMode = false;
+                setReadAloneLabel(false);
+                return false;
             };
 
             await playWithCache(text, () => {
                 highlightSpeakingSentence(-1);
                 if (options.stay) return;      // 点某句单独听,不推进
                 if (readAloneMode) {
-                    playCurrentSentence({ stay: false });   // 连续模式接着读
+                    // 连续朗读:先把游标推到下一句,再接着读。
+                    // 少了这一步,playCurrentSentence 会用同一个
+                    // currentSentenceIndex 再读一遍 —— 听起来就是
+                    // 「连续朗读」在原地复读同一句,永远读不到下一句。
+                    if (!advance()) return;
+                    playCurrentSentence({ stay: false });
                 } else {
                     advance();                 // 只推进游标,等下一次按键
                 }
