@@ -29,15 +29,32 @@
            这套组合是所有模板的默认长相,一眼就"不高级"。
            改成:16px 圆角 + 发丝描边 + 一层极浅的紧投影,
            边界靠描边和投影说清楚,不靠一团模糊。 */
+        /* 卡片不再是「浮在纸上的白盒子」。
+           层级用发丝线和留白表达 —— 页头底下那根线已经把这一段
+           和上一段分开了,再套一个白盒子就变成三明治。
+           做法:去掉底色和圆角,只留一条上边线 + 上下留白。 */
         .card {
-            background: var(--bg-card);
-            border: 1px solid var(--rule);
-            border-radius: 16px;
-            padding: 24px 26px;
-            margin: 15px 0;
-            box-shadow: var(--shadow-sm);
+            background: transparent;
+            border: none;
+            border-top: 1px solid var(--rule);
+            border-radius: 0;
+            padding: 26px 0 4px;
+            margin: 0 0 44px;
+            box-shadow: none;
         }
-        .card h2 { color: var(--color-primary); margin-bottom: 15px; font-size: 1.3em; }
+        /* 页头下面那根线已经分过段了,紧跟着的第一块不用再画一条 */
+        .page-head + .card { border-top: none; padding-top: 2px; }
+        .card h2 {
+            /* 「颜色是标点」:标题是墨,不该是主色。
+               主色留给真正要点的按钮。 */
+            color: var(--text-primary);
+            font-family: var(--font-display);
+            font-size: 1.5em;
+            font-weight: 600;
+            letter-spacing: -0.005em;
+            margin-bottom: 14px;
+        }
+        .card h2 .ico { color: var(--color-primary); }
 
         /* 单元选择 */
         /* 单元列表:不再「一个选项一个白盒子」。

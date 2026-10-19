@@ -787,6 +787,7 @@
         .mode-btn {
             flex: 1;
             padding: 8px 12px;
+            min-height: 48px;          /* 48px 触控下限 */
             border-radius: 8px;
             background: var(--bg-dark);
             border: 1px solid var(--border);
@@ -1401,21 +1402,27 @@
             text-align: center;
             line-height: 1.25;
         }
+        /* 书眉:和书里每一页顶上的「书名 · 章节」是同一个东西。
+           层级要对:书名是**背景信息**(小号大写、字距拉开、退成灰),
+           章节才是孩子此刻在读的那一行(衬线、墨色、略大)。
+           原来反过来了 —— 衬线的书名比章节还显眼,重点错了。 */
         .reader-title {
-            /* 书名用衬线:页眉也是"书"的一部分,不是工具条上的一个字段 */
-            font-family: var(--font-display);
-            font-size: 15.5px;
+            font-family: var(--font-ui);
+            font-size: 10.5px;
             font-weight: 600;
-            letter-spacing: 0.01em;
-            color: var(--text-primary);
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
         .reader-chapter {
-            font-size: 11.5px;
-            letter-spacing: 0.06em;
-            color: var(--text-secondary);
+            font-family: var(--font-display);
+            font-size: 15.5px;
+            font-weight: 600;
+            letter-spacing: 0.005em;
+            color: var(--text-primary);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -1534,6 +1541,9 @@
             border-bottom: 2px solid var(--color-secondary);
         }
 
+        /* 提示行要跟正文对齐:书页模式下 .reader-stage 是 align-items:stretch,
+           提示块会贴着舞台左边缘站,和居中的正文列错开一大截。
+           加 margin-inline:auto 让它自己居中 —— 和正文列同一个中线。 */
         .reader-hint {
             font-size: 12.5px;
             line-height: 1.7;
@@ -1541,6 +1551,7 @@
             color: var(--text-disabled);
             text-align: center;
             max-width: 46em;
+            margin-inline: auto;
         }
 
         .density-hint {
@@ -1548,6 +1559,8 @@
             letter-spacing: 0.02em;
             color: var(--text-disabled);
             text-align: center;
+            max-width: 46em;
+            margin-inline: auto;
             opacity: 0.8;
         }
 
@@ -1908,7 +1921,7 @@
             font-family: inherit;
             font-size: var(--text-sm);
             cursor: pointer;
-            min-height: 40px;
+            min-height: 48px;          /* 48px 触控下限 */
             transition: background-color var(--duration-fast) var(--ease-out),
                         color var(--duration-fast) var(--ease-out);
         }
@@ -2202,42 +2215,38 @@
            进度用一根细线表示读到哪,按钮紧跟在书名下面。
            ============================================================ */
 
+        /* 「继续读」不是一张卡片,是一件放在纸上的东西。
+           白盒子套住书封,等于把一本真书关进了一张贺卡里 ——
+           反而假。把盒子撤掉,只留书封自己的投影(它本来就是实物),
+           上下各一条发丝线,像书单上的一行。 */
         .continue-card {
             display: grid;
             grid-template-columns: 168px minmax(0, 1fr) auto;
             align-items: center;
             gap: 32px;
-            background: var(--bg-card);
-            border: 1px solid var(--rule);
-            border-radius: 18px;
-            padding: 28px 30px;
+            background: transparent;
+            border: none;
+            border-top: 1px solid var(--rule);
+            border-bottom: 1px solid var(--rule);
+            border-radius: 0;
+            padding: 30px 0;
             margin-bottom: 38px;
-            /* 不占满 1200px:一张 1160px 宽的卡,书名占 1/4、
-               按钮贴在最右,中间空出一大片,看着像加载没加载完。
-               收到 1000px 居中,像书封上的一条推荐。 */
             max-width: 1000px;
             margin-inline: auto;
-            box-shadow: var(--shadow-md);
+            box-shadow: none;
             position: relative;
-            overflow: hidden;
         }
-        /* 纸纹 + 一点点暖光,让这张卡和别的卡片不是同一个东西 */
+        /* 封面和文字之间竖一根发丝线,像书封折口 */
         .continue-card::before {
             content: '';
             position: absolute;
-            inset: 0;
-            background-image: var(--paper-grain);
-            pointer-events: none;
-        }
-        .continue-card::after {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 3px;
-            background: linear-gradient(180deg,
-                rgba(184, 106, 78, 0.55), rgba(184, 106, 78, 0.06));
+            /* 放在封面和文字之间的空档正中(封面 168 + 间距 32),
+               贴着封面边会看成封面的描边,不像分隔线 */
+            left: 184px;
+            top: 12px;
+            bottom: 12px;
+            width: 1px;
+            background: var(--rule);
             pointer-events: none;
         }
 
@@ -2266,7 +2275,7 @@
         }
         .continue-title {
             font-family: var(--font-display);
-            font-size: 30px;
+            font-size: 32px;
             line-height: 1.18;
             font-weight: 600;
             color: var(--text-primary);
@@ -2281,11 +2290,12 @@
         .continue-progress {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 14px;
         }
+        /* 进度线铺满整列,不再只占一小段 ——
+           短进度线悬在中间像没画完,铺满才是「这一行的进度」。 */
         .continue-bar {
             flex: 1;
-            max-width: 260px;
             height: 2px;
             background: var(--rule);
             border-radius: 2px;

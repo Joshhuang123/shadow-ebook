@@ -105,40 +105,27 @@
             gap: 16px;
         }
 
+        /* 语法点:不是 App 里的白瓷砖,而是书后面「索引页」上的条目 ——
+           纸面上,一条上边线分栏,悬停时那条线变暖、标题变主色。 */
         .grammar-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 24px;
+            background: transparent;
+            border: none;
+            border-top: 1px solid var(--rule-strong);
+            border-radius: 0;
+            padding: 20px 2px 18px;
             cursor: pointer;
-            transition: transform 300ms ease-out, background-color 300ms ease-out, color 300ms ease-out, box-shadow 300ms ease-out;
+            transition: border-color 200ms var(--ease-out),
+                        color 200ms var(--ease-out),
+                        background-color 200ms var(--ease-out);
             position: relative;
-            overflow: hidden;
         }
 
-        .grammar-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
-        /* hover:只抬 2px、描边转暖、投影收紧。
+        /* hover:只让那条上边线变暖、标题变主色。
            原来那条「赤陶→草绿」的渐变顶条会在鼠标扫过一排卡片时
            闪出一条彩带,和整站「纸 + 墨 + 赤陶」的低饱和基调冲突。 */
         .grammar-card:hover {
-            border-color: rgba(184, 106, 78, 0.42);
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-book);
-        }
-
-        .grammar-card:hover::before {
-            opacity: 1;
+            border-top-color: var(--color-primary);
+            background: var(--tint-primary);
         }
 
         .grammar-card-icon {
@@ -172,13 +159,13 @@
            而且它让这一块的视觉重量超过了页头 —— 页面上真正的主角应该是
            页头和下面的语法卡。改成纯纸面 + 发丝描边。 */
         .exam-header {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            padding: 30px 32px 32px;
-            margin-bottom: 28px;
+            background: transparent;
+            border: none;
+            border-top: 1px solid var(--rule);
+            border-radius: 0;
+            padding: 30px 0 26px;
+            margin-bottom: 34px;
             text-align: center;
-            box-shadow: var(--shadow-sm);
         }
 
         .exam-header h2 {

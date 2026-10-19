@@ -35,18 +35,28 @@
             align-items: center;
         }
 
-        .nav-brand {
-            display: flex;
-            align-items: center;
+        /* 家长页的报头和其它页同一套:衬线、墨色、发丝线。
+           原来这里是粗体主色 + 1.3em,和整站基线对不上。 */
+        body .top-nav .nav-brand {
+            font-family: var(--font-display);
+            font-size: 19px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            color: var(--text-primary);
             gap: 10px;
-            font-weight: 700;
-            font-size: 1.3em;
-            color: var(--color-primary);
         }
-
         .lock-icon {
-            font-size: 1.5em;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            background: var(--tint-primary);
+            border: 1px solid rgba(184, 106, 78, 0.18);
+            color: var(--primary-fill);
         }
+        .lock-icon .ico { width: 16px; height: 16px; }
 
         .nav-right {
             display: flex;
@@ -440,9 +450,26 @@
             color: var(--text-on-primary);
         }
 
+        /* 次级按钮:原来是一块实心驼色(#D6CFC0),在报头里比标题还沉。
+           改成纸面上的幽灵键:发丝线描边 + 透明底。 */
         .btn-secondary {
-            background: #D6CFC0;
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--rule-strong);
+        }
+        .btn-secondary:hover {
+            background: var(--bg-dark);
             color: var(--text-primary);
+        }
+        /* 报头里的按钮跟着报头走:不要投影,只要一根线 */
+        .top-nav .btn-secondary {
+            min-height: 40px;
+            box-shadow: none;
+            transform: none;
+        }
+        .top-nav .btn-secondary:hover {
+            transform: none;
+            box-shadow: none;
         }
 
         .btn:hover {
