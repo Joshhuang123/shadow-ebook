@@ -311,3 +311,116 @@ def test_speed_is_clamped(client):
     assert tts_providers.get_settings()['speed'] == 2.0
     tts_providers.save_settings({'speed': 0.01})
     assert tts_providers.get_settings()['speed'] == 0.5
+
+
+# ============================================================
+# 微软这条线(edge)的语速微调与重试
+# ------------------------------------------------------------
+# 2026-10-19 实测:edge-tts 7.2.8 会被微软上游 403(防滥用 token 版本太旧),
+# 升到 7.3.1 就恢复。所以 edge 重新成了默认 provider,这些守护跟着加回来。
+#
+# 两件事必须钉住:
+#   1. 语速微调要进缓存指纹 —— 否则家长把语速从 +0% 调到 -10%,
+#      读出来的还是原来那个语速的旧音频(听起来像「设置没生效」)。
+#   2. 瞬时错误(503 限流 / 超时)必须重试 —— 微软那边单句要 3~5 秒,
+#      并发一高就被限流。一次失败就让朗读退回平板机械音,
+#      体验上等于「微软音色时好时坏」。
+# ============================================================
+
+
+@pytest.mark.parametrize('raw,expect', [
+    ('-10%', '-10%'),
+    ('+20%', '+20%'),
+    ('-10', '-10%'),          # 裸数字也当百分比
+    ('  -10 % ', '-10%'),
+    ('慢一点', '+0%'),         # 认不出来就当 0,不能整条链路报错
+    ('', '+0%'),
+    ('999%', '+30%'),          # 夹到上限
+    ('-999%', '-30%'),
+])
+def test_edge_rate_is_normalized(raw, expect):
+    from extensions import tts_providers
+    assert tts_providers._norm_edge_rate(raw) == expect
+
+
+def test_edge_rate_is_clamped_on_save(client):
+    from extensions import tts_providers
+    tts_providers.save_settings({'edge_rate': '999%'})
+    assert tts_providers.get_settings()['edge_rate'] == '+30%'
+    tts_providers.save_settings({'edge_rate': '-999%'})
+    assert tts_providers.get_settings()['edge_rate'] == '-30%'
+
+
+def test_edge_rate_changes_cache_fingerprint(client):
+    """改了语速必须让缓存失效,否则读出来还是旧语速的音频。"""
+    from extensions import tts_providers
+    tts_providers.save_settings({'provider': 'edge', 'edge_rate': '+0%'})
+    before = tts_providers.cache_fingerprint()
+    tts_providers.save_settings({'edge_rate': '-10%'})
+    assert tts_providers.cache_fingerprint() != before
+
+
+def test_edge_rate_is_passed_to_engine(monkeypatch):
+    """语速要真的下发给 edge-tts,不然就是个摆设。"""
+    from extensions import tts_providers
+    seen = {}
+
+    class FakeComm:
+        def __init__(self, text, voice, rate='+0%'):
+            seen['voice'] = voice
+            seen['rate'] = rate
+
+        async def save(self, path):
+            with open(path, 'wb') as f:
+                f.write(b'fake-mp3')
+
+    import edge_tts
+    monkeypatch.setattr(edge_tts, 'Communicate', FakeComm)
+    tts_providers._synthesize_edge('hello', 'en-US-AriaNeural', timeout=5,
+                                   rate='-10%')
+    assert seen['rate'] == '-10%'
+    assert seen['voice'] == 'en-US-AriaNeural'
+
+
+def test_edge_retries_transient_failure(monkeypatch):
+    """503 / 超时这类瞬时错误要重试,而不是直接放弃好音色。"""
+    from extensions import tts_providers
+    calls = {'n': 0}
+
+    class FlakyComm:
+        def __init__(self, text, voice, rate='+0%'):
+            pass
+
+        async def save(self, path):
+            calls['n'] += 1
+            if calls['n'] == 1:
+                raise Exception("WSServerHandshakeError: 503, message='Invalid response status'")
+            with open(path, 'wb') as f:
+                f.write(b'fake-mp3')
+
+    import edge_tts
+    monkeypatch.setattr(edge_tts, 'Communicate', FlakyComm)
+    monkeypatch.setattr(tts_providers, '_EDGE_BACKOFF', 0.01, raising=False)
+    data = tts_providers._synthesize_edge('hello', 'en-US-AriaNeural', timeout=5)
+    assert calls['n'] == 2, '瞬时错误没有重试'
+    assert data == b'fake-mp3'
+
+
+def test_edge_does_not_retry_permanent_failure(monkeypatch):
+    """永久性错误(音色名不存在)重试也没用,别白白拖时间。"""
+    from extensions import tts_providers
+    calls = {'n': 0}
+
+    class BadComm:
+        def __init__(self, text, voice, rate='+0%'):
+            pass
+
+        async def save(self, path):
+            calls['n'] += 1
+            raise ValueError('unknown voice')
+
+    import edge_tts
+    monkeypatch.setattr(edge_tts, 'Communicate', BadComm)
+    with pytest.raises(tts_providers.TTSError):
+        tts_providers._synthesize_edge('hello', 'nope', timeout=5)
+    assert calls['n'] == 1, '永久性错误不该重试'

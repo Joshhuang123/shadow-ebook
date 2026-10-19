@@ -645,7 +645,8 @@
                 model: el('ttsModel').value.trim(),
                 voice: el('ttsVoice').value.trim(),
                 say_voice: el('ttsSayVoice').value.trim(),
-                say_rate: parseInt(el('ttsSayRate').value, 10) || 160
+                say_rate: parseInt(el('ttsSayRate').value, 10) || 160,
+                edge_rate: el('ttsEdgeRate').value.trim() || '+0%'
             };
         }
 
@@ -661,6 +662,7 @@
             const p = el('ttsProvider').value;
             el('ttsCustomFields').hidden = (p !== 'openai_compatible');
             el('ttsMacFields').hidden = (p !== 'macos_say');
+            el('ttsEdgeFields').hidden = (p !== 'edge');
             setText('ttsProviderDesc', TTS_PROVIDER_DESC[p] || '');
         }
 
@@ -671,6 +673,7 @@
             el('ttsVoice').value = s.voice || '';
             el('ttsSayVoice').value = s.say_voice || 'Samantha';
             el('ttsSayRate').value = s.say_rate || 160;
+            el('ttsEdgeRate').value = s.edge_rate || '+0%';
             // 密钥永远不会下发。已保存过时显示占位符,提示"已设置",
             // 家长想改就直接填新的,不填就是保持原样(前端传 null 表示不改)。
             el('ttsApiKey').value = '';
@@ -742,6 +745,9 @@
             if (v.provider === 'macos_say') {
                 payload.say_voice = v.say_voice;
                 payload.say_rate = v.say_rate;
+            }
+            if (v.provider === 'edge') {
+                payload.edge_rate = v.edge_rate;
             }
             try {
                 const r = await fetch('/api/tts/test', {

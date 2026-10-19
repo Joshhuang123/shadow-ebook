@@ -24,6 +24,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import sys
 import tempfile
 import urllib.error
@@ -44,6 +45,9 @@ DEFAULTS = {
     'response_format': 'mp3',
     'speed': 1.0,
     'timeout': 20,
+    # edge 专用:语速微调,格式 '-10%' / '+0%' / '+20%'。
+    # 神经音色本来就比机械音慢一点,对刚开始学的孩子再降 10% 更跟得上。
+    'edge_rate': '+0%',
     # macos_say 专用:语速(词/分钟)和系统音色名
     'say_voice': 'Samantha',
     'say_rate': 160,
@@ -105,6 +109,7 @@ def get_settings() -> dict:
     # 但下限放宽一点,让「很慢地念」这个选项对刚开始学的孩子可用。
     merged['say_rate'] = max(100, min(300, merged['say_rate']))
     merged['say_voice'] = str(merged['say_voice'] or DEFAULTS['say_voice'])
+    merged['edge_rate'] = _norm_edge_rate(merged['edge_rate'])
     return merged
 
 
@@ -194,6 +199,7 @@ def parent_settings_view() -> dict:
         'voice': s['voice'],
         'say_voice': s['say_voice'],
         'say_rate': s['say_rate'],
+        'edge_rate': s['edge_rate'],
         'response_format': s['response_format'],
         'speed': s['speed'],
         'timeout': s['timeout'],
@@ -215,7 +221,7 @@ def cache_fingerprint() -> str:
     """
     s = get_settings()
     raw = '|'.join(str(s[k]) for k in ('provider', 'base_url', 'model', 'voice',
-                                       'response_format', 'speed'))
+                                       'response_format', 'speed', 'edge_rate'))
     return hashlib.md5(raw.encode()).hexdigest()[:8]
 
 
@@ -266,7 +272,8 @@ def synthesize(text: str, voice: str = '', settings: dict = None) -> tuple[bytes
     used_voice = voice or voice_for(s)
 
     if provider == 'edge':
-        return _synthesize_edge(text, used_voice, s.get('timeout', 20)), 'mp3'
+        return _synthesize_edge(text, used_voice, s.get('timeout', 20),
+                                s.get('edge_rate') or '+0%'), 'mp3'
     if provider == 'openai_compatible':
         return _synthesize_openai_compat(text, used_voice, s), audio_ext(s)
     if provider == 'macos_say':
@@ -276,21 +283,78 @@ def synthesize(text: str, voice: str = '', settings: dict = None) -> tuple[bytes
     raise TTSError(f'未知的 TTS provider: {provider!r}')
 
 
-def _synthesize_edge(text: str, voice: str, timeout: float = 20) -> bytes:
+def _norm_edge_rate(v) -> str:
+    """把语速规整成 edge-tts 认的 '-10%' / '+0%' 这种格式。
+
+    家长在表单里可能写成 '-10'、'慢一点'、' -10 % ',都不该让整条链路报错。
+    认不出来的当 0 处理。裸数字也当百分比(填 '-10' 就是慢 10%)。
+    """
+    m = re.search(r'([+-]?\d+)\s*%?', str(v or ''))
+    if not m:
+        return '+0%'
+    n = max(-30, min(30, int(m.group(1))))
+    return f'{n:+d}%'
+
+
+def _edge_error_is_transient(e: Exception) -> bool:
+    """判断这个 edge-tts 错误是不是「等一下就好」的那种。
+
+    实测(edge-tts 7.3.1, 2026-10-19)上游有两个脾气:
+      · 单句合成要 3~5 秒,冷启动那一下能到 12 秒 —— 所以超时不能卡太死;
+      · 并发超过 4 就开始回 503(限流),并发 4 时偶尔也会慢到超时。
+
+    这两种都是**瞬时**的:换个时间、或者重试一次就成了。
+    混在「永久性失败」里一起当错误丢掉,等于白白浪费一次好音色。
+    """
+    msg = f'{type(e).__name__}: {e}'.lower()
+    return any(k in msg for k in (
+        'timeout', 'timed out', '503', '502', '504', '429',
+        'server disconnected', 'connectionreset', 'connection reset',
+        'connection aborted', 'temporarily', 'invalid response status',
+    ))
+
+
+def _synthesize_edge(text: str, voice: str, timeout: float = 20,
+                     rate: str = '+0%') -> bytes:
     """edge-tts 直接吐 mp3 字节。
 
     edge_tts.Communicate.save() 只能写文件,所以借一个临时文件中转。
+
+    会重试:微软那边单句要 3~5 秒,并发一高就被限流(503)或者慢到超时。
+    这些都是瞬时的,重试一次就成了 —— 一次失败就让孩子的朗读退回
+    平板的机械音,体验上等于「微软音色时好时坏」。
     """
     import asyncio
     import edge_tts
+
+    attempts = 2
+    backoff = 1.5
 
     async def _run():
         with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as tf:
             path = tf.name
         try:
-            await edge_tts.Communicate(text, voice=voice).save(path)
-            with open(path, 'rb') as f:
-                return f.read()
+            last = None
+            for attempt in range(1, attempts + 1):
+                try:
+                    # 每次尝试各自算超时:一次慢请求不该把后面几次的
+                    # 时间预算全吃掉。外层再兜一个总上限,免得无限等。
+                    await asyncio.wait_for(
+                        edge_tts.Communicate(text, voice=voice,
+                                             rate=rate).save(path),
+                        timeout=timeout)
+                    with open(path, 'rb') as f:
+                        return f.read()
+                except asyncio.TimeoutError:
+                    raise
+                except Exception as e:
+                    last = e
+                    if attempt >= attempts or not _edge_error_is_transient(e):
+                        raise
+                    logger.info('edge-tts 第 %d/%d 次失败(%s),%.1fs 后重试',
+                                attempt, attempts, type(e).__name__, backoff)
+                    await asyncio.sleep(backoff)
+            raise last  # pragma: no cover — 循环里一定会 raise
         finally:
             try:
                 os.unlink(path)
@@ -298,7 +362,7 @@ def _synthesize_edge(text: str, voice: str, timeout: float = 20) -> bytes:
                 pass
 
     try:
-        data = asyncio.run(asyncio.wait_for(_run(), timeout=timeout))
+        data = asyncio.run(asyncio.wait_for(_run(), timeout=timeout * attempts + 5))
     except asyncio.TimeoutError as e:
         raise TTSError('合成超时,上游没响应', f'edge-tts timeout voice={voice}',
                        http_status=504, retry_after=5) from e

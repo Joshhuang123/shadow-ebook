@@ -89,7 +89,7 @@ def test_tts_rate_limit_returns_retryable(client):
 def test_tts_exception_returns_502_with_retryable(client, monkeypatch):
     """edge_tts 抛任意异常: 502, 不泄露原始 exc 字符串, 但带 retryable"""
     class FakeCommunicate:
-        def __init__(self, text, voice):
+        def __init__(self, text, voice, rate='+0%'):
             pass
         async def save(self, path):
             raise RuntimeError("internal: 192.168.1.1 refused connection /secret-token-xyz")
@@ -113,7 +113,7 @@ def test_tts_exception_returns_502_with_retryable(client, monkeypatch):
 def test_tts_timeout_returns_504(client, monkeypatch):
     """asyncio.TimeoutError → 504, retryable=True, 提示稍后再试"""
     class SlowCommunicate:
-        def __init__(self, text, voice):
+        def __init__(self, text, voice, rate='+0%'):
             pass
         async def save(self, path):
             raise asyncio.TimeoutError()
@@ -132,7 +132,7 @@ def test_tts_timeout_returns_504(client, monkeypatch):
 def test_tts_silent_no_file_returns_502(client, monkeypatch):
     """save() 正常 return 但没写出文件 (edge-tts 偶发的 bug) → 502, retryable"""
     class QuietCommunicate:
-        def __init__(self, text, voice):
+        def __init__(self, text, voice, rate='+0%'):
             pass
         async def save(self, path):
             return  # 啥都不干, 假装成功

@@ -267,7 +267,13 @@ async def _pregen_synthesize(text: str) -> bool:
     # 预生成是后台线程,不能阻塞。provider 合成是同步的(urllib / edge-tts),
     # 所以丢进线程池跑,别占住事件循环。
     def _synth():
-        data, _ext = tts_providers.synthesize(text, voice=voice, settings=settings)
+        # 预生成是后台活,没人等着 —— 超时给得比「孩子点按钮」那条路宽。
+        # 孩子点按钮时等 20 秒就该退回设备语音了,不能让人干等;
+        # 但预生成这边等 45 秒只是多占一个后台线程,换来的是把
+        # 微软那边慢的几百毫秒到几秒的请求也拿到好音色。
+        pregen_settings = dict(settings)
+        pregen_settings['timeout'] = max(int(settings.get('timeout') or 20), 45)
+        data, _ext = tts_providers.synthesize(text, voice=voice, settings=pregen_settings)
         tmp = audio_path.with_name(f'.{audio_path.name}.{uuid.uuid4().hex}.tmp')
         try:
             with open(tmp, 'wb') as f:

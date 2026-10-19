@@ -66,7 +66,7 @@ def test_cache_hit_returns_audio_url(client):
 
     called = []
     class FakeComm:
-        def __init__(self, text, voice): called.append((text, voice))
+        def __init__(self, text, voice, rate='+0%'): called.append((text, voice))
         async def save(self, path): pass
     # 把 import 的 edge_tts.Communicate 替换掉 (top-level import 绑定了名字)
     import extensions.tts as tts_mod
@@ -89,7 +89,7 @@ def test_synthesize_writes_file(client, monkeypatch):
     async def fake_save(self, path):
         Path(path).write_bytes(b'fake-mp3-bytes')
     class FakeComm:
-        def __init__(self, text, voice): pass
+        def __init__(self, text, voice, rate='+0%'): pass
         save = fake_save
     monkeypatch.setattr(tts_mod.edge_tts, 'Communicate', FakeComm)
 
@@ -122,7 +122,7 @@ def test_network_failure_returns_502(client):
     import extensions.tts as tts_mod
 
     class FakeComm:
-        def __init__(self, text, voice): pass
+        def __init__(self, text, voice, rate='+0%'): pass
         async def save(self, path):
             raise ConnectionError("edge-tts unreachable")
     original = tts_mod.edge_tts.Communicate
@@ -142,7 +142,7 @@ def test_timeout_returns_504(client):
     import extensions.tts as tts_mod
 
     class FakeComm:
-        def __init__(self, text, voice): pass
+        def __init__(self, text, voice, rate='+0%'): pass
         async def save(self, path):
             await asyncio.sleep(100)  # 远超 15s timeout
     original = tts_mod.edge_tts.Communicate
@@ -161,7 +161,7 @@ def test_silent_failure_returns_502(client):
     import extensions.tts as tts_mod
 
     class FakeComm:
-        def __init__(self, text, voice): pass
+        def __init__(self, text, voice, rate='+0%'): pass
         async def save(self, path):
             pass  # 不抛也不写
     original = tts_mod.edge_tts.Communicate
@@ -220,7 +220,7 @@ def test_custom_voice_creates_distinct_cache(client, monkeypatch):
     async def fake_save(self, path):
         Path(path).write_bytes(b'voice-specific')
     class FakeComm:
-        def __init__(self, text, voice): pass
+        def __init__(self, text, voice, rate='+0%'): pass
         save = fake_save
     monkeypatch.setattr(tts_mod.edge_tts, 'Communicate', FakeComm)
 
@@ -238,7 +238,7 @@ def test_in_progress_audio_survives_cache_eviction(client, monkeypatch):
             audio.write(b'complete-audio')
 
     class FakeComm:
-        def __init__(self, text, voice): pass
+        def __init__(self, text, voice, rate='+0%'): pass
         save = fake_save
 
     monkeypatch.setattr(tts_mod.edge_tts, 'Communicate', FakeComm)

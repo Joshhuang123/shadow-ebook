@@ -51,7 +51,7 @@ def test_synthesize_records_success(monkeypatch, tmp_path, pinned_edge_provider)
     monkeypatch.setattr('extensions.tts.TTS_DIR', tmp_path)
 
     class FakeComm:
-        def __init__(self, text, voice): pass
+        def __init__(self, text, voice, rate='+0%'): pass
         async def save(self, path):
             from pathlib import Path
             Path(path).write_bytes(b'fake-mp3')
@@ -71,7 +71,7 @@ def test_synthesize_records_failure(monkeypatch, tmp_path, pinned_edge_provider)
     monkeypatch.setattr('extensions.tts.TTS_DIR', tmp_path)
 
     class FakeComm:
-        def __init__(self, text, voice): pass
+        def __init__(self, text, voice, rate='+0%'): pass
         async def save(self, path):
             raise ConnectionError("network down")
 
@@ -95,7 +95,7 @@ def test_synthesize_existing_file_is_noop_skip(monkeypatch, tmp_path, pinned_edg
 
     called = []
     class FakeComm:
-        def __init__(self, text, voice): called.append(text)
+        def __init__(self, text, voice, rate='+0%'): called.append(text)
         async def save(self, path): pass
     monkeypatch.setattr('extensions.tts.edge_tts.Communicate', FakeComm)
 

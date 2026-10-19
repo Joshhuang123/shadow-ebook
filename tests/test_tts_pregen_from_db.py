@@ -64,7 +64,7 @@ def synth_log(monkeypatch):
     calls = []
 
     class FakeComm:
-        def __init__(self, text, voice):
+        def __init__(self, text, voice, rate='+0%'):
             self.text = text
 
         async def save(self, path):
