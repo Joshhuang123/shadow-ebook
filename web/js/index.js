@@ -1324,10 +1324,17 @@
             if (label) label.textContent = playing ? '停止' : '朗读';
         }
 
-        async function playCurrentSentence() {
+        // 朗读当前句。读完自动把游标推到下一句(不自动播)——
+        // 这样「按一下读一句、再按一下读下一句」天然成立,孩子跟读时
+        // 一句一句来,不会突然被下一句的声音打断思考时间。
+        let readAloneMode = false;   // 连续朗读:读完自动接下一句
+
+        async function playCurrentSentence(opts) {
             if (!sentences || sentences.length === 0) return;
+            const options = opts || {};
 
             const text = sentences[currentSentenceIndex];
+            if (!text) return;
             const btn = document.getElementById('btn-play');
             const status = document.getElementById('status-playing');
 
@@ -1338,9 +1345,94 @@
 
             // 滚动到当前句子
             scrollToCurrentSentence();
+            highlightSpeakingSentence(currentSentenceIndex);
 
-            await playWithCache(text);
+            const advance = () => {
+                if (currentSentenceIndex < sentences.length - 1) {
+                    currentSentenceIndex++;
+                    updateDisplay();
+                    scrollToCurrentSentence();
+                } else if (readAloneMode) {
+                    // 读完最后一句:停,不再循环
+                    readAloneMode = false;
+                    setReadAloneLabel(false);
+                }
+            };
+
+            await playWithCache(text, () => {
+                highlightSpeakingSentence(-1);
+                if (options.stay) return;      // 点某句单独听,不推进
+                if (readAloneMode) {
+                    playCurrentSentence({ stay: false });   // 连续模式接着读
+                } else {
+                    advance();                 // 只推进游标,等下一次按键
+                }
+            });
         }
+
+        // 点句子:读这一句。原来是 jumpTo(只挪游标),孩子的直觉是
+        // 「点哪句就读哪句」,而点单词才是查词 —— 两者必须分开。
+        async function readSentenceAt(index) {
+            const i = parseInt(index, 10);
+            if (Number.isNaN(i) || i < 0 || i >= sentences.length) return;
+            stopSpeaking();
+            currentSentenceIndex = i;
+            updateDisplay();
+            await playCurrentSentence({ stay: true });
+        }
+
+        function stopSpeaking() {
+            readAloneMode = false;
+            setReadAloneLabel(false);
+            highlightSpeakingSentence(-1);
+            ttsRequestSeq++;               // 让在途的 playWithCache 自行作废
+            if (audioElement) { try { audioElement.pause(); } catch (e) {} }
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
+            isPlaying = false;
+            const btn = document.getElementById('btn-play');
+            if (btn) {
+                btn.disabled = false;
+                btn.classList.remove('playing');
+                setReadAloudLabel(false);
+            }
+            const status = document.getElementById('status-playing');
+            if (status) status.classList.add('hidden');
+        }
+
+        // 正在朗读的那一句加一层视觉标记,孩子能一眼看到「现在在读哪句」
+        function highlightSpeakingSentence(index) {
+            document.querySelectorAll('.sentence-item.speaking')
+                .forEach(el => el.classList.remove('speaking'));
+            if (index < 0) return;
+            const el = document.getElementById('sentence-' + index);
+            if (el) el.classList.add('speaking');
+        }
+
+        // 底栏「朗读」按钮的入口。dispatcher 会把 (el, ev) 传进来,
+        // 而 playCurrentSentence 的第一个参数是 opts —— 走一层包装,
+        // 免得把 DOM 元素当 opts 用。
+        function readCurrent() {
+            playCurrentSentence({ stay: false });
+        }
+
+        // 连续朗读开关:开了就自己往下读,不用一句一句按
+        function toggleReadAlone() {
+            readAloneMode = !readAloneMode;
+            setReadAloneLabel(readAloneMode);
+            if (!readAloneMode) { stopSpeaking(); return; }
+            if (!isPlaying) playCurrentSentence({ stay: false });
+        }
+
+        function setReadAloneLabel(on) {
+            document.querySelectorAll('[data-action="toggleReadAlone"]')
+                .forEach(b => {
+                    b.classList.toggle('active', !!on);
+                    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+                    const t = b.querySelector('.read-alone-text');
+                    if (t) t.textContent = on ? '停止连读' : '连续朗读';
+                });
+        }
+
 
         // 缓存当前句子
         async function cacheCurrentSentence() {
@@ -1568,7 +1660,10 @@
                 return w;
             }).join('');
 
-            return `<span class="${className}" id="sentence-${index}" data-action="jumpTo" data-arg="${index}">${processedWords} </span>`;
+            // 句子本身:点一下就读这一句(孩子的直觉)。
+            // 单个词是 data-action="lookupWord" 查词,两者不冲突 ——
+            // 点词先触发查词,不冒泡到句子。
+            return `<span class="${className}" id="sentence-${index}" data-action="readSentenceAt" data-arg="${index}">${processedWords} </span>`;
         }
 
         // 滚动到当前句子（朗读时）

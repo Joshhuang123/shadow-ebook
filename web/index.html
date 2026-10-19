@@ -109,7 +109,7 @@
                     <span>正在朗读...</span>
                 </div>
 
-                <p class="reader-hint">点单词看释义 · 点句子看翻译 · ← → 上下句,到本页末句自动翻页</p>
+                <p class="reader-hint">点句子读这一句 · 点单词看释义 · 「读一句」按一下读一句,读完自动跳下一句 · ← → 上下句</p>
                 <p class="density-hint" id="density-hint"></p>
             </main>
 
@@ -122,10 +122,22 @@
                     <button class="font-step" data-action="changeFontSize" data-arg="-2" title="缩小字号">A</button>
                     <button class="font-step font-step--up" data-action="changeFontSize" data-arg="2" title="放大字号">A</button>
                 </div>
-                <button class="read-aloud" id="btn-play" data-action="playCurrentSentence" title="朗读当前句 (Space)">
-                    <span class="read-aloud-icon" id="play-icon">🔊</span>
-                    <span class="read-aloud-text">朗读</span>
-                </button>
+
+                <!-- 朗读区:整个产品最高频的动作,所以是底栏里唯一的实心大按钮。
+                     「读一句」按一下读当前句,读完自动跳到下一句,再按一下就是下一句;
+                     「连续朗读」则自己往下读,不用一句一句按。 -->
+                <div class="read-cluster">
+                    <button class="read-aloud" id="btn-play" data-action="readCurrent" title="朗读当前句,读完自动跳下一句 (空格)">
+                        <span class="read-aloud-icon" id="play-icon">🔊</span>
+                        <span class="read-aloud-text">读一句</span>
+                    </button>
+                    <button class="read-alone" data-action="toggleReadAlone" aria-pressed="false"
+                            title="打开后自己往下读,不用一句一句按">
+                        <span class="read-alone-icon">▶▶</span>
+                        <span class="read-alone-text">连续朗读</span>
+                    </button>
+                </div>
+
                 <button class="drawer-open" data-action="toggleSidebar" title="更多功能">☰</button>
             </footer>
 

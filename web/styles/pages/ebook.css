@@ -1419,7 +1419,15 @@
             width: 100%;
             max-width: var(--container-md);
             font-size: var(--sentence-font-size, 28px);
-            line-height: 1.7;
+            /* 行高从 1.7 提到 1.85 —— 杂志/书籍排版的行距经验值。
+               1.7 在大字号下会让上下两行咬住,孩子扫行时更容易串行。 */
+            line-height: 1.85;
+            /* 英文句子走衬线。这是「像书不像 App」最直接的一处。 */
+            font-family: var(--font-reading);
+            /* 衬线字在 28px 下偏细,给一点点字重,不发虚 */
+            font-weight: 400;
+            /* 中文标点跟着英文一起走会挤,给一点点字间距 */
+            letter-spacing: 0.005em;
         }
         .sentence-item {
             display: block;
@@ -1427,13 +1435,24 @@
             color: var(--text-primary);
             cursor: pointer;
             border-radius: var(--radius-md);
+            padding: 0.1em 0.35em;
+            margin-left: -0.35em;
             transition: color var(--duration-fast) var(--ease-out),
-                        opacity var(--duration-base) var(--ease-out);
+                        opacity var(--duration-base) var(--ease-out),
+                        background-color var(--duration-base) var(--ease-out);
         }
         /* 非当前句压暗但不清零 —— 孩子要能看到上下文,又知道焦点在哪 */
         .sentence-item.read { color: var(--text-secondary); opacity: 0.75; }
         .sentence-item.active { color: var(--text-primary); font-weight: var(--font-medium); }
         .sentence-item:hover { color: var(--color-primary); }
+
+        /* 正在朗读的那一句:底下一道细高亮,像书页上被按住的一行。
+           只用背景色 + 左侧色条,不做发光/缩放 —— 简报红线禁止装饰抢焦点。 */
+        .sentence-item.speaking {
+            background-color: var(--tint-accent);
+            box-shadow: inset 3px 0 0 var(--primary-fill);
+        }
+        .sentence-item.speaking .word-inline { color: inherit; }
 
         .word-inline {
             cursor: pointer;
@@ -1550,10 +1569,22 @@
         .font-step--up { font-size: var(--text-xl); }
         .font-step:hover { border-color: var(--color-primary); color: var(--color-primary); }
 
+        /* --- 朗读区:整个产品最高频的动作,底栏里唯一的实心大按钮。
+               「读一句」60px(孩子在 iPad 上的主操作档),「连续朗读」是次级,
+               挨着它放,拇指一次移动就到,不用瞄准。 --- */
+        .read-cluster {
+            display: flex;
+            align-items: stretch;
+            gap: var(--space-2);
+            flex: 1;
+            max-width: 460px;
+            min-width: 0;
+        }
+
         .read-aloud {
             flex: 1;
-            max-width: 320px;
-            min-height: 48px;
+            min-width: 0;
+            min-height: 60px;                 /* md 档 = 孩子的主动作 */
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -1562,14 +1593,52 @@
             color: var(--text-on-primary);
             border: none;
             border-radius: var(--radius-pill);
-            font-size: var(--text-base);
+            font-size: var(--text-lg);
             font-weight: var(--font-semibold);
-            font-family: inherit;
+            font-family: var(--font-ui);
             cursor: pointer;
-            transition: background-color var(--duration-fast) var(--ease-out);
+            /* 只动背景和阴影,不碰 transform —— 按下去时按钮缩一下会让
+               10 岁孩子以为点歪了 */
+            transition: background-color var(--duration-fast) var(--ease-out),
+                        box-shadow var(--duration-base) var(--ease-out);
         }
-        .read-aloud:hover { background: var(--primary-fill-hover); }
+        .read-aloud:hover:not(:disabled) {
+            background: var(--primary-fill-hover);
+            box-shadow: var(--shadow-md);
+        }
+        .read-aloud:active:not(:disabled) { transform: scale(0.98); }
+        .read-aloud:disabled { opacity: 0.75; cursor: default; }
         .read-aloud.playing { background: var(--primary-fill-hover); }
+        .read-aloud-icon { font-size: 1.15em; line-height: 1; }
+
+        .read-alone {
+            flex-shrink: 0;
+            min-height: 60px;
+            padding: 0 var(--space-4);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-pill);
+            font-size: var(--text-sm);
+            font-weight: var(--font-medium);
+            font-family: var(--font-ui);
+            white-space: nowrap;
+            cursor: pointer;
+            transition: background-color var(--duration-fast) var(--ease-out),
+                        color var(--duration-fast) var(--ease-out),
+                        border-color var(--duration-fast) var(--ease-out);
+        }
+        .read-alone:hover { border-color: var(--color-primary); color: var(--color-primary); }
+        .read-alone.active {
+            background: var(--tint-primary);
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+        }
+        .read-alone-icon { font-size: 11px; letter-spacing: -1px; }
 
         .drawer-open {
             min-width: 48px;

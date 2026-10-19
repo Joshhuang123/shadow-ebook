@@ -20,13 +20,17 @@
     --primary-fill:        #A55A40;
     --primary-fill-hover:  #8F4A31;
 
-    /* ===== 色板·背景 ===== */
-    --bg:            #FAF9F6;
-    --bg-card:       #FFFFFF;
-    --bg-dark:       #F5F2EC;
+    /* ===== 色板·背景 =====
+       往「墨水经典」那套(ink + paper)靠:纸不再是接近纯白的 #FAF9F6,
+       而是有一点暖灰的米白,和正文墨色形成更明显的层次。
+       调色参考 guizang-ppt-skill 风格 A「电子杂志 × 电子墨水」的
+       --paper:#f1efea / --paper-tint:#e8e5de,整体再暖一点偏本项目的赤陶调。 */
+    --bg:            #F4F1EA;
+    --bg-card:       #FCFBF8;
+    --bg-dark:       #EAE5DA;
     --bg-overlay:    rgba(45, 42, 38, 0.5);
-    --bg-gradient-start: #F5EDE5;   /* body 渐变起点 */
-    --bg-gradient-end:   #EDE3D6;   /* body 渐变终点 */
+    --bg-gradient-start: #F7F4EE;
+    --bg-gradient-end:   #EDE6D9;
 
     /* ===== 色板·文字 ===== */
     --text-primary:   #2D2A26;
@@ -52,10 +56,29 @@
     --tint-danger:    rgba(194, 91, 86, 0.10);
     --tint-info:      rgba(122, 139, 159, 0.10);
 
-    /* ===== 字体栈 ===== */
+    /* ===== 字体栈 =====
+       这是「像书不像 App」最关键的一处改动。
+       书里的英文句子用衬线,界面用无衬线,两者分开。
+
+       为什么用**系统**衬线而不是项目里已有的 Noto Serif SC:
+       那三个 ttf 每个 14MB、共 44MB,而简报明写「不上 webfont(局域网
+       加载慢)」。iPad/macOS 自带 Georgia / Iowan Old Style / Palatino,
+       都是很成熟的屏幕衬线,零下载、立刻可用。
+
+       CJK 故意排在最后走 PingFang(黑体):手机上宋体的细笔画会发虚,
+       10 岁孩子在小屏上读中文反而更难。衬线管英文,黑体管中文,
+       是出版物的标准混排做法。 */
+    --font-reading: Georgia, 'Iowan Old Style', 'Palatino',
+                    'Times New Roman', 'PingFang SC', sans-serif;
+    --font-display: 'Iowan Old Style', 'Palatino', Georgia,
+                    'Times New Roman', 'PingFang SC', sans-serif;
+
     --font-sans: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue',
                  'Segoe UI', Roboto, sans-serif;
     --font-mono: 'SF Mono', Menlo, Consolas, monospace;
+
+    /* 界面文字(按钮、导航、标签)统一走无衬线 —— 界面要清楚不抢戏。 */
+    --font-ui: var(--font-sans);
 
     /* ===== 字号 + 行高 ===== */
     --text-xs:      12px;   line-height: 16px;
