@@ -3,6 +3,27 @@
    依赖: tokens.css (CSS 变量) + base.css (排版基础)
    ============================================================================ */
 
+/* ===== 文字按钮(链接样式) ==========================
+   原来 .link-btn 定义在 pages/parent.css 里,只有家长页有。
+   首页的预览弹窗要用它,得放在公共层 —— 否则就是浏览器默认按钮
+   (带灰底灰边),在一片安静的书页上特别扎眼。 */
+.link-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 0 4px;
+    background: none;
+    border: none;
+    font: inherit;
+    font-size: 0.85em;
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    transition: color var(--duration-fast) var(--ease-out);
+}
+.link-btn:hover { color: var(--color-primary-dark); }
+
 /* ===== 按钮 (4 类 × 3 尺寸) ========================== */
 .btn {
     display: inline-flex;

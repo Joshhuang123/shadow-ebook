@@ -1768,16 +1768,31 @@
 
         // 导入书籍 - 绑定文件输入
         document.getElementById('import-file').addEventListener('change', (e) => {
-            importBooks(e.target.files);
-            // 清掉 value,否则连续选同一个文件不会再触发 change
+            // ⚠️ 必须先把 FileList 拷出来再清 value。
+            // 清空 input.value 会连带把 FileList 清空,而 importBooks 是
+            // async 的 —— 它要等到第一个 await 之后才用 files,那时候
+            // 拿到的已经是空列表,于是「什么也没导」,而且不报错。
+            const files = Array.from(e.target.files || []);
             e.target.value = '';
+            importBooks(files);
         });
+
+        // 文件夹导入:一次把一个文件夹里的书都导进来
+        const folderInput = document.getElementById('import-folder-input');
+        if (folderInput) {
+            folderInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files || []);
+                e.target.value = '';
+                importBooks(files);
+            });
+        }
 
         // ===== 导入书籍 =====
         // 入口常驻在书架标题行右边(见 index.html .shelf-head),
         // 不再藏在「只有家长登录后才出现」的那张卡里。
 
-        const IMPORT_SUPPORTED = 'EPUB / PDF / TXT / Word';
+        const IMPORT_SUPPORTED = 'EPUB / PDF / TXT / Word / MOBI';
+        const IMPORT_EXTS = /\.(epub|pdf|txt|text|md|markdown|html|htm|docx|mobi|azw|azw3|prc)$/i;
         let pendingImportFiles = null;   // 验完密码后要导入的文件
 
         // 入口常驻,但导入要鉴权。已登录就直接开文件选择器;
@@ -1845,15 +1860,172 @@
             }
         }
 
+        // ===== 目录预览 =====
+        // 一本书 24 章,家长往往只想导其中几章(版权页、目录、试读不要)。
+        // 预览一次拿到目录,导入时按勾选挑 —— 文件不用传两遍
+        // (预览时服务端已经把文件暂存了,导入带 token 就行)。
+        let previewState = null;   // {token, chapters:[{index,name,sentences,checked}]}
+
+        async function shelfImportFolder() {
+            const input = document.getElementById('import-folder-input');
+            if (!input) return;
+            await refreshParentAuth();
+            if (parentAuthed) { input.click(); return; }
+            openImportPin(() => input.click());
+        }
+
+        // 预览单本书,返回 {token, chapters}
+        async function previewBook(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('preview', 'true');
+            const res = await fetch('/api/book/import', {
+                method: 'POST', body: formData, credentials: 'same-origin'
+            });
+            let data = {};
+            try { data = await res.json(); } catch (e) { /* 非 JSON 响应 */ }
+            if (res.status === 401) {
+                // 会话过期 —— 交给调用方弹密码框,输完重来
+                return { needAuth: true };
+            }
+            if (!data.success) {
+                return { error: data.error || `HTTP ${res.status}` };
+            }
+            return {
+                token: data.token,
+                chapters: data.chapters || [],
+                title: data.title,
+                author: data.author,
+            };
+        }
+
+        function openImportPreview(info, file) {
+            previewState = {
+                token: info.token,
+                file,
+                chapters: (info.chapters || []).map(c => ({
+                    index: c.index,
+                    name: c.name,
+                    sentences: c.sentences,
+                    checked: true,
+                })),
+            };
+            const modal = document.getElementById('import-preview-modal');
+            const title = document.getElementById('import-preview-title');
+            const meta = document.getElementById('import-preview-meta');
+            const list = document.getElementById('import-preview-list');
+            if (!modal) return;
+            title.textContent = info.title || file.name;
+            const totalSent = (info.chapters || []).reduce((a, c) => a + (c.sentences || 0), 0);
+            meta.textContent = [info.author, `${(info.chapters || []).length} 章`, `${totalSent} 句`]
+                .filter(Boolean).join(' · ');
+            list.innerHTML = '';
+            previewState.chapters.forEach(c => {
+                const li = document.createElement('li');
+                li.className = 'ip-chapter';
+                const box = document.createElement('input');
+                box.type = 'checkbox';
+                box.checked = c.checked;
+                box.dataset.index = String(c.index);
+                box.addEventListener('change', () => {
+                    c.checked = box.checked;
+                    updateImportPreviewCount();
+                });
+                const label = document.createElement('label');
+                label.appendChild(box);
+                const name = document.createElement('span');
+                name.className = 'ip-chapter-name';
+                name.textContent = c.name;
+                const cnt = document.createElement('span');
+                cnt.className = 'ip-chapter-count';
+                cnt.textContent = `${c.sentences} 句`;
+                label.appendChild(name);
+                label.appendChild(cnt);
+                li.appendChild(label);
+                list.appendChild(li);
+            });
+            updateImportPreviewCount();
+            modal.hidden = false;
+        }
+
+        function updateImportPreviewCount() {
+            const el = document.getElementById('import-preview-count');
+            const btn = document.getElementById('import-preview-confirm');
+            if (!previewState) return;
+            const n = previewState.chapters.filter(c => c.checked).length;
+            const sents = previewState.chapters.filter(c => c.checked)
+                .reduce((a, c) => a + (c.sentences || 0), 0);
+            if (el) el.textContent = `已选 ${n} 章 · ${sents} 句`;
+            if (btn) btn.textContent = n ? `导入选中的 ${n} 章` : '不导入';
+        }
+
+        function closeImportPreview() {
+            const modal = document.getElementById('import-preview-modal');
+            if (modal) modal.hidden = true;
+            previewState = null;
+        }
+
+        function importPreviewSelect(mode) {
+            if (!previewState) return;
+            previewState.chapters.forEach(c => {
+                c.checked = mode === 'all' ? true
+                    : mode === 'none' ? false : !c.checked;
+            });
+            document.querySelectorAll('#import-preview-list input[type=checkbox]').forEach(box => {
+                const c = previewState.chapters.find(x => x.index === Number(box.dataset.index));
+                if (c) box.checked = c.checked;
+            });
+            updateImportPreviewCount();
+        }
+
+        async function confirmImportPreview() {
+            if (!previewState) return;
+            const picked = previewState.chapters.filter(c => c.checked).map(c => c.index);
+            const { token, file } = previewState;
+            closeImportPreview();
+            if (!picked.length) {
+                showToast('一章都没选,这本书就不导入了');
+                return;
+            }
+            await importOneWithToken(token, picked, file);
+        }
+
         // 批量导入:一本一本来,每本的结果都写进进度面板。
         // 原来是一串 alert() —— 一次选 10 本就是 10 个弹窗,
         // 而且第一个失败就把后面的全打断了。
         async function importBooks(files) {
-            const list = Array.from(files || []);
+            let list = Array.from(files || []);
             if (!list.length) return;
+            // 文件夹里混着图片、说明文档之类,只留认得的格式
+            const before = list.length;
+            list = list.filter(f => IMPORT_EXTS.test(f.name || ''));
+            if (!list.length) {
+                showToast('这些文件里没有能导入的格式(支持 EPUB / PDF / TXT / Word / MOBI)');
+                return;
+            }
             const panel = document.getElementById('import-progress');
             const head = document.getElementById('import-progress-head');
             const ul = document.getElementById('import-progress-list');
+
+            // 只选了一本 → 先给看目录,让家长挑要哪几章
+            // (进度面板等真的开始导了再显示,预览时后面挂一个空面板很乱)
+            if (list.length === 1) {
+                const info = await previewBook(list[0]);
+                if (info.needAuth) {
+                    // 会话过期:弹密码框,输完连预览一起重来
+                    closeImportProgress();
+                    openImportPin(() => importBooks(list));
+                    return;
+                }
+                if (info.error) {
+                    addImportRow(ul, list[0].name, 'fail', info.error);
+                    if (head) head.textContent = '导入失败';
+                    return;
+                }
+                openImportPreview(info, list[0]);
+                return;
+            }
+
             if (panel && ul) {
                 ul.innerHTML = '';
                 if (head) head.textContent = `正在导入 ${list.length} 本…`;
@@ -1908,6 +2080,40 @@
         function closeImportProgress() {
             const panel = document.getElementById('import-progress');
             if (panel) panel.hidden = true;
+        }
+
+        // 用预览时拿到的 token 导入(文件已在服务端暂存,不用再传)
+        async function importOneWithToken(token, chapters, file) {
+            const panel = document.getElementById('import-progress');
+            const head = document.getElementById('import-progress-head');
+            const ul = document.getElementById('import-progress-list');
+            if (panel && ul) {
+                ul.innerHTML = '';
+                if (head) head.textContent = `正在导入 ${file ? file.name : ''}…`;
+                panel.hidden = false;
+            }
+            try {
+                const res = await fetch('/api/book/import', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ token, chapters })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    addImportRow(ul, file ? file.name : data.book_title, 'ok',
+                        `${data.total_chapters} 章 · ${data.total_sentences} 句`);
+                    if (head) head.textContent = '导入完成';
+                    loadBookList();
+                    return true;
+                }
+                addImportRow(ul, file ? file.name : '', 'fail', data.error || `HTTP ${res.status}`);
+                if (head) head.textContent = '导入失败';
+                return false;
+            } catch (e) {
+                addImportRow(ul, file ? file.name : '', 'fail', '网络错误,连不上服务器');
+                return false;
+            }
         }
 
         // 单本导入。返回 {ok, chapters, sentences} 或 {ok:false, error}

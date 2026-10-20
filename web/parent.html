@@ -217,6 +217,41 @@
                 <div id="kgGapsList" class="kg-list"></div>
             </div>
 
+            <!-- 书导不进来?多半是 DRM。这张卡回答家长最常问的那个问题。 -->
+            <div class="card" id="drmGuideCard">
+                <div class="card-title"><span class="ico ico-lock" aria-hidden="true"></span>书导不进来?多半是被加密了</div>
+                <p class="kg-hint">
+                    从图书馆借的书(OverDrive / Libby)、Kindle 买的大多带 <strong>DRM 加密</strong>:
+                    文件后缀是 <code>.epub</code>、结构也完全正常,但正文是加密的,
+                    任何自建阅读器都读不了 —— <strong>这不是操作问题,换台电脑也一样</strong>。
+                </p>
+                <div class="drm-sources">
+                    <div class="drm-source">
+                        <div class="drm-source-name">Standard Ebooks</div>
+                        <div class="drm-source-desc">公版名著,排版最干净,本来就是给电子墨水做的。全部无 DRM。</div>
+                        <a class="drm-source-link" href="https://standardebooks.org" target="_blank" rel="noopener">standardebooks.org</a>
+                    </div>
+                    <div class="drm-source">
+                        <div class="drm-source-name">Project Gutenberg</div>
+                        <div class="drm-source-desc">六万多本公版书,免费的,格式干净。儿童文学和经典都有。</div>
+                        <a class="drm-source-link" href="https://gutenberg.org" target="_blank" rel="noopener">gutenberg.org</a>
+                    </div>
+                    <div class="drm-source">
+                        <div class="drm-source-name">Internet Archive</div>
+                        <div class="drm-source-desc">扫描件存档,也有部分可下载的 EPUB。扫描版要先 OCR 才能读。</div>
+                        <a class="drm-source-link" href="https://archive.org" target="_blank" rel="noopener">archive.org</a>
+                    </div>
+                    <div class="drm-source">
+                        <div class="drm-source-name">Kindle 买的小说</div>
+                        <div class="drm-source-desc">2026 年起,亚马逊支持下载部分 Kindle 书的「无 DRM EPUB」;用「Send to Kindle」传 EPUB 也行。</div>
+                        <a class="drm-source-link" href="https://www.amazon.com" target="_blank" rel="noopener">amazon.com</a>
+                    </div>
+                </div>
+                <p class="kg-hint drm-foot">
+                    同一本书如果在上面这些地方有公版版,导那个就行 —— 内容一样,但没有锁。
+                </p>
+            </div>
+
             <!-- 朗读声音:接自己的 TTS -->
             <div class="card" id="ttsCard">
                 <div class="card-title"><span class="ico ico-speaker" aria-hidden="true"></span>朗读声音</div>

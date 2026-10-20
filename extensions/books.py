@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Optional
 from flask import abort, jsonify, request, send_from_directory, session
 
-from extensions import book_formats
+from extensions import book_formats, import_stage
 from werkzeug.utils import secure_filename
 
 from extensions.auth import require_parent_auth, _api_rate_limit_ok
@@ -954,8 +954,21 @@ def register_routes(app):
             return jsonify({"success": False, "error": f"导入过于频繁, {retry} 秒后再试"}), 429
 
         # === 文件接收 ===
-        # 字段名不固定:老前端发 'epub',新前端发 'file'。两个都收,
-        # 免得为了改字段名把老页面搞坏。
+        # 三种来源:
+        #   1) 直接上传(字段名 file / epub / book,都收)
+        #   2) 带 token —— 预览时已经把文件暂存了,这里直接取,不用再传一遍
+        #   3) 都没有 → 报错
+        # 预览走 multipart(带文件),正式导入可能走 JSON(只带 token)。
+        # request.get_json() 对 multipart 恒为 None,所以两处都要读。
+        body_json = request.get_json(silent=True) or {}
+        if not body_json and request.form:
+            body_json = request.form.to_dict()
+        is_preview = str(body_json.get('preview', '')).lower() in ('1', 'true', 'yes')
+        token = body_json.get('token') or ''
+        chapter_filter = body_json.get('chapters')
+        if isinstance(chapter_filter, str) and chapter_filter.strip():
+            chapter_filter = [x for x in chapter_filter.split(',') if x.strip()]
+
         file = None
         for key in ('file', 'epub', 'book'):
             if key in request.files:
@@ -963,11 +976,24 @@ def register_routes(app):
                 break
         if file is None:
             file = next(iter(request.files.values()), None)
-        if file is None:
-            return jsonify({"success": False, "error": "没有上传文件"})
 
-        if not file.filename:
-            return jsonify({"success": False, "error": "文件名为空"})
+        raw = None
+        filename = ''
+        stage_token = ''
+        if file is not None:
+            if not file.filename:
+                return jsonify({"success": False, "error": "文件名为空"})
+            filename = file.filename
+            raw = file.read()
+        elif token:
+            raw, filename = import_stage.get(token)
+            if raw is None:
+                return jsonify({
+                    "success": False,
+                    "error": '预览已经过期了,请重新选一次文件',
+                }), 410
+        else:
+            return jsonify({"success": False, "error": "没有上传文件"})
 
         # ⚠️ secure_filename 会把非 ASCII 字符**全删掉** ——
         # 中文文件名「小王子.txt」会被削成「.txt」,扩展名都没了,
@@ -976,10 +1002,12 @@ def register_routes(app):
         #   · secure_filename 只用来防路径穿越,不参与格式判断
         # 书名最终还会过 _sanitize_book_id(非 ASCII 会转成哈希 id),
         # 标题本身原样存进 DB,不会丢。
-        original_name = file.filename
+        #
+        # filename 可能来自暂存区(带 token 的预览流程),所以以它为准。
+        original_name = filename
         filename = secure_filename(original_name) or 'book'
         ext = Path(original_name).suffix.lower()
-        stem = Path(original_name).stem.strip() or '未命名' 
+        stem = Path(original_name).stem.strip() or '未命名'
         if ext not in book_formats.SUPPORTED_EXTENSIONS:
             return jsonify({
                 "success": False,
@@ -987,13 +1015,23 @@ def register_routes(app):
                          f'目前支持:{"、".join(book_formats.SUPPORTED_EXTENSIONS)}',
             }), 400
 
-        raw = file.read()
         if len(raw) > book_formats.MAX_UPLOAD_BYTES:
             return jsonify({
                 "success": False,
                 "error": f'文件太大({len(raw) / 1048576:.0f}MB),'
                          f'上限 {book_formats.MAX_UPLOAD_BYTES // 1048576}MB',
             }), 413
+
+        # 预览:把文件暂存起来,给前端一个 token。
+        # 导入时带这个 token 上来,就不用再传一遍文件了 ——
+        # 50MB 的 PDF 在局域网上传两遍太慢。
+        if is_preview and not token:
+            try:
+                token = import_stage.stage(raw, original_name)
+            except Exception as e:
+                logger.warning('导入暂存失败: %s', e)
+                return jsonify({"success": False,
+                                "error": f'暂存失败: {e}'}), 500
 
         # === 非 EPUB:走转换器 ===
         # PDF / TXT / MD / HTML / DOCX 统一转成和 EPUB 一样的
@@ -1020,7 +1058,7 @@ def register_routes(app):
                     "retryable": False,
                     "book_id": book_data['id'],
                 }), 409
-            return _save_imported_book(book_data)
+            return _finish_import(book_data, is_preview, token, chapter_filter)
 
         # === EPUB:走原来那条老路(里面有二十来个历史 bug 的修复) ===
         try:
@@ -1070,7 +1108,9 @@ def register_routes(app):
                 # 已经被新 EPUB 的封面盖掉,旧书从此顶着新书的封面显示。
                 # 判重只依赖 book_title,此处 title 已定稿(OPF 优先),可以提前。
                 book_id = _sanitize_book_id(book_title)
-                if get_db().execute('SELECT 1 FROM books WHERE id = ?', (book_id,)).fetchone():
+                if (not is_preview and
+                        get_db().execute('SELECT 1 FROM books WHERE id = ?',
+                                         (book_id,)).fetchone()):
                     logger.warning(f'book_id {book_id!r} 已存在, 拒绝覆盖 (filename={filename!r})')
                     return jsonify({
                         "success": False,
@@ -1234,10 +1274,10 @@ def register_routes(app):
                                  '换个版本试试,或先用 PDF / TXT 格式。',
                     }), 400
 
-            # === Phase 3a: 写入 SQLite (不再写 JSON) ===
+            # === Phase 3a: 拼出 book_data(写库在下面) ===
             # 写库这一步抽成公共函数了 —— 多格式(EPUB / PDF / TXT / ...)
             # 走同一条下游管线,否则同一种书用不同格式导进来行为会不一致。
-            return _save_imported_book({
+            book_data = {
                 "book": book_title,
                 "id": book_id,
                 "chapters": merged_chapters,
@@ -1253,7 +1293,8 @@ def register_routes(app):
                 "subjects": opf_meta.get('subjects') or [],
                 "rights": opf_meta.get('rights'),
                 "toc": toc_entries,  # 真 TOC, 无则 []
-            })
+            }
+            return _finish_import(book_data, is_preview, token, chapter_filter, total_sentences)
 
         except Exception as e:
             logger.exception('EPUB 导入失败')
@@ -1263,6 +1304,56 @@ def register_routes(app):
     def serve_covers(filename):
         """提供封面图片"""
         return send_from_directory(str(COVERS_DIR), filename)
+
+
+def _finish_import(book_data: dict, is_preview: bool = False,
+                   token: str = '', chapter_filter=None,
+                   total_sentences: int = None):
+    """导入的最后一步:预览 / 写库。
+
+    预览模式:只把目录返回给前端,**不入库**。
+    正式导入:按 chapter_filter 挑章节(可选),然后写库。
+
+    章节筛选的语义:家长在预览弹窗里勾了哪几章,就只导哪几章。
+    一个都没勾 = 全都要 —— 不能导出一本空书。
+    """
+    chapters = book_data.get('chapters') or []
+    if chapter_filter is not None:
+        try:
+            wanted = {int(i) for i in chapter_filter}
+        except (TypeError, ValueError):
+            wanted = None
+        if wanted:
+            picked = [ch for i, ch in enumerate(chapters) if i in wanted]
+            if picked:
+                chapters = picked
+
+    book_data['chapters'] = chapters
+    total = sum(len(c.get('sentences') or []) for c in chapters)
+
+    if is_preview:
+        return jsonify({
+            "success": True,
+            "preview": True,
+            "token": token or '',
+            "title": book_data.get('book'),
+            "author": book_data.get('creator'),
+            "chapters": [
+                {
+                    "index": i,
+                    "name": ch.get('name') or f'第 {i + 1} 章',
+                    "sentences": len(ch.get('sentences') or []),
+                }
+                for i, ch in enumerate(chapters)
+            ],
+            "total_chapters": len(chapters),
+            "total_sentences": total,
+        })
+
+    if token:
+        # 导入完了,暂存文件用不上了
+        import_stage.drop(token)
+    return _save_imported_book(book_data)
 
 
 def _save_imported_book(book_data: dict):

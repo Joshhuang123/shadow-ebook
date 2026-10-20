@@ -81,9 +81,14 @@
                  上找不到任何地方能加书,这个工具就变成了「一次性」的。 -->
             <div class="shelf-head" id="shelf-head" hidden>
                 <h2 class="section-title" id="shelf-title">我的书架 <span class="shelf-count" id="shelf-count"></span></h2>
-                <button class="shelf-import-btn" data-action="shelfImport" title="导入自己的电子书">
-                    <span class="ico ico-plus" aria-hidden="true"></span>导入新书
-                </button>
+                <div class="shelf-import-group">
+                    <button class="shelf-import-btn" data-action="shelfImport" title="导入自己的电子书">
+                        <span class="ico ico-plus" aria-hidden="true"></span>导入新书
+                    </button>
+                    <button class="shelf-import-btn" data-action="shelfImportFolder" title="一次导入一个文件夹里的所有书">
+                        <span class="ico ico-layers" aria-hidden="true"></span>导入文件夹
+                    </button>
+                </div>
             </div>
             <p class="shelf-hint" id="shelf-hint" hidden>
                 支持 EPUB / PDF / TXT / Word / MOBI —— 导入后自动转成可以逐句读的书,一次可以选多本
@@ -102,6 +107,32 @@
             </div>
 
             <input type="file" id="import-file" accept=".epub,.pdf,.txt,.text,.md,.markdown,.html,.htm,.docx,.mobi,.azw,.azw3" multiple>
+            <!-- 文件夹导入:webkitdirectory 在 Chrome / Edge / Safari(桌面)可用;
+                 iOS Safari 不支持,会自动退化成普通多选文件框,不影响用。 -->
+            <input type="file" id="import-folder-input" webkitdirectory directory multiple>
+        </div>
+
+        <!-- 导入前的目录预览:一本书 24 章,家长往往只想导其中几章
+             (版权页、目录、试读、作者的「本书献给…」都不要)。 -->
+        <div class="import-preview-modal" id="import-preview-modal" hidden>
+            <div class="import-preview-card" role="dialog" aria-modal="true" aria-labelledby="import-preview-title">
+                <div class="import-preview-head">
+                    <h3 id="import-preview-title">这本书</h3>
+                    <p class="import-preview-meta" id="import-preview-meta"></p>
+                </div>
+                <p class="import-preview-hint">勾掉不想要的章节(版权页、目录、试读之类)。不勾就是全部导入。</p>
+                <div class="import-preview-tools">
+                    <button class="link-btn" data-action="importPreviewAll">全选</button>
+                    <button class="link-btn" data-action="importPreviewNone">全不选</button>
+                    <button class="link-btn" data-action="importPreviewInvert">反选</button>
+                </div>
+                <ul class="import-preview-list" id="import-preview-list"></ul>
+                <div class="import-preview-foot">
+                    <span class="import-preview-count" id="import-preview-count"></span>
+                    <button class="btn btn-secondary" data-action="closeImportPreview">取消</button>
+                    <button class="btn btn-primary" id="import-preview-confirm" data-action="confirmImportPreview">导入</button>
+                </div>
+            </div>
         </div>
 
         <!-- 导入前���家长验证:以前点「导入」只会跳到 /parent 登录页,

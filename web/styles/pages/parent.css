@@ -808,6 +808,48 @@
    家长页专用。刻意做得比孩子页更克制、信息密度更高 ——
    这是给大人看的诊断,不是给 10 岁孩子看的鼓励。
    ==================================================== */
+/* DRM 获取指引:四个来源排成两列,像一张「去哪找」的清单 */
+.drm-sources {
+    display: grid;
+    /* 两列 —— 四个来源排成 3+1 会显得散 */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin: 4px 0 16px;
+}
+@media (max-width: 720px) {
+    .drm-sources { grid-template-columns: minmax(0, 1fr); }
+}
+.drm-source {
+    padding: 14px 16px;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-md);
+    background: transparent;
+}
+.drm-source-name {
+    font-family: var(--font-display);
+    font-size: 1.02em;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 5px;
+}
+.drm-source-desc {
+    font-size: 0.82em;
+    line-height: 1.6;
+    font-weight: 300;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+.drm-source-link {
+    font-family: var(--font-mono);
+    font-size: 0.78em;
+    letter-spacing: 0.04em;
+    color: var(--color-primary);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(184, 106, 78, 0.35);
+}
+.drm-source-link:hover { color: var(--color-primary-dark); }
+.drm-foot { margin-bottom: 0; }
+
 .kg-hint {
     font-size: 0.85em;
     color: var(--text-secondary);

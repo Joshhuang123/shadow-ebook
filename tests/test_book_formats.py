@@ -410,3 +410,111 @@ def test_mobi_drm_flag_is_detected():
 def test_mobi_extension_is_accepted():
     assert '.mobi' in bf.SUPPORTED_EXTENSIONS
     assert '.azw3' in bf.SUPPORTED_EXTENSIONS
+
+
+# ============================================================
+# 预览 + 章节选择
+# ------------------------------------------------------------
+# 「一本书 24 章,家长只想导其中几章」—— 版权页、目录、试读、
+# 作者的「本书献给…」都不想要。所以导入前先看目录、勾选。
+#
+# 另外:预览时文件已经在服务端暂存了,导入时带 token 就行,
+# 50MB 的 PDF 不用在局域网上传两遍。
+# ============================================================
+
+def test_preview_returns_chapters_without_writing(client):
+    """预览只返回目录,**不入库**。"""
+    _login(client)
+    r = client.post('/api/book/import',
+                    data={'file': (io.BytesIO(TXT_EN.encode('utf-8')),
+                                   'The Little Prince.txt'),
+                          'preview': 'true'},
+                    content_type='multipart/form-data')
+    body = r.get_json()
+    assert body.get('success'), body
+    assert body.get('preview') is True
+    assert body.get('token')
+    assert len(body['chapters']) == 2
+    assert body['chapters'][0]['name'].startswith('Chapter 1')
+    assert body['chapters'][0]['sentences'] >= 3
+    # 库里不能有这本书
+    assert client.get('/api/books').get_json().get('books') == []
+
+
+def test_import_with_token_and_chapter_filter(client):
+    """带 token + 章节下标 → 只导选中的那几章。"""
+    _login(client)
+    preview = client.post('/api/book/import',
+                          data={'file': (io.BytesIO(TXT_EN.encode('utf-8')),
+                                         'The Little Prince.txt'),
+                                'preview': 'true'},
+                          content_type='multipart/form-data').get_json()
+    token = preview['token']
+
+    r = client.post('/api/book/import', json={'token': token, 'chapters': [0]})
+    body = r.get_json()
+    assert body.get('success'), body
+    assert body['total_chapters'] == 1, '只勾了一章,却导进去多章'
+    assert body['total_sentences'] >= 3
+
+    got = client.get(f"/api/book/{body['book_id']}").get_json()['book']
+    assert len(got['chapters']) == 1
+
+
+def test_import_with_token_and_no_selection_keeps_all(client):
+    """一个章节都没选 = 全都要(而不是导一本空书)。"""
+    _login(client)
+    preview = client.post('/api/book/import',
+                          data={'file': (io.BytesIO(TXT_EN.encode('utf-8')),
+                                         'All Of It.txt'),
+                                'preview': 'true'},
+                          content_type='multipart/form-data').get_json()
+    r = client.post('/api/book/import',
+                    json={'token': preview['token'], 'chapters': []})
+    body = r.get_json()
+    assert body.get('success'), body
+    assert body['total_chapters'] == 2
+
+
+def test_expired_token_gives_clear_error(client):
+    _login(client)
+    r = client.post('/api/book/import', json={'token': 'not-a-real-token-1234'})
+    assert r.status_code == 410
+    assert '预览' in r.get_json().get('error', '')
+
+
+def test_preview_requires_parent_auth(client):
+    r = client.post('/api/book/import',
+                    data={'file': (io.BytesIO(TXT_EN.encode('utf-8')), 'x.txt'),
+                          'preview': 'true'},
+                    content_type='multipart/form-data')
+    assert r.status_code == 401
+
+
+def test_staging_area_roundtrip():
+    """暂存区:存进去能取回来,token 猜不出来,取完能删掉。"""
+    from extensions import import_stage
+    token = import_stage.stage(b'hello world', 'book.txt')
+    raw, name = import_stage.get(token)
+    assert raw == b'hello world'
+    assert name == 'book.txt'
+    import_stage.drop(token)
+    assert import_stage.get(token) == (None, None)
+    # 猜不出来的 token 取不到东西
+    assert import_stage.get('zzzz-zzzz-zzzz') == (None, None)
+    # 非法 token 直接挡掉
+    assert import_stage.get('../../etc/passwd') == (None, None)
+
+
+def test_staging_cleans_expired():
+    """过期��暂存要被清掉,不然磁盘会被撑爆。"""
+    import time
+    from extensions import import_stage
+    token = import_stage.stage(b'x' * 100, 'old.txt')
+    # 把时间戳改到很久以前
+    meta = import_stage._meta_path(token)
+    info = __import__('json').loads(meta.read_text(encoding='utf-8'))
+    info['ts'] = time.time() - import_stage.TTL_SECONDS - 60
+    meta.write_text(__import__('json').dumps(info), encoding='utf-8')
+    import_stage.cleanup_expired()
+    assert import_stage.get(token) == (None, None)
