@@ -108,3 +108,6 @@ backups/
 # 知识图谱原始数据源(太大,不进仓库;scripts/build_kg.py 可重新下载)
 data/kg/sources/
 data/kg/*.db
+
+# 导入暂存区:家长上传的书籍原始字节,只在服务器上待 1 小时,绝不能进仓库
+data/import_stage/
