@@ -667,14 +667,49 @@ hover 时那条线变主色、整行泛一点暖色。原来 hover 时闪的那�
 
 ### 18.2 支持的格式
 
-`EPUB / PDF / TXT / Markdown / HTML / DOCX`。
+`EPUB / PDF / TXT / Markdown / HTML / DOCX / MOBI / AZW3`。
+
+**为什么是这几个** —— 查了 2022 年欧洲电子书市场的主流文本格式分布
+(EPUB2+EPUB3+PDF 合计 85%~97%,MOBI/AZW3/FB2/DJVU 等"其它"占 1%~25%),
+加上 2024 年数字出版协会的报告(主流格式超 12 种,EPUB/PDF/MOBI/AZW3/
+DJVU/FB2 六种占 92% 份额),再加各平台的支持情况:
+
+| 平台 | 主力格式 | 说明 |
+|---|---|---|
+| Apple Books / Google Play / Kobo | EPUB(70%+) | 开箱即用 |
+| Kindle | MOBI / AZW3 | 正在往 EPUB 迁;2026 年 1 月起 Kindle 书的「无 DRM EPUB」可下载 |
+| 图书馆(OverDrive / Libby) | EPUB + PDF(下载到电纸书) | 但借的书**带 DRM** |
+| 俄罗斯/东欧 | FB2 | 少见,暂不支持 |
+| 扫描件 | DJVU / 扫描版 PDF | 本质是图片,需要 OCR |
+
+结论:**EPUB + PDF 就覆盖了 95% 的场景**("EPUB for books, PDF for documents"),
+TXT/DOCX/HTML/MOBI 是补边。所以重点不是再堆格式,而是**把 DRM 说清楚**。
+
+### 18.3 DRM —— 真正的拦路虎
+
+家长最常见的「导不进来」原因不是格式,是**加密**:
+
+- 图书馆借的书(OverDrive/Libby)→ Adobe ACSM,`META-INF/sinf.xml`
+- Kindle 买的 → ADEPT,`META-INF/encryption.xml`
+- Readium LCP → `META-INF/license.lcpl`
+
+这些文件**结构完全合法、扩展名也是 .epub**,但正文是加密的。
+不提前拦的话,家长看到的是几百页之后一句「没读到正文」。
+
+现在导入时提前识别,并明确告诉他该去哪拿没加密的版本
+(Standard Ebooks / Project Gutenberg / Internet Archive /
+亚马逊的「下载无 DRM EPUB」)。
+
+⚠️ 字体嵌入混淆(font obfuscation)也用 `encryption.xml`,但它**不是 DRM** ——
+误判的话一大半正常 EPUB 会被冤枉。判据是 encryption.xml 里有没有
+DRM 专用的 Algorithm URI。
 
 除了 EPUB 走原有的解析器(那里面有二十来个历史 bug 的修复,不动),
 其它格式都经过 `extensions/book_formats.py`,产出**和 EPUB 完全一样**的
 `book_data` 结构 —— 下游(查词 / 朗读 / 跟读 / 蓝思值 / 封面)不需要为每种
 格式各写一套。
 
-### 18.3 导入链路上修掉的坑
+### 18.4 导入链路上修掉的坑
 
 | 坑 | 后果 |
 |---|---|
@@ -688,7 +723,7 @@ hover 时那条线变主色、整行泛一点暖色。原来 hover 时闪的那�
 
 最后一条是这轮才暴露的老 bug —— 以前每本书都有封面,无封面那条路径从没被走到。
 
-### 18.4 失败必须说人话
+### 18.5 失败必须说人话
 
 - 扫描版 PDF → 「这个 PDF 里几乎提取不到文字,多半是扫描版…需要先做 OCR」
 - 重复导入 → 「已经有一本同名书了,改个文件名再试」

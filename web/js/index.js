@@ -304,7 +304,7 @@
                     grid.innerHTML = '';
                     emptyState.hidden = false;
                     document.getElementById('shelf-empty-hint').textContent =
-                        parentAuthed ? '支持 EPUB / PDF / TXT / Word' : '导入需要家长密码';
+                        parentAuthed ? '支持 EPUB / PDF / TXT / Word / MOBI' : '导入需要家长密码';
                     return;
                 }
 
@@ -347,7 +347,7 @@
                         <div class="import-card" data-action="shelfImport">
                             <div class="icon"><span class="ico ico-plus ico--solo" aria-hidden="true"></span></div>
                             <div class="text">导入新书</div>
-                            <div class="hint">EPUB / PDF / TXT / Word</div>
+                            <div class="hint">EPUB / PDF / TXT / Word / MOBI</div>
                         </div>
                     `);
                 }

@@ -1038,6 +1038,21 @@ def register_routes(app):
                 if not opf_path:
                     return jsonify({"success": False, "error": "不是有效的 EPUB 文件 (缺 META-INF/container.xml)"})
 
+                # === DRM 检测 ===
+                # 带加密的书(图书馆借的、Kindle 买的)结构完全合法,
+                # 但正文是加密的,任何自建阅读器都读不了。
+                # 提前拦下来并说清楚,比让它在几百页之后解不开、
+                # 最后报一句「没读到正文」强得多。
+                drm = book_formats.detect_epub_drm(
+                    zf.namelist(), read=lambda n: zf.read(n))
+                if drm:
+                    logger.info('EPUB 带 DRM(%s),拒绝导入: %s', drm, filename)
+                    return jsonify({
+                        "success": False,
+                        "error": book_formats._drm_message(drm),
+                        "drm": True,
+                    }), 400
+
                 # === R9: 解析 OPF metadata (title/author/publisher/date/...) + 真 TOC ===
                 opf_meta = _parse_opf_metadata(zf, opf_path)
                 toc_entries = _parse_toc(zf, opf_path)

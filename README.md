@@ -189,7 +189,7 @@ python3 app.py
 5. 每本一行显示结果：成功会写清「几章 · 几句」，失败会写清原因
 6. 解析完新书直接出现在书架上
 
-支持 **EPUB / PDF / TXT / Word(.docx) / Markdown / HTML**：
+支持 **EPUB / PDF / TXT / Word(.docx) / Markdown / HTML / MOBI(AZW3)**：
 
 | 格式 | 说明 |
 |---|---|
@@ -198,6 +198,7 @@ python3 app.py
 | `TXT` / `Markdown` | 按空行分段，`Chapter N` / `第 N 章` 当作分章标题 |
 | `Word (.docx)` | 按段落读 |
 | `HTML` | 剥标签后按段落读 |
+| `MOBI` / `AZW3` | Kindle 生态的旧格式，**只支持没加密的** |
 
 导入时自动做这几件事：
 
@@ -206,6 +207,14 @@ python3 app.py
 - **算蓝思值** —— 导入时算一次存进库，之后每页句数直接读
 
 > 导入限流是每小时 60 本。同一本书重复导入会被拦下并提示改名。
+
+**带 DRM 的书导不进来**（这是最常见的情况，不是你的操作问题）：
+
+从图书馆借的书（OverDrive / Libby）和 Kindle 买的大多带加密，
+文件结构合法、后缀也是 `.epub`，但正文是加密的，任何自建阅读器都读不了。
+程序会明确告诉你这一点，并指出去哪拿一份没加密的：
+Standard Ebooks、Project Gutenberg、Internet Archive 都是免费的；
+亚马逊从 2026 年 1 月起也支持下载部分 Kindle 书的「无 DRM EPUB」。
 
 ---
 

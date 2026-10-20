@@ -28,6 +28,7 @@ EPUB 走 `extensions/books.py` 里那条老路(那里有二十来个历史 bug �
 """
 import io
 import logging
+import os
 import re
 from html import unescape
 from pathlib import Path
@@ -35,8 +36,8 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # 家庭场景里真实会用到的格式
-SUPPORTED_EXTENSIONS = ('.epub', '.txt', '.text', '.md', '.markdown',
-                        '.pdf', '.html', '.htm', '.docx')
+SUPPORTED_EXTENSIONS = ('.epub', '.pdf', '.txt', '.text', '.md', '.markdown',
+                        '.html', '.htm', '.docx', '.mobi', '.azw', '.azw3', '.prc')
 
 # 一次导入允许的最大体积。EPUB 原来没有上限,这里统一收一下,
 # 免得有人在局域网里传一个 500MB 的 PDF 把内存吃光。
@@ -91,6 +92,99 @@ def html_to_text(html: str) -> str:
     return s.strip()
 
 
+# ============================================================
+# DRM 检测
+# ============================================================
+# 「为什么我的书导不进来」的第一答案不是格式,是加密。
+# 图书馆借的书(OverDrive/Libby)、Kindle 买的大多带 DRM,
+# 文件结构合法、扩展名也是 .epub,但正文是加密的 —— 任何自建阅读器
+# 都读不了。家长看到的是「导入失败」,完全不知道为什么。
+#
+# 所以这里要**提前**识别出来,并告诉他该去哪拿一份没加密的。
+
+# EPUB 里的加密标记。字体嵌入混淆(font obfuscation)也用
+# encryption.xml,但它不是 DRM —— 别把它误判成 DRM,否则一大半
+# 正常的 EPUB 会被冤枉。真正的 DRM 都带下面的 URI。
+_DRM_ALGORITHMS = (
+    'http://ns.adobe.com/pdf/enc#',      # Adobe ADEPT
+    'http://ns.adobe.com/adept',
+    'http://www.w3.org/2001/04/xmlenc#',   # 通用 XML 加密
+    'http://readium.org/2014/01/lcp',     # Readium LCP
+    'http://www.idpf.org/2016/encryption#',
+)
+
+# ACSM(OverDrive / Libby 借书用的就是它)
+_ACSM_MARKER = 'META-INF/sinf.xml'
+# 旧版 DRM
+_RIGHTS_MARKER = 'META-INF/rights.xml'
+# Readium LCP 许可
+_LCP_MARKER = 'META-INF/license.lcpl'
+
+
+class DrmError(ConversionError):
+    """这本书带加密保护(DRM),导不进自建阅读器。"""
+
+
+def detect_epub_drm(names, read=None):
+    """EPUB 是不是带 DRM。names = zip 里的文件名列表。
+
+    read(name) -> bytes 可选,用来读 encryption.xml 的内容。
+    """
+    name_set = {n.lower() for n in names}
+    if _ACSM_MARKER.lower() in name_set:
+        return 'acsm'
+    if _RIGHTS_MARKER.lower() in name_set:
+        return 'rights'
+    enc = 'meta-inf/encryption.xml'
+    if enc in name_set and read is not None:
+        try:
+            xml = read('META-INF/encryption.xml')
+        except Exception:
+            xml = b''
+        text = xml.decode('utf-8', errors='ignore') if isinstance(xml, bytes) else str(xml)
+        for algo in _DRM_ALGORITHMS:
+            if algo in text:
+                return 'adept'
+    if _LCP_MARKER.lower() in name_set:
+        return 'lcp'
+    return None
+
+
+def detect_mobi_drm(raw: bytes) -> bool:
+    """MOBI/AZW3 的 EXTH 里有没有 DRM 记录。
+
+    MOBI 头:偏移 60 是 'EXTH',之后 4 字节长度、4 字节条数,
+    然后每条记录是 4 字节类型 + 4 字节长度 + 数据。
+    类型 0x01 = DRM,值 1 = 无 DRM,2/3 = 有。
+    """
+    if len(raw) < 80 or raw[60:64] != b'EXTH':
+        return False
+    try:
+        import struct
+        count = struct.unpack('>I', raw[68:72])[0]
+        pos = 72
+        for _ in range(min(count, 200)):
+            if pos + 8 > len(raw):
+                break
+            rtype, rlen = struct.unpack('>II', raw[pos:pos + 8])
+            data = raw[pos + 8:pos + 8 + rlen]
+            if rtype == 0x01 and len(data) >= 4:
+                value = struct.unpack('>I', data[:4])[0]
+                return value >= 2
+            pos += 8 + rlen
+    except Exception:
+        return False
+    return False
+
+
+def _drm_message(kind: str) -> str:
+    return ('这本书带加密保护(DRM) —— 从图书馆借的书、Kindle 买的多半是这种。'
+            '它们只能在原来的 app 里读,导不进这里。\n'
+            '想放进来,得先拿到一份没加密的:'
+            'Standard Ebooks / Project Gutenberg / Internet Archive 上有免费的,'
+            '亚马逊 2026 年起也支持下载部分 Kindle 书的「无 DRM EPUB」。')
+
+
 # === 各格式 → 纯文本 ===
 
 def pdf_to_text(raw: bytes, progress=None) -> str:
@@ -136,6 +230,55 @@ def pdf_to_text(raw: bytes, progress=None) -> str:
         raise ConversionError(
             '这个 PDF 里几乎提取不到文字,多半是扫描版(整页是图片)。'
             '需要先做 OCR 转成文字版,再导入')
+    return text
+
+
+def mobi_to_text(raw: bytes, progress=None) -> str:
+    """MOBI / AZW3 → 纯文本。
+
+    Kindle 生态的遗留格式。**只支持没加密的** —— 带 DRM 的 AZW3
+    是亚马逊的加密体系,技术上解不开,也没有合法的绕法。
+
+    依赖 `mobi` 包(自带 kindleunpack)。没装就明确报缺组件,
+    不静默失败。
+    """
+    try:
+        import mobi
+    except ImportError as e:  # pragma: no cover
+        raise ConversionError('服务器缺少 MOBI 解析组件,无法导入 MOBI/AZW3') from e
+
+    if detect_mobi_drm(raw):
+        raise DrmError(_drm_message('mobi'))
+
+    tmp = None
+    try:
+        import tempfile
+        fd, tmp = tempfile.mkstemp(suffix='.mobi')
+        with os.fdopen(fd, 'wb') as f:
+            f.write(raw)
+        tempdir, outfile = mobi.extract(tmp)
+        try:
+            with open(outfile, 'rb') as f:
+                html = f.read()
+        except OSError:
+            # 新版 mobi 可能直接返回文本
+            html = outfile if isinstance(outfile, bytes) else b''
+    except DrmError:
+        raise
+    except Exception as e:
+        raise ConversionError(f'这个 MOBI/AZW3 解不开: {type(e).__name__}') from e
+    finally:
+        if tmp and os.path.exists(tmp):
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+
+    if progress:
+        progress(1, 1)
+    text = html_to_text(html.decode('utf-8', errors='ignore'))
+    if not text.strip():
+        raise ConversionError('这个 MOBI/AZW3 里没读到文字')
     return text
 
 
@@ -440,6 +583,8 @@ def convert(raw: bytes, filename: str, progress=None) -> dict:
 
     if ext == '.pdf':
         text = pdf_to_text(raw, progress)
+    elif ext in ('.mobi', '.azw', '.azw3', '.prc'):
+        text = mobi_to_text(raw, progress)
     elif ext == '.docx':
         text = docx_to_text(raw, progress)
     elif ext in ('.html', '.htm'):

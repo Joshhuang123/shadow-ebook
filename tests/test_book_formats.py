@@ -18,6 +18,7 @@
 """
 import io
 import sys
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -133,7 +134,7 @@ def test_scanned_pdf_is_rejected_with_actionable_message():
 
 def test_unsupported_format_is_rejected():
     with pytest.raises(bf.ConversionError) as e:
-        bf.convert(b'xx', 'book.mobi')
+        bf.convert(b'xx', 'book.cbr')
     assert '不支持' in str(e.value)
 
 
@@ -198,7 +199,7 @@ def _login(client):
 
 def test_import_rejects_unsupported_format(client):
     _login(client)
-    r = client.post('/api/book/import', data={'file': (io.BytesIO(b'x'), 'book.mobi')},
+    r = client.post('/api/book/import', data={'file': (io.BytesIO(b'x'), 'book.cbr')},
                     content_type='multipart/form-data')
     body = r.get_json()
     assert not body.get('success')
@@ -308,3 +309,104 @@ def _make_text_pdf():
     out += (f'trailer\n<< /Size {len(objs) + 1} /Root 1 0 R >>\n'
             f'startxref\n{xref}\n%%EOF\n').encode()
     return bytes(out)
+
+
+# ============================================================
+# DRM 检测
+# ------------------------------------------------------------
+# 「为什么我的书导不进来」的第一答案不是格式,是加密。
+# 图书馆借的书(OverDrive/Libby 用 ACSM)、Kindle 买的(ADEPT)
+# 文件结构完全合法、扩展名也是 .epub,但正文是加密的。
+# 不提前拦下来的话,家长看到的是几百页之后一句「没读到正文」。
+# ============================================================
+
+def _epub_with(extra_files: dict) -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w') as z:
+        z.writestr('mimetype', 'application/epub+zip')
+        z.writestr('META-INF/container.xml',
+                   '<?xml version="1.0"?><container version="1.0" '
+                   'xmlns="urn:oasis:names:tc:opendocument:xmlns:container">'
+                   '<rootfiles><rootfile full-path="OEBPS/content.opf" '
+                   'media-type="application/oebps-package+xml"/></rootfiles></container>')
+        z.writestr('OEBPS/content.opf',
+                   '<?xml version="1.0"?><package '
+                   'xmlns="http://www.idpf.org/2007/opf" version="3.0">'
+                   '<metadata/><manifest/><spine/></package>')
+        z.writestr('OEBPS/ch.xhtml',
+                   '<html xmlns="http://www.w3.org/1999/xhtml"><body>'
+                   '<p>Some text here that is long enough to count.</p></body></html>')
+        for name, content in extra_files.items():
+            z.writestr(name, content)
+    return buf.getvalue()
+
+
+def test_drm_epub_is_detected_acsm():
+    """图书馆借的书(OverDrive/Libby)带 META-INF/sinf.xml。"""
+    raw = _epub_with({'META-INF/sinf.xml': '<sinf/>'})
+    import zipfile
+    with zipfile.ZipFile(io.BytesIO(raw)) as z:
+        kind = bf.detect_epub_drm(z.namelist(), read=lambda n: z.read(n))
+    assert kind == 'acsm'
+
+
+def test_drm_epub_is_detected_adept():
+    raw = _epub_with({'META-INF/encryption.xml':
+                       '<?xml version="1.0"?><encryption '
+                       'xmlns="urn:oasis:names:tc:opendocument:xmlns:container" '
+                       'Algorithm="http://ns.adobe.com/pdf/enc#RC"/>'})
+    import zipfile
+    with zipfile.ZipFile(io.BytesIO(raw)) as z:
+        kind = bf.detect_epub_drm(z.namelist(), read=lambda n: z.read(n))
+    assert kind == 'adept'
+
+
+def test_font_obfuscation_is_not_mistaken_for_drm():
+    """EPUB 的字体嵌入混淆也用 encryption.xml,但它不是 DRM。
+
+    误判的话一大半正常 EPUB 会被当成带加密拒掉 —— 更糟。
+    """
+    raw = _epub_with({'META-INF/encryption.xml':
+                       '<?xml version="1.0"?><encryption '
+                       'xmlns="urn:oasis:names:tc:opendocument:xmlns:container">'
+                       '<EncryptedData><EncryptionMethod '
+                       'Algorithm="http://www.idpf.org/2008/embedding"/>'
+                       '</EncryptedData></encryption>'})
+    import zipfile
+    with zipfile.ZipFile(io.BytesIO(raw)) as z:
+        kind = bf.detect_epub_drm(z.namelist(), read=lambda n: z.read(n))
+    assert kind is None, '字体混淆被误判成 DRM 了'
+
+
+def test_drm_epub_import_is_rejected_with_actionable_message(client):
+    _login(client)
+    raw = _epub_with({'META-INF/sinf.xml': '<sinf/>'})
+    r = client.post('/api/book/import',
+                    data={'file': (io.BytesIO(raw), 'borrowed.epub')},
+                    content_type='multipart/form-data')
+    body = r.get_json()
+    assert r.status_code == 400
+    assert not body.get('success')
+    assert body.get('drm') is True
+    assert 'DRM' in body.get('error', '')
+    # 提示里要告诉家长下一步怎么办,而不只是「失败了」
+    assert '无 DRM' in body.get('error', '') or '没加密' in body.get('error', '')
+
+
+def test_mobi_drm_flag_is_detected():
+    """MOBI 头的 EXTH 里有 DRM 记录。"""
+    import struct
+    raw = bytearray(b'BOOKMOBI' + b'\x00' * 52)
+    raw += b'EXTH'
+    body = struct.pack('>II', 12, 1) + struct.pack('>II', 0x01, 4) + struct.pack('>I', 2)
+    raw += body
+    assert bf.detect_mobi_drm(bytes(raw)) is True
+    # 改成 1(无 DRM)就不该判定
+    raw2 = bytearray(raw)
+    raw2[-4:] = struct.pack('>I', 1)
+    assert bf.detect_mobi_drm(bytes(raw2)) is False
+
+
+def test_mobi_extension_is_accepted():
+    assert '.mobi' in bf.SUPPORTED_EXTENSIONS
+    assert '.azw3' in bf.SUPPORTED_EXTENSIONS

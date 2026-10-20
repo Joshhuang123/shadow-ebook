@@ -11,3 +11,5 @@ jsonschema>=4.21.0,<5.0
 # 不会静默失败。Pillow 是占位封面用的,通常系统自带。
 pypdf>=4.0.0
 python-docx>=1.1.0
+# MOBI / AZW3(Kindle 生态的遗留格式,只支持没加密的)
+mobi>=0.4.1
