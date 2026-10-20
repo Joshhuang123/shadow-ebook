@@ -79,6 +79,8 @@ _API_LIMITS = {
     'feedback':    {'max': 30,  'window': 60},     # D6: 跟读 — whisper+LLM 双重成本,压紧
     'dict':        {'max': 120, 'window': 60},     # 查词 — 大多命中缓存,120 只为兜住上游
     'backup':      {'max': 10,  'window': 60},     # 备份 — 连点十下就是白占十份磁盘
+    'kg':          {'max': 30,  'window': 60},     # 掌握度上报 —— 孩子端写的,
+    #   但别让谁在局域网里刷接口把掌握度刷成「全会」
     'global':      {'max': 600, 'window': 60},     # 兜底:任何端点都受这个限制
 }
 _API_LOCK = threading.Lock()  # 保护 _API_RATE (Phase 2 加锁)

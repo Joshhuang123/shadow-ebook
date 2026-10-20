@@ -159,6 +159,7 @@
             loadKnowledgePath();
             loadTtsSettings();
             loadExamScopes();
+            loadMasterySummary();
         }
 
         // 知识图谱:下一个该练什么 + 哪个前置卡着几个下游。
@@ -199,6 +200,29 @@
                             ${g.blocks.map(b => b.label).join('、')}</span>
                     </div>`).join('');
             }
+        }
+
+        // 掌握度汇总:已掌握 / 在学 / 还没开始
+        async function loadMasterySummary() {
+            const box = el('kgMasterySummary');
+            if (!box) return;
+            try {
+                const r = await fetch('/api/kg/mastery');
+                const j = await r.json();
+                if (!j.success) return;
+                const c = j.counts || {};
+                const total = j.total || 0;
+                if (!total) { box.hidden = true; return; }
+                box.innerHTML =
+                    '<span class="kg-ms-item is-mastered">已掌握 <b>' +
+                    (c.mastered || 0) + '</b></span>' +
+                    '<span class="kg-ms-item is-familiar">在学 <b>' +
+                    (c.familiar || 0) + '</b></span>' +
+                    '<span class="kg-ms-item is-learning">要补 <b>' +
+                    ((c.learning || 0) + (c['not-started'] || 0)) + '</b></span>' +
+                    '<span class="kg-ms-total">共 ' + total + ' 个知识点</span>';
+                box.hidden = false;
+            } catch (e) { /* 没数据就不显示 */ }
         }
 
         // 考纲对照:小托福 / 剑桥通用五级 → 该练哪些点、缺哪些前置

@@ -32,6 +32,7 @@ import time
 
 from flask import jsonify, request
 
+from extensions.auth import _api_rate_limit_ok
 from extensions.db import get_db
 
 
@@ -128,6 +129,33 @@ GRAMMAR_PREREQS = {
 #   (被动语态、定语/状语从句、非谓语动词、比较级),
 #   真正缺的是**宾语从句** —— 而本项目没有单独拆这个点,
 #   它被归在 pet-reported-speech(间接引语)里了。
+
+# 语法页上有两类卡片:24 个「考点」(key 和图谱节点同名)、
+# 9 个「教材讲解页」(present-progressive 这种 key)。
+# 后者练起来也应该记到对应的知识点上,不然孩子的练习记录就丢了。
+GRAMMAR_KEY_ALIASES = {
+    'present-progressive': ['ket-present-continuous'],
+    'simple-present':     ['ket-present-simple'],
+    'simple-past':        ['ket-simple-past'],
+    'frequency':          ['ket-frequency'],
+    'be-going-to':        ['ket-future-going-to'],
+    'want-to-do':         ['pet-gerund-infinitive'],
+    'possessive-pronouns': ['ket-possessive', 'ket-pronouns'],
+    'imperative':         ['ket-imperative'],
+    # 三时态对比页:涉及三个时态,都记
+    'tense-compare':      ['ket-present-simple', 'ket-present-continuous',
+                           'ket-simple-past'],
+}
+
+# 掌握度衰减:多少天之后强度减半。
+# 半年不练的「已掌握」就该退回「在学」—— 这是图谱「活」起来的关键:
+# 它得反映孩子**现在**会什么,不是三个月前会什么。
+MASTERY_HALF_LIFE_DAYS = 45.0
+
+# 状态门槛(按正确率)
+_MASTERY_MASTERED = 0.85
+_MASTERY_FAMILIAR = 0.60
+
 
 EXAM_SCOPES = {
     'toefl_junior': {
@@ -475,11 +503,124 @@ def skills_by_age(age=None, domain=None, limit=40):
     return out
 
 
+def _decay(strength: float, updated_at_ms: int, now: float = None) -> float:
+    """按时间衰减掌握强度(半衰期 MASTERY_HALF_LIFE_DAYS 天)。
+
+    为什么要在**读的时候**算、而不是写的时候:
+    孩子三个月前练对的题,不该今天还记着「已掌握」。
+    写在读取时算,表里存的是原始成绩,衰减是「现在」的视角。
+    """
+    if strength <= 0:
+        return 0.0
+    now = now or time.time()
+    age_days = max(0.0, (now - (updated_at_ms or 0) / 1000.0) / 86400.0)
+    return strength * (0.5 ** (age_days / MASTERY_HALF_LIFE_DAYS))
+
+
+def _state_for(strength: float) -> str:
+    if strength >= _MASTERY_MASTERED:
+        return 'mastered'
+    if strength >= _MASTERY_FAMILIAR:
+        return 'familiar'
+    return 'learning'
+
+
 def _mastery_map():
+    """掌握度表 → {node_id: {state, strength}}。
+
+    state 和 strength 都是**衰减后**的值 —— 所有消费方
+    (learning_path / gaps / 家长页)看到的都是「现在会什么」。
+    """
     db = get_db()
+    now = time.time()
+    out = {}
+    for r in db.execute('SELECT * FROM kg_mastery'):
+        strength = _decay(r['strength'], r['updated_at'], now)
+        out[r['node_id']] = {
+            'state': _state_for(strength),
+            'strength': round(strength, 4),
+            'raw_strength': r['strength'],
+            'updated_at': r['updated_at'],
+        }
+    return out
+
+
+def record_mastery(items) -> dict:
+    """把语法练习成绩写进掌握度表。
+
+    items: [{key, correct, total}]
+
+    规则:
+      · 一次练对不会「覆盖」之前练对的结果 —— 取**最好成绩**。
+        孩子上次 100%、这次 40%,不该被判成「没掌握」。
+        遗忘交给衰减处理(见 _decay),不靠「记最差的那次」。
+      · 只有真正练过的点才写。练一次 0% 也算练过(state=learning),
+        否则「未开始」和「练过但不会」分不开 —— 而这两件事给家长的
+        建议是完全不同的。
+    """
+    db = get_db()
+    now_ms = int(time.time() * 1000)
+    written, skipped = [], []
+
+    for item in (items or []):
+        if not isinstance(item, dict):
+            skipped.append(str(item)[:40])
+            continue
+        key = (item.get('key') or '').strip()
+        try:
+            correct = int(item.get('correct'))
+            total = int(item.get('total'))
+        except (TypeError, ValueError):
+            skipped.append(key or '(无 key)')
+            continue
+        if total <= 0 or correct < 0 or correct > total:
+            skipped.append(key or '(无 key)')
+            continue
+
+        targets = GRAMMAR_KEY_ALIASES.get(key, [key])
+        targets = [t for t in targets if t in GRAMMAR_NODES]
+        if not targets:
+            skipped.append(key or '(无 key)')
+            continue
+
+        ratio = correct / total
+        for t in targets:
+            node_id = f'grammar:{t}'
+            row = db.execute(
+                'SELECT strength FROM kg_mastery WHERE node_id = ?', (node_id,)
+            ).fetchone()
+            best = max(float(row['strength']) if row else 0.0, ratio)
+            db.execute(
+                'INSERT OR REPLACE INTO kg_mastery (node_id, state, strength, updated_at) '
+                'VALUES (?, ?, ?, ?)',
+                (node_id, _state_for(best), best, now_ms),
+            )
+            written.append(t)
+
+    db.commit()
+    return {'written': written, 'skipped': skipped}
+
+
+def mastery_summary() -> dict:
+    """每个语法点的掌握状态(家长页和跟读页用)。"""
+    mastery = _mastery_map()
+    points = []
+    for key, (title, level) in GRAMMAR_NODES.items():
+        m = mastery.get(f'grammar:{key}')
+        points.append({
+            'key': key,
+            'label': title,
+            'level': level,
+            'state': m['state'] if m else 'not-started',
+            'strength': m['strength'] if m else 0.0,
+        })
+    counts = {'mastered': 0, 'familiar': 0, 'learning': 0, 'not-started': 0}
+    for p in points:
+        counts[p['state']] = counts.get(p['state'], 0) + 1
     return {
-        r['node_id']: {'state': r['state'], 'strength': r['strength']}
-        for r in db.execute('SELECT * FROM kg_mastery')
+        'total': len(points),
+        'counts': counts,
+        'points': points,
     }
 
 
@@ -626,6 +767,38 @@ def register_routes(app):
             'exams': [{'id': k, 'name': v['name'], 'note': v['note']}
                       for k, v in EXAM_SCOPES.items()],
         })
+
+    @app.route('/api/kg/mastery', methods=['GET', 'POST'])
+    def kg_mastery():
+        """掌握度。
+
+        GET  → 每个语法点现在的掌握状态(已掌握/在学/未开始)
+        POST → 记一次练习结果:{items:[{key, correct, total}]}
+               或单条 {key, correct, total}
+
+        这是整张图谱**唯一的数据来源** —— 没有它,「下一个该练什么」
+        只能按拓扑深度全量推荐,不是个性化诊断。
+        """
+        if request.method == 'GET':
+            return jsonify({'success': True, **mastery_summary()})
+
+        # 孩子端写的接口,但别让谁在局域网里刷它 —— 刷爆了掌握度
+        # 就等于把「诊断」变成谎话。
+        ok, retry = _api_rate_limit_ok(request.remote_addr or 'unknown', 'kg')
+        if not ok:
+            return jsonify({'success': False,
+                            'error': f'上报太频繁, {retry} 秒后再试'}), 429
+
+        body = request.get_json(silent=True) or {}
+        items = body.get('items')
+        if items is None:
+            items = [body] if body.get('key') else []
+        if not isinstance(items, list):
+            items = []
+        if not items:
+            return jsonify({'success': False, 'error': '没有练习结果'}), 400
+        res = record_mastery(items)
+        return jsonify({'success': True, **res, **mastery_summary()})
 
     @app.route('/api/kg/seed', methods=['POST'])
     def kg_seed():

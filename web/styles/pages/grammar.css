@@ -158,7 +158,15 @@
         /* 原来是 135° 暖色渐变。这类渐变是「网页模板感」的主要来源之一,
            而且它让这一块的视觉重量超过了页头 —— 页面上真正的主角应该是
            页头和下面的语法卡。改成纯纸面 + 发丝描边。 */
-        .exam-header {
+        /* 练完的掌握度反馈 */
+.practice-mastery {
+    margin: 10px 0 0;
+    font-size: 0.88em;
+    font-weight: 300;
+    color: var(--color-secondary);
+}
+
+.exam-header {
             background: transparent;
             border: none;
             border-top: 1px solid var(--rule);

@@ -1642,6 +1642,52 @@
             let progress = JSON.parse(localStorage.getItem('grammarProgress') || '{}');
             progress[key] = { practiced: true, correct, total, percentage };
             localStorage.setItem('grammarProgress', JSON.stringify(progress));
+            // 同步给服务端:知识图谱的掌握度全靠这条线。
+            // 不同步的话,图谱永远是空的,「下一个该练什么」就只是
+            // 按拓扑深度全量推荐,不是诊断。
+            syncMasteryToServer();
+        }
+
+        // 把本地记的练习成绩整份推给服务端。
+        // 推整份而不是只推这一条 —— 这样**之前**练过的也一并补上,
+        // 不用为了喂图谱把每个点重练一遍。
+        async function syncMasteryToServer() {
+            const progress = loadPracticeProgress();
+            const items = Object.entries(progress)
+                .filter(([, v]) => v && v.total > 0)
+                .map(([k, v]) => ({ key: k, correct: v.correct, total: v.total }));
+            if (!items.length) return;
+            try {
+                const r = await fetch('/api/kg/mastery', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items })
+                });
+                const j = await r.json();
+                if (j && j.success) showMasteryFeedback(key_of(items), j);
+            } catch (e) {
+                // 离线也不该打扰孩子 —— 成绩已经存在本地了
+            }
+        }
+
+        function key_of(items) { return items[items.length - 1].key; }
+
+        // 练完告诉孩子「这个点你现在会了」—— 反馈闭环要闭合,
+        // 否则孩子不知道自己刚才练的到底算不算掌握。
+        function showMasteryFeedback(key, summary) {
+            if (!key || !summary || !summary.counts) return;
+            const el = document.getElementById('practice-mastery');
+            if (!el) return;
+            const p = (summary.points || []).find(x => x.key === key)
+                   || (summary.points || []).find(x => x.label && key && key.indexOf(x.label) >= 0);
+            if (!p) { el.textContent = ''; el.style.display = 'none'; return; }
+            const text = p.state === 'mastered'
+                ? `「${p.label}」你已经掌握啦 ✦`
+                : p.state === 'familiar'
+                ? `「${p.label}」基本会了,再练练就更稳`
+                : `「${p.label}」还得再练练`;
+            el.textContent = text;
+            el.style.display = 'inline-block';
         }
 
         function loadPracticeProgress() {
@@ -1678,7 +1724,12 @@
         }
 
         // 页面加载时更新进度徽章
-        document.addEventListener('DOMContentLoaded', updateAllProgressBadges);
+        document.addEventListener('DOMContentLoaded', () => {
+        updateAllProgressBadges();
+        // 打开页面就把本地记的练习成绩同步给服务端 ——
+        // 之前练过的也算数,不用为了喂图谱把每个点重练一遍。
+        syncMasteryToServer();
+    });
 
         // ========== 学习统计 ==========
         function updateStats(data) {
