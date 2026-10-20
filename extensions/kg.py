@@ -109,6 +109,168 @@ GRAMMAR_PREREQS = {
     'pet-conjunctions':       [],
 }
 
+# ============================================================
+# 考纲对照:小托福 / 剑桥通用五级 → 本项目的知识点
+# ============================================================
+# 为什么需要这一层
+# ----------------
+# 图谱里的 24 个点本来是「KET / PET 考什么」。但孩子实际在学的
+# 可能是小托福(TOEFL Junior)、剑桥通用五级,或者某套教材的某个单元。
+# 这几套的官方考纲都是**版权材料,没有开放的结构化数据集** ——
+# 所以这里不做「从考纲生成知识点」,而是做**对照**:
+# 把考纲的公开类目,映到本项目已经验证过的那 24 个点上。
+#
+# ⚠️ 这是本项目自己整理的对照,不是官方考纲原文。
+# ETS / 剑桥的官方考纲是版权材料,不能拿我们的对照冒充它。
+#
+# 覆盖度(实测结论,见 docs/KG.md):
+#   小托福 / 小雅思 覆盖的知识点几乎全在那 24 个 KET/PET 点里
+#   (被动语态、定语/状语从句、非谓语动词、比较级),
+#   真正缺的是**宾语从句** —— 而本项目没有单独拆这个点,
+#   它被归在 pet-reported-speech(间接引语)里了。
+
+EXAM_SCOPES = {
+    'toefl_junior': {
+        'name': '小托福 TOEFL Junior',
+        'note': 'ETS 官方考纲是版权材料,这里映射到本项目已验证的 24 个 KET/PET 点',
+        'areas': [
+            {
+                'name': '阅读 Reading',
+                'grammar': [
+                    'ket-present-simple', 'ket-present-continuous',
+                    'ket-simple-past', 'pet-present-perfect',
+                    'ket-future-going-to', 'ket-comparatives',
+                    'pet-passive', 'pet-relatives',
+                    'pet-adverb-clauses', 'pet-gerund-infinitive',
+                ],
+            },
+            {
+                'name': '听力 Listening',
+                'grammar': [
+                    'ket-present-simple', 'ket-simple-past',
+                    'ket-future-going-to', 'ket-frequency',
+                    'ket-modals', 'pet-quantifiers', 'pet-conjunctions',
+                ],
+            },
+            {
+                'name': '口语 Speaking',
+                'grammar': [
+                    'ket-present-simple', 'ket-present-continuous',
+                    'ket-simple-past', 'ket-future-going-to',
+                    'ket-imperative', 'pet-gerund-infinitive',
+                ],
+            },
+            {
+                'name': '写作 Writing',
+                'grammar': [
+                    'ket-present-simple', 'ket-present-continuous',
+                    'ket-simple-past', 'pet-present-perfect',
+                    'ket-future-going-to', 'ket-modals', 'ket-imperative',
+                    'pet-passive', 'pet-adverb-clauses', 'pet-gerund-infinitive',
+                ],
+            },
+        ],
+    },
+    'cambridge_gkt': {
+        'name': '剑桥通用五级 GKT',
+        'note': '剑桥考纲是版权材料,这里映射到本项目已验证的 24 个 KET/PET 点',
+        'areas': [
+            {
+                'name': '阅读 Reading',
+                'grammar': [
+                    'ket-present-simple', 'ket-present-continuous',
+                    'ket-simple-past', 'pet-present-perfect',
+                    'ket-future-going-to', 'ket-comparatives',
+                    'pet-passive', 'pet-relatives', 'pet-adverb-clauses',
+                    'pet-gerund-infinitive', 'pet-quantifiers',
+                ],
+            },
+            {
+                'name': '听力 Listening',
+                'grammar': [
+                    'ket-present-simple', 'ket-simple-past',
+                    'pet-present-perfect', 'ket-future-going-to',
+                    'ket-frequency', 'ket-modals', 'pet-quantifiers',
+                    'pet-conjunctions',
+                ],
+            },
+            {
+                'name': '写作 Writing',
+                'grammar': [
+                    'ket-present-simple', 'ket-present-continuous',
+                    'ket-simple-past', 'pet-present-perfect',
+                    'ket-future-going-to', 'ket-modals', 'ket-imperative',
+                    'pet-passive', 'pet-adverb-clauses', 'pet-gerund-infinitive',
+                ],
+            },
+        ],
+    },
+}
+
+
+def exam_scope(exam_id: str) -> dict:
+    """考纲对照 + 每个考纲类目缺哪些前置。
+
+    返回 {name, note, areas:[{name, grammar:[{key,label,level}],
+    blocked:[{key,label}]}]}
+    """
+    scope = EXAM_SCOPES.get(exam_id)
+    if not scope:
+        return {}
+    out = {'id': exam_id, 'name': scope['name'], 'note': scope['note'],
+           'areas': []}
+    for area in scope['areas']:
+        keys = [k for k in area['grammar'] if k in GRAMMAR_NODES]
+        # 这个类目里,哪些点的**前置**不在这个类目里 —— 那才是真正要补的
+        blocked = []
+        for k in keys:
+            for pre in GRAMMAR_PREREQS.get(k, []):
+                if pre not in keys and pre not in [b['key'] for b in blocked]:
+                    blocked.append({'key': pre,
+                                    'label': GRAMMAR_NODES[pre][0],
+                                    'level': GRAMMAR_NODES[pre][1]})
+        out['areas'].append({
+            'name': area['name'],
+            'grammar': [
+                {'key': k, 'label': GRAMMAR_NODES[k][0],
+                 'level': GRAMMAR_NODES[k][1]} for k in keys
+            ],
+            'blocked': blocked,
+        })
+    return out
+
+
+def course_unit_graph(course_id: str = 'nc2a') -> list:
+    """教材每个单元 → 它的知识点 + 缺哪些前置。
+
+    单元的知识点来自 courses.py 的 COURSE_CONTENT(和内容放在一起,
+    改教材时顺手改)。前置来自 GRAMMAR_PREREQS。
+    """
+    from extensions import courses
+    if course_id != 'nc2a':
+        return []
+    out = []
+    for i, unit in enumerate(courses.COURSE_CONTENT.get('units', [])):
+        keys = [k for k in (unit.get('kg') or []) if k in GRAMMAR_NODES]
+        blocked = []
+        for k in keys:
+            for pre in GRAMMAR_PREREQS.get(k, []):
+                if pre not in keys and pre not in [b['key'] for b in blocked]:
+                    blocked.append({'key': pre,
+                                    'label': GRAMMAR_NODES[pre][0],
+                                    'level': GRAMMAR_NODES[pre][1]})
+        out.append({
+            'index': i,
+            'name': unit.get('name'),
+            'grammar': [
+                {'key': k, 'label': GRAMMAR_NODES[k][0],
+                 'level': GRAMMAR_NODES[k][1]} for k in keys
+            ],
+            'blocked': blocked,
+        })
+    return out
+
+
 # 为什么是这些边(留给以后的人,免得被当成随手写的):
 #   现在完成时 ← 一般过去时:have done 的「done」就是过去式,不 Past 就没有 Done。
 #   被动语态   ← 现在完成时:被动只有两个时态,难的那个是 have been + p.p.d,
@@ -435,6 +597,35 @@ def register_routes(app):
             domain=request.args.get('domain'),
             limit=request.args.get('limit', 40, type=int),
         )})
+
+    @app.route('/api/kg/course')
+    def kg_course():
+        """教材单元 → 知识点 + 缺的前置。
+
+        回答「孩子在第 3 单元卡住 → 是哪个前置没会」。
+        """
+        return jsonify({
+            'success': True,
+            'course': request.args.get('course', 'nc2a'),
+            'units': course_unit_graph(request.args.get('course', 'nc2a')),
+        })
+
+    @app.route('/api/kg/exam/<exam_id>')
+    def kg_exam(exam_id):
+        """考纲对照(小托福 / 剑桥通用五级)。"""
+        scope = exam_scope(exam_id)
+        if not scope:
+            return jsonify({'success': False, 'error': '没有这个考纲'}), 404
+        return jsonify({'success': True, **scope})
+
+    @app.route('/api/kg/exams')
+    def kg_exams():
+        """有哪些考纲对照可选。"""
+        return jsonify({
+            'success': True,
+            'exams': [{'id': k, 'name': v['name'], 'note': v['note']}
+                      for k, v in EXAM_SCOPES.items()],
+        })
 
     @app.route('/api/kg/seed', methods=['POST'])
     def kg_seed():

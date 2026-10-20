@@ -27,6 +27,10 @@ COURSE_CONTENT = {
     "units": [
         {
             "name": "Unit 1-2: 现在进行时",
+            # 这个单元对应知识图谱里的哪几个点。
+            # 手工维护,理由和 GRAMMAR_PREREQS 一样 ——
+            # 「这个单元教什么」是教材的事实,算不出来。
+            "kg": ['ket-present-continuous'],
             "sentences": [
                 {"text": "What are you doing?", "translation": "你在做什么？", "grammar": "现在进行时 be + doing"},
                 {"text": "I'm waiting for you.", "translation": "我在等你。", "grammar": "主语+be+动词ing"},
@@ -39,6 +43,10 @@ COURSE_CONTENT = {
         },
         {
             "name": "Unit 5-6: 一般现在时",
+            # 这个单元对应知识图谱里的哪几个点。
+            # 手工维护,理由和 GRAMMAR_PREREQS 一样 ——
+            # 「这个单元教什么」是教材的事实,算不出来。
+            "kg": ['ket-present-simple'],
             "sentences": [
                 {"text": "I usually get up at seven o'clock.", "translation": "我通常七点起床。", "grammar": "一般现在时 习惯性动作"},
                 {"text": "When do you usually have breakfast?", "translation": "你通常什么时候吃早饭？", "grammar": "When提问 时间"},
@@ -51,6 +59,10 @@ COURSE_CONTENT = {
         },
         {
             "name": "Unit 7: 频率",
+            # 这个单元对应知识图谱里的哪几个点。
+            # 手工维护,理由和 GRAMMAR_PREREQS 一样 ——
+            # 「这个单元教什么」是教材的事实,算不出来。
+            "kg": ['ket-frequency'],
             "sentences": [
                 {"text": "How often do you go to the cinema?", "translation": "你多久去看一次电影？", "grammar": "频率提问 How often"},
                 {"text": "I go to the cinema once a week.", "translation": "我每周去看一次电影。", "grammar": "once a week 频率"},
@@ -60,6 +72,10 @@ COURSE_CONTENT = {
         },
         {
             "name": "Unit 8: be going to",
+            # 这个单元对应知识图谱里的哪几个点。
+            # 手工维护,理由和 GRAMMAR_PREREQS 一样 ——
+            # 「这个单元教什么」是教材的事实,算不出来。
+            "kg": ['ket-future-going-to'],
             "sentences": [
                 {"text": "What are you going to do this weekend?", "translation": "你这个周末打算做什么？", "grammar": "be going to 表计划"},
                 {"text": "I'm going to visit my grandmother.", "translation": "我打算去看望奶奶。", "grammar": "be going to + 动词原形"},
@@ -69,6 +85,10 @@ COURSE_CONTENT = {
         },
         {
             "name": "Unit 9: want to do",
+            # 这个单元对应知识图谱里的哪几个点。
+            # 手工维护,理由和 GRAMMAR_PREREQS 一样 ——
+            # 「这个单元教什么」是教材的事实,算不出来。
+            "kg": ['pet-gerund-infinitive'],
             "sentences": [
                 {"text": "What do you want to do?", "translation": "你想做什么？", "grammar": "want to do 想要做某事"},
                 {"text": "I want to play football.", "translation": "我想踢足球。", "grammar": "want to + 动词原形"},
@@ -78,6 +98,10 @@ COURSE_CONTENT = {
         },
         {
             "name": "Unit 11: 一般过去时 - be动词",
+            # 这个单元对应知识图谱里的哪几个点。
+            # 手工维护,理由和 GRAMMAR_PREREQS 一样 ——
+            # 「这个单元教什么」是教材的事实,算不出来。
+            "kg": ['ket-simple-past'],
             "sentences": [
                 {"text": "Were you at school yesterday?", "translation": "昨天你在学校吗？", "grammar": "一般过去时 were 疑问"},
                 {"text": "Yes, I was. / No, I wasn't.", "translation": "是的，我在。/ 不，我不在。", "grammar": "wasn't = was not"},
@@ -88,6 +112,10 @@ COURSE_CONTENT = {
         },
         {
             "name": "Unit 12-13: 一般过去时 - 动词",
+            # 这个单元对应知识图谱里的哪几个点。
+            # 手工维护,理由和 GRAMMAR_PREREQS 一样 ——
+            # 「这个单元教什么」是教材的事实,算不出来。
+            "kg": ['ket-simple-past'],
             "sentences": [
                 {"text": "I visited my grandmother yesterday.", "translation": "昨天我去看望了奶奶。", "grammar": "规则动词过去式 -ed"},
                 {"text": "She played tennis last weekend.", "translation": "上周末她打了网球。", "grammar": "规则动词 played"},
@@ -98,6 +126,10 @@ COURSE_CONTENT = {
         },
         {
             "name": "Unit 3: 名词性物主代词",
+            # 这个单元对应知识图谱里的哪几个点。
+            # 手工维护,理由和 GRAMMAR_PREREQS 一样 ——
+            # 「这个单元教什么」是教材的事实,算不出来。
+            "kg": ['ket-possessive', 'ket-pronouns'],
             "sentences": [
                 {"text": "Whose is this book?", "translation": "这本书是谁的？", "grammar": "Whose 提问归属"},
                 {"text": "It's mine.", "translation": "这是我的。", "grammar": "mine = my book"},
@@ -108,6 +140,10 @@ COURSE_CONTENT = {
         },
         {
             "name": "Unit 4: 祈使句",
+            # 这个单元对应知识图谱里的哪几个点。
+            # 手工维护,理由和 GRAMMAR_PREREQS 一样 ——
+            # 「这个单元教什么」是教材的事实,算不出来。
+            "kg": ['ket-imperative'],
             "sentences": [
                 {"text": "Open the door, please.", "translation": "请开门。", "grammar": "肯定祈使句"},
                 {"text": "Don't be late!", "translation": "别迟到！", "grammar": "否定祈使句 Don't + 动词原形"},

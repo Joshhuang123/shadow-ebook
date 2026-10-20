@@ -268,6 +268,32 @@
             document.getElementById('unit-title').innerHTML = '<span class="ico ico-book" aria-hidden="true"></span> ' + units[unitId].name;
             showSentence();
             loadSavedProgress();  // R12: 跳到上次位置
+            loadUnitKnowledge(unitId);
+        }
+
+        // 这个单元的知识点 + 缺的前置(来自知识图谱)
+        async function loadUnitKnowledge(unitId) {
+            const box = document.getElementById('unit-kg');
+            if (!box) return;
+            try {
+                const r = await fetch('/api/kg/course?course=nc2a');
+                const j = await r.json();
+                const u = (j.units || [])[unitId];
+                if (!u || !u.grammar || !u.grammar.length) { box.hidden = true; return; }
+                const pts = u.grammar.map(g => g.label).join(' · ');
+                let html = '<span class="unit-kg-label">这个单元要会</span>' +
+                    '<span class="unit-kg-points">' + pts + '</span>';
+                if (u.blocked && u.blocked.length) {
+                    html += '<span class="unit-kg-sep">·</span>' +
+                        '<span class="unit-kg-label">先要会</span>' +
+                        '<span class="unit-kg-blocked">' +
+                        u.blocked.map(b => b.label).join(' · ') + '</span>';
+                }
+                box.innerHTML = html;
+                box.hidden = false;
+            } catch (e) {
+                box.hidden = true;
+            }
         }
 
         // 显示句子

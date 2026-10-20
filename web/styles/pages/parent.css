@@ -850,6 +850,54 @@
 .drm-source-link:hover { color: var(--color-primary-dark); }
 .drm-foot { margin-bottom: 0; }
 
+/* 考纲对照区 */
+.kg-exam-picker {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 4px 0 14px;
+}
+.kg-exam-label {
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    flex: none;
+}
+.kg-exam-select {
+    width: auto;
+    min-width: 220px;
+    min-height: 44px;
+}
+.kg-exam-area {
+    padding: 12px 2px;
+    border-bottom: 1px solid var(--rule);
+}
+.kg-exam-area:last-child { border-bottom: none; }
+.kg-exam-area-name {
+    font-family: var(--font-display);
+    font-size: 1em;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 7px;
+}
+.kg-exam-points {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.kg-point {
+    font-size: 0.78em;
+    padding: 2px 8px;
+    border: 1px solid var(--rule-strong);
+    border-radius: 2px;
+    color: var(--text-secondary);
+}
+.kg-exam-blocked {
+    margin-top: 7px;
+    font-size: 0.8em;
+    font-weight: 300;
+    color: var(--text-secondary);
+}
+
 .kg-hint {
     font-size: 0.85em;
     color: var(--text-secondary);

@@ -278,6 +278,8 @@ shadow-learning/
 ├── extensions/             # 按域拆分的业务模块
 │   ├── auth.py             # 家长 PIN 鉴权 + 登录/接口限流
 │   ├── books.py            # 书籍 CRUD + EPUB 解析 + 多格式导入分派 + 路径穿越防御
+│   ├── kg.py               # 知识图谱:语法前置 + 教材单元/考纲对照 + 掌握度
+│   ├── import_stage.py     # 导入暂存区(预览一次、导入用 token)
 │   ├── book_formats.py     # TXT/PDF/DOCX/HTML → 统一 book_data 转换器
 │   ├── courses.py          # 课程内容 + 理解题
 │   ├── db.py               # SQLite 连接 + schema + 首启 JSON→DB 迁移

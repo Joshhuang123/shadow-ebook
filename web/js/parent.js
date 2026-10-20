@@ -158,6 +158,7 @@
             loadSettings(payload.settings || {});
             loadKnowledgePath();
             loadTtsSettings();
+            loadExamScopes();
         }
 
         // 知识图谱:下一个该练什么 + 哪个前置卡着几个下游。
@@ -198,6 +199,57 @@
                             ${g.blocks.map(b => b.label).join('、')}</span>
                     </div>`).join('');
             }
+        }
+
+        // 考纲对照:小托福 / 剑桥通用五级 → 该练哪些点、缺哪些前置
+        async function loadExamScopes() {
+            const sel = el('kgExamSelect');
+            const view = el('kgExamView');
+            if (!sel || !view) return;
+            try {
+                const r = await fetch('/api/kg/exams');
+                const j = await r.json();
+                if (!j.success || !j.exams || !j.exams.length) return;
+                j.exams.forEach(e => {
+                    const opt = document.createElement('option');
+                    opt.value = e.id;
+                    opt.textContent = e.name;
+                    sel.appendChild(opt);
+                });
+                sel.addEventListener('change', () => showExamScope(sel.value));
+            } catch (e) { /* 图谱没数据就不显示 */ }
+        }
+
+        async function showExamScope(examId) {
+            const view = el('kgExamView');
+            const pathEl = el('kgPathList');
+            if (!view) return;
+            if (!examId) {
+                view.hidden = true;
+                view.innerHTML = '';
+                if (pathEl) pathEl.hidden = false;
+                return;
+            }
+            try {
+                const r = await fetch('/api/kg/exam/' + encodeURIComponent(examId));
+                const j = await r.json();
+                if (!j.success) return;
+                if (pathEl) pathEl.hidden = true;
+                view.hidden = false;
+                view.innerHTML =
+                    '<div class="kg-subtitle">' + j.name + ' · ' + (j.note || '') + '</div>' +
+                    j.areas.map(a =>
+                        '<div class="kg-exam-area">' +
+                        '<div class="kg-exam-area-name">' + a.name + '</div>' +
+                        '<div class="kg-exam-points">' +
+                        a.grammar.map(g => '<span class="kg-point">' + g.label + '</span>').join('') +
+                        '</div>' +
+                        (a.blocked.length
+                            ? '<div class="kg-exam-blocked">缺的前置:' +
+                              a.blocked.map(b => b.label).join('、') + '</div>'
+                            : '') +
+                        '</div>').join('');
+            } catch (e) { /* 忽略 */ }
         }
 
         function renderDashboard({ stats = {}, vocabulary = {} }, extras = {}) {

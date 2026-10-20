@@ -56,6 +56,33 @@
         }
         .card h2 .ico { color: var(--color-primary); }
 
+        /* 这个单元的知识点 + 缺的前置 —— 知识图谱落到「正在学的这一课」 */
+        .unit-kg {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 8px;
+            margin: 10px 0 16px;
+            padding: 10px 14px;
+            background: var(--tint-primary);
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .unit-kg[hidden] { display: none; }
+        .unit-kg-label {
+            color: var(--text-secondary);
+            flex: none;
+        }
+        .unit-kg-points {
+            color: var(--primary-fill);
+            font-weight: 600;
+        }
+        .unit-kg-sep { color: var(--text-disabled); }
+        .unit-kg-blocked {
+            color: var(--text-secondary);
+        }
+
         /* 单元选择 */
         /* 单元列表:不再「一个选项一个白盒子」。
            白盒套白盒是模板感的主要来源;这里改成书后面目录页的样子 ——
