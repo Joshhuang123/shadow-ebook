@@ -63,6 +63,15 @@ def _load_or_create_secret() -> str:
 # === Phase 3: SQLite init (首次启动建表 + 一次性 JSON→SQLite 迁移) ===
 db.init_db()
 
+# 导入暂存区:开机清一遍。
+# 暂存的是家长上传的书籍原始字节,重启后那些预览已经没用了,
+# 留着只是占磁盘(还有可能在版本控制里露出去 —— 见 .gitignore)。
+try:
+    from extensions import import_stage
+    import_stage.clear_all()
+except Exception:  # 暂存区清不掉不影响启动
+    pass
+
 
 def _send_html(filename):
     """统一返回 HTML 文件,避免路径拼接问题"""
