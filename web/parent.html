@@ -60,6 +60,13 @@
 
         <!-- Dashboard Section -->
         <div id="dashboardSection" class="hidden">
+            <!-- 扉页式页头:和其它页同一套(小标签 + 衬线大标题 + 一根线) -->
+            <header class="page-head">
+                <p class="page-head-eyebrow"><span class="ico ico-user" aria-hidden="true"></span>家长</p>
+                <h1 class="page-head-title">学习面板</h1>
+                <p class="page-head-sub">孩子的阅读记录、练习数据,以及这台设备上的设置</p>
+            </header>
+
             <!-- Overview Stats -->
             <div class="card">
                 <div class="card-title"><span class="ico ico-chart" aria-hidden="true"></span>学习概览</div>
@@ -322,7 +329,7 @@
                 </div>
 
                 <div class="settings-group">
-                    <h4>⏰ 使用限制</h4>
+                    <h4><span class="ico ico-clock" aria-hidden="true"></span>使用限制</h4>
                     
                     <div class="setting-item time-limit-setting">
                         <div>
@@ -371,7 +378,7 @@
                         </p>
                         <div class="backup-status" id="backupStatus">正在读取…</div>
                         <div class="backup-actions">
-                            <button class="btn btn-primary" id="btnBackupNow" data-action="createBackup">🗂 立即备份</button>
+                            <button class="btn btn-primary" id="btnBackupNow" data-action="createBackup"><span class="ico ico-download" aria-hidden="true"></span>立即备份</button>
                         </div>
                         <div class="backup-list" id="backupList"></div>
                     </div>

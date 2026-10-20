@@ -106,7 +106,21 @@ iPad 与 macOS 自带 Georgia / Iowan Old Style / Palatino,零下载、立刻可
 > ```
 > `Songti SC`(宋体-简)是 macOS / iOS 自带,Windows 走 SimSun / 思源宋体,
 > **全部零下载**。字体回退是**逐字**的:拉丁字形取 Iowan/Palatino,
-> 中文字形自动落到后面的宋体 —— 正是出版物���标准混排做法。
+> 中文字形自动落到后面的宋体 —— 正是出版物的标准混排做法。
+>
+> > ### ⚠️ 粗字重要用另一个栈:`--font-display-bold`
+> >
+> > 宋体只有 Light / Regular / Black 三档。直接写 `font-weight: 700`,
+> > 浏览器会**合成加粗** —— 笔画糊成一片、字腔发黑,实测比 400 还难看。
+> > macOS/iOS 的「Songti SC Black」是一个**独立字族**,里面就是真 Black,
+> > 把它排在 `Songti SC` 前面就能拿到干净的粗体:
+> > ```css
+> > --font-display-bold: 'Iowan Old Style', 'Palatino', Georgia,
+> >                      'Songti SC Black', 'STSongti-SC-Black',
+> >                      'Songti SC', 'STSong', 'SimSun', serif;
+> > ```
+> > 拉丁字形不受影响:Iowan/Palatino 自带真粗体,排在最前面先被取走。
+> > 凡是用 `--font-display` 且字重 ≥ 600 的地方,一律改用这个栈。
 >
 > 参照物:另一份做得好的稿子(deck)标题用 `Noto Serif SC 900`。
 > 我们不上那个 webfont,但**要拿到同样的效果**就得让中文真的有衬线。

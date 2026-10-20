@@ -48,7 +48,7 @@
             /* 「颜色是标点」:标题是墨,不该是主色。
                主色留给真正要点的按钮。 */
             color: var(--text-primary);
-            font-family: var(--font-display);
+            font-family: var(--font-display-bold);
             font-size: 1.5em;
             font-weight: 600;
             letter-spacing: -0.005em;

@@ -179,7 +179,7 @@
 
             pathEl.innerHTML = path.path.map(p => {
                 const blocked = p.ready
-                    ? '<span class="kg-ok">✅ 可以直接练</span>'
+                    ? '<span class="kg-ok"><span class="ico ico-check" aria-hidden="true"></span>可以直接练</span>'
                     : `<span class="kg-blocked">⛔ 先补:${p.blockers.map(b => b.label).join('、')}</span>`;
                 return `<div class="kg-row">
                     <span class="kg-lv ${p.level_name.toLowerCase()}">${p.level_name}</span>
@@ -313,7 +313,20 @@
             const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
             const chart = el('weeklyChart');
             chart.innerHTML = '';
-            const maxMinutes = Math.max(30, ...Object.values(weeklyMinutes).map(Number).filter(n => !isNaN(n)));
+            const values = Object.values(weeklyMinutes).map(Number).filter(n => !isNaN(n));
+            // 一周全是 0 的时候,画七根 5% 的空柱子,家长看到的是
+            // 「150px 高的空白 + 几个小凸起」—— 像是坏了。
+            // 直接说一句话:这周还没有记录。
+            if (!values.length || values.every(v => v <= 0)) {
+                chart.classList.add('is-empty');
+                const empty = document.createElement('p');
+                empty.className = 'chart-empty';
+                empty.textContent = '这周还没有学习记录 —— 读一句、跟读一次都会记在这儿';
+                chart.appendChild(empty);
+                return;
+            }
+            chart.classList.remove('is-empty');
+            const maxMinutes = Math.max(30, ...values);
             const today = new Date().getDay();
             const mondayIndex = today === 0 ? 6 : today - 1;
             const orderedDays = [...days.slice(mondayIndex), ...days.slice(0, mondayIndex)];

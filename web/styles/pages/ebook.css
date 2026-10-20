@@ -1418,7 +1418,7 @@
             text-overflow: ellipsis;
         }
         .reader-chapter {
-            font-family: var(--font-display);
+            font-family: var(--font-display-bold);
             font-size: 15.5px;
             font-weight: 600;
             letter-spacing: 0.005em;
@@ -2095,7 +2095,7 @@
             display: flex;
             align-items: baseline;
             gap: 12px;
-            font-family: var(--font-display);
+            font-family: var(--font-display-bold);
             font-size: 17px;
             font-weight: 600;
             letter-spacing: 0.04em;
@@ -2148,7 +2148,7 @@
         .shelf-card-cover img { width: 100%; height: 100%; object-fit: cover; }
 
         .shelf-card-title {
-            font-family: var(--font-display);
+            font-family: var(--font-display-bold);
             font-size: 15.5px;
             font-weight: 600;
             line-height: 1.35;
@@ -2277,7 +2277,7 @@
             color: var(--color-primary);
         }
         .continue-title {
-            font-family: var(--font-display);
+            font-family: var(--font-display-bold);
             font-size: 32px;
             line-height: 1.18;
             font-weight: 600;

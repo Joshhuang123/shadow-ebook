@@ -86,6 +86,17 @@
                     'Songti SC', 'STSong', 'SimSun',
                     'Source Han Serif SC', 'Noto Serif CJK SC', serif;
 
+    /* 粗标题专用:宋体只有 Light/Regular/Black 三档,直接写
+       font-weight:700 会让浏览器**合成加粗** —— 笔画糊成一片、字腔发黑,
+       实测比 400 还难看(见 §17)。
+       macOS/iOS 的「Songti SC Black」是一个独立字族,里面就是真 Black,
+       列在前面就能拿到干净的粗体,不会被合成。
+       拉丁字形不受影响:Iowan/Palatino 自带真粗体,排在最前面先被取走。 */
+    --font-display-bold: 'Iowan Old Style', 'Palatino', Georgia,
+                         'Songti SC Black', 'STSongti-SC-Black',
+                         'Songti SC', 'STSong', 'SimSun',
+                         'Source Han Serif SC', 'Noto Serif CJK SC', serif;
+
     --font-sans: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue',
                  'Segoe UI', Roboto, sans-serif;
     --font-mono: 'SF Mono', Menlo, Consolas, monospace;

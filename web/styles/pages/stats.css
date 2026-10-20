@@ -148,7 +148,7 @@
                 var(--tint-primary) 0%, transparent 62%);
         }
         .streak-hero-value {
-            font-family: var(--font-display);
+            font-family: var(--font-display-bold);
             font-size: 88px;
             line-height: 1;
             font-weight: 700;
@@ -168,7 +168,7 @@
         /* 数字等宽,9→10 不会左右跳 */
 
         .streak-hero-label {
-            font-family: var(--font-display);
+            font-family: var(--font-display-bold);
             font-size: 22px;
             font-weight: 700;
             color: var(--text-primary);
@@ -224,7 +224,7 @@
 
         .section-title {
             font-size: 1.2em;
-            font-family: var(--font-display);
+            font-family: var(--font-display-bold);
             font-weight: 600;
             margin-bottom: 20px;
             display: flex;

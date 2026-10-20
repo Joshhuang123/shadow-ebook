@@ -299,7 +299,7 @@ body .top-nav {
 
 /* ---- 品牌:像报纸的报头名,衬线 + 一点字距,颜色是墨不是红 ---- */
 body .top-nav .nav-brand {
-    font-family: var(--font-display);
+    font-family: var(--font-display-bold);
     font-size: 19px;
     font-weight: 600;
     letter-spacing: 0.05em;
@@ -540,7 +540,7 @@ body .top-nav .voice-picker::after {
         rgba(184, 106, 78, 0.42) 0%, transparent 100%);
 }
 .page-head-title {
-    font-family: var(--font-display);
+    font-family: var(--font-display-bold);
     font-size: 44px;
     line-height: 1.12;
     /* 宋体在小字号下笔画细,标题要够重才立得住(和 deck 的 700/900 一致) */

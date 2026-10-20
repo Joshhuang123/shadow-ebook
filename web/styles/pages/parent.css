@@ -14,7 +14,10 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+            /* 原来用 Nunito(圆润可爱的 Web 字体),和全站「纸 + 墨」不是
+               一套语言。家长页本该是全站最克制的一页 —— 给大人看的诊断,
+               不是给 10 岁孩子看的鼓励。改用系统无衬线。 */
+            font-family: var(--font-sans);
             background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
             min-height: 100vh;
             color: var(--text-primary);
@@ -38,7 +41,7 @@
         /* 家长页的报头和其它页同一套:衬线、墨色、发丝线。
            原来这里是粗体主色 + 1.3em,和整站基线对不上。 */
         body .top-nav .nav-brand {
-            font-family: var(--font-display);
+            font-family: var(--font-display-bold);
             font-size: 19px;
             font-weight: 600;
             letter-spacing: 0.05em;
@@ -84,15 +87,20 @@
             box-shadow: none;
         }
 
+        /* 小节标题:衬线 + 墨色,图标用主色。
+           「颜色是标点」—— 标题不该是红的。 */
         .card-title {
-            font-size: 1.3em;
+            font-family: var(--font-display-bold);
+            font-size: 1.35em;
             font-weight: 700;
+            letter-spacing: 0.01em;
             color: var(--text-primary);
-            margin-bottom: 20px;
+            margin-bottom: 18px;
             display: flex;
             align-items: center;
             gap: 10px;
         }
+        .card-title .ico { color: var(--color-primary); width: 19px; height: 19px; }
 
         /* Login Section */
         .login-section {
@@ -183,31 +191,44 @@
             gap: 16px;
         }
 
-        /* 小指标块:不填色,只留一根上边线 —— 纸上的四个小条目,
-           而不是四个米色方块。数字用衬线,和页面其它地方一套语言。 */
+        /* 四个指标:deck 的「数据块」——
+           左边一道主色竖条,右边一层极淡的暖色渐层往纸里化开,
+           数字左对齐站在竖条旁边。四个方盒子在版心里会显得又碎又吵。 */
         .stat-card {
             background: transparent;
-            border: 1px solid var(--rule);
+            border: none;
+            border-left: 2px solid var(--color-primary);
+            border-bottom: 1px solid var(--rule);
             border-radius: 0;
-            padding: 18px 14px 16px;
-            text-align: center;
+            padding: 14px 16px 16px 18px;
+            text-align: left;
+            /* 不填色。四个小方块并排时,哪怕 10% 的底色也会被眼睛
+               读成「四个粉色盒子」;只留左边一道竖条和一根底线,
+               它们就是纸上的四个条目。 */
         }
+        .stat-card.warning { border-left-color: var(--warning); }
+        .stat-card.success  { border-left-color: var(--color-secondary); }
 
         .stat-card .icon {
-            font-size: 2.5em;
-            margin-bottom: 8px;
+            font-size: 1.1em;
+            margin-bottom: 6px;
+            color: var(--text-secondary);
         }
+        .stat-card .icon .ico { width: 17px; height: 17px; }
 
         .stat-card .value {
-            font-family: var(--font-display);
-            font-size: 2.2em;
+            font-family: var(--font-display-bold);
+            font-size: 2.4em;
+            line-height: 1.05;
             font-weight: 700;
-            color: var(--color-primary);
+            color: var(--primary-fill);
         }
 
         .stat-card .label {
             color: var(--text-secondary);
-            font-size: 0.95em;
+            font-size: 0.9em;
+            font-weight: 300;
+            margin-top: 2px;
         }
 
         .stat-card.warning .value {
@@ -226,6 +247,19 @@
             height: 150px;
             padding: 20px 0;
             gap: 8px;
+        }
+        /* 一周都没有记录时:不画空柱子,给一句话 */
+        .activity-chart.is-empty {
+            align-items: center;
+            justify-content: flex-start;
+            height: auto;
+            padding: 26px 0;
+        }
+        .chart-empty {
+            margin: 0;
+            font-size: 0.92em;
+            font-weight: 300;
+            color: var(--text-secondary);
         }
 
         .chart-bar {
@@ -270,8 +304,8 @@
         .activity-item {
             display: flex;
             align-items: center;
-            padding: 16px;
-            border-bottom: 1px solid var(--border);
+            padding: 14px 2px;
+            border-bottom: 1px solid var(--rule);
             gap: 15px;
         }
 
@@ -365,27 +399,43 @@
         }
 
         .settings-group h4 {
-            font-size: 1.1em;
-            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--font-display-bold);
+            font-size: 1.15em;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+            margin: 22px 0 10px;
             color: var(--text-primary);
         }
+        .settings-group h4 .ico { width: 16px; height: 16px; color: var(--color-primary); }
 
+        /* 设置项:不是一块米色砖,是一行带发丝线的表单。
+           一屏十几条设置,每条都填色的话整页就是一张表格纸。 */
         .setting-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 16px;
-            background: var(--bg-dark);
-            border-radius: var(--radius-lg);
-            margin-bottom: 10px;
+            gap: var(--space-4);
+            padding: 15px 2px;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--rule);
+            border-radius: 0;
+            margin-bottom: 0;
         }
+        .setting-item:last-child { border-bottom: none; }
 
         .setting-item .label {
             font-weight: 600;
+            font-size: 0.95em;
         }
 
         .setting-item .desc {
-            font-size: 0.85em;
+            font-size: 0.84em;
+            line-height: 1.6;
+            font-weight: 300;
             color: var(--text-secondary);
         }
 
@@ -486,9 +536,16 @@
             box-shadow: 0 4px 15px rgba(115, 99, 78, 0.1);
         }
 
+        /* 导出按钮:原来是一整块饱和绿的渐变块,和赤陶主色打架,
+           也破了「低饱和」的红线。改成幽灵键,绿色只留给图标。 */
         .btn-export {
-            background: linear-gradient(135deg, #6B8A52 0%, #5D7D4D 100%);
-            color: white;
+            background: transparent;
+            color: var(--color-secondary);
+            border: 1px solid var(--rule-strong);
+        }
+        .btn-export:hover {
+            background: var(--tint-secondary);
+            border-color: var(--color-secondary);
         }
 
         .hidden {
@@ -496,11 +553,14 @@
         }
 
         /* Time Limit Setting */
+        /* 这一行原来单独套了个橙色描边框,在一片发丝线里特别跳。
+           和其它设置行保持一致,靠位置和标题区分就行。 */
         .time-limit-setting {
-            background: var(--tint-accent);
-            border: 2px solid var(--color-accent);
-            border-radius: var(--radius-lg);
-            padding: 16px;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--rule);
+            border-radius: 0;
+            padding: 15px 2px;
         }
 
         .time-input {
@@ -571,9 +631,10 @@
         justify-content: space-between;
         align-items: center;
         margin-top: var(--space-3);
-        padding: 10px var(--space-3);
-        border-radius: var(--radius-md);
-        background: var(--tint-accent);
+        padding: 12px 2px;
+        border-bottom: 1px solid var(--rule);
+        border-radius: 0;
+        background: transparent;
         color: var(--text-primary);
     }
     .due-banner span:first-child { font-weight: var(--font-medium); }
@@ -600,18 +661,19 @@
         margin: var(--space-3) 0;
     }
     .btn-preset {
-        padding: 6px 14px;
+        padding: 6px 16px;
         /* 48px 触控下限(之前靠 kid-touch.css 的 !important 撑着,
            那个文件已经摘掉了,这里自己保证) */
         min-height: 48px;
-        border: 1px solid var(--border-primary);
-        border-radius: var(--radius-pill);
-        background: var(--surface-primary, transparent);
+        border: 1px solid var(--rule-strong);
+        border-radius: var(--radius-md);
+        background: transparent;
         color: var(--text-secondary);
         font-size: var(--text-sm);
         cursor: pointer;
         transition: background-color var(--duration-fast) var(--ease-out),
-                    color var(--duration-fast) var(--ease-out);
+                    color var(--duration-fast) var(--ease-out),
+                    border-color var(--duration-fast) var(--ease-out);
     }
     .btn-preset:hover {
         background: var(--tint-primary);
@@ -691,10 +753,12 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 12px 14px;
-    background: var(--bg-dark);
-    border-radius: 10px;
+    padding: 12px 2px;
+    background: transparent;
+    border-bottom: 1px solid var(--rule);
+    border-radius: 0;
 }
+.backup-item:last-child { border-bottom: none; }
 
 .bi-main {
     display: flex;
@@ -760,25 +824,30 @@
 .kg-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     flex-wrap: wrap;
-    padding: 10px 12px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--bg-dark);
+    padding: 12px 2px;
+    border: none;
+    border-bottom: 1px solid var(--rule);
+    border-radius: 0;
+    background: transparent;
     /* 触控下限:家长页在手机上也会点 */
     min-height: 48px;
 }
+.kg-row:last-child { border-bottom: none; }
 
 .kg-lv {
-    font-size: 0.72em;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 9999px;
+    font-family: var(--font-mono);
+    font-size: 0.68em;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    padding: 2px 7px;
+    border: 1px solid currentColor;
+    border-radius: 2px;
     flex-shrink: 0;
 }
-.kg-lv.ket { background: var(--tint-secondary); color: var(--color-secondary); }
-.kg-lv.pet { background: var(--tint-accent);    color: var(--color-accent); }
+.kg-lv.ket { color: var(--color-secondary); }
+.kg-lv.pet { color: var(--color-accent); }
 
 .kg-name {
     font-weight: 600;
@@ -789,11 +858,16 @@
 .kg-ok,
 .kg-blocked,
 .kg-block {
-    font-size: 0.82em;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.8em;
     color: var(--text-secondary);
     margin-left: auto;
     text-align: right;
 }
+.kg-ok { color: var(--color-secondary); }
+.kg-ok .ico { width: 13px; height: 13px; }
 .kg-blocked { color: var(--danger); }
 .kg-block   { color: var(--text-secondary); }
 
