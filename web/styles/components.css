@@ -9,6 +9,11 @@
     align-items: center;
     justify-content: center;
     gap: var(--space-2);
+    /* 48px 触控下限。这条以前漏了 —— .btn 只靠 padding 撑高度,
+       在没加载 parent.css 的页面(首页/跟读/语法/统计)上,
+       按钮只有 32px 高,孩子手指粗点不准。 */
+    min-height: 48px;
+    padding: 0 var(--space-4);
     border: 1px solid transparent;
     border-radius: var(--radius-md);
     font-family: inherit;

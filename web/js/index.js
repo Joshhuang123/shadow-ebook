@@ -290,20 +290,31 @@
                 const continueCard = document.getElementById('continue-card');
                 const emptyState = document.getElementById('shelf-empty');
                 const shelfTitle = document.getElementById('shelf-title');
+                // 标题行(含「导入新书」按钮)和格式说明行 ——
+                // 它们现在是导入的常驻入口,不能再跟着「网格里还有别的书」走。
+                const shelfHead = document.getElementById('shelf-head');
+                const shelfHint = document.getElementById('shelf-hint');
                 const grid = document.getElementById('book-grid');
 
                 if (books.length === 0) {
                     continueCard.hidden = true;
                     shelfTitle.hidden = true;
+                    if (shelfHead) shelfHead.hidden = true;
+                    if (shelfHint) shelfHint.hidden = true;
                     grid.innerHTML = '';
                     emptyState.hidden = false;
                     document.getElementById('shelf-empty-hint').textContent =
-                        parentAuthed ? '支持 EPUB 格式' : '导入需要家长先在 /parent 登录';
+                        parentAuthed ? '支持 EPUB / PDF / TXT / Word' : '导入需要家长密码';
                     return;
                 }
 
                 emptyState.hidden = true;
                 shelfTitle.hidden = false;
+                // 标题行一直显示 —— 「导入新书」就挂在这儿。
+                // 以前这个标题行在「只有继续读那一本」时被整个藏掉,
+                // 结果那一屏上找不到任何能加书的地方。
+                if (shelfHead) shelfHead.hidden = false;
+                if (shelfHint) shelfHint.hidden = false;
 
                 // 正在读 = 最近打开过的那本。取一个,其余全部进网格,避免同一本出现两次。
                 const currentId = pickContinueBookId(books, progressMap);
@@ -317,24 +328,26 @@
                 // 这时别留一个光秃秃的「我的书架 (0)」标题 + 一片空白 ——
                 // 直接把整段收起来,页面就只剩一个焦点。
                 if (rest.length === 0) {
-                    shelfTitle.hidden = true;
+                    // 只有「继续读」那一本:网格是空的,但标题行要留着,
+                    // 导入入口不能跟着书一起消失。
                     grid.innerHTML = '';
+                    document.getElementById('shelf-count').textContent = `(${books.length})`;
                     bindCoverFallbacks(continueCard);
                     return;
                 }
 
                 shelfTitle.hidden = false;
-
-                document.getElementById('shelf-count').textContent = `(${rest.length})`;
+                // 计数是**总本数**,不是网格里剩几本 —— 「继续读」那本也在书架上
+                document.getElementById('shelf-count').textContent = `(${books.length})`;
                 grid.innerHTML = rest.map(b => shelfCardHtml(b, progressMap[b.id])).join('');
 
                 // 有书时,导入入口放在网格最后一张卡后面
                 if (parentAuthed) {
                     grid.insertAdjacentHTML('beforeend', `
-                        <div class="import-card" data-action="clickTriggerImportFile">
+                        <div class="import-card" data-action="shelfImport">
                             <div class="icon"><span class="ico ico-plus ico--solo" aria-hidden="true"></span></div>
                             <div class="text">导入新书</div>
-                            <div class="hint">支持 EPUB 格式</div>
+                            <div class="hint">EPUB / PDF / TXT / Word</div>
                         </div>
                     `);
                 }
@@ -454,16 +467,20 @@
             root.querySelectorAll('.shelf-card-cover img, .continue-cover img').forEach(img => {
                 img.addEventListener('error', () => {
                     const box = img.parentElement;
-                    box.replaceWith(makeFallback(img.alt || '这本书', box.classList.contains('continue-cover')));
+                    const isContinue = box.classList.contains('continue-cover');
+                    box.outerHTML = makeFallback(img.alt || '这本书', isContinue ? 'continue' : 'shelf');
                 }, { once: true });
             });
         }
 
+        // 返回 **HTML 字符串**,不是 DOM 元素。
+        // 原来返回元素,结果有一处把它塞进 innerHTML 模板串,
+        // 页面上就出现字面量「[object HTMLDivElement]」——
+        // 以前每本书都有封面,这条路径从没被走到,导入无封面的书才暴露。
         function makeFallback(title, kind) {
-            const el = document.createElement('div');
-            el.className = kind === 'continue' ? 'continue-cover is-empty' : 'shelf-card-cover is-empty';
-            el.textContent = title;
-            return el;
+            const cls = kind === 'continue'
+                ? 'continue-cover is-empty' : 'shelf-card-cover is-empty';
+            return `<div class="${cls}">${escapeHtml(title)}</div>`;
         }
 
         async function updateAllCacheBadges() {
@@ -1750,47 +1767,170 @@
         }
 
         // 导入书籍 - 绑定文件输入
-        document.getElementById('import-file').addEventListener('change', (e) => importBook(e.target.files[0]));
+        document.getElementById('import-file').addEventListener('change', (e) => {
+            importBooks(e.target.files);
+            // 清掉 value,否则连续选同一个文件不会再触发 change
+            e.target.value = '';
+        });
 
-        async function importBook(file) {
-            if (!file || !file.name.endsWith('.epub')) {
-                alert('请选择 EPUB 格式文件');
+        // ===== 导入书籍 =====
+        // 入口常驻在书架标题行右边(见 index.html .shelf-head),
+        // 不再藏在「只有家长登录后才出现」的那张卡里。
+
+        const IMPORT_SUPPORTED = 'EPUB / PDF / TXT / Word';
+        let pendingImportFiles = null;   // 验完密码后要导入的文件
+
+        // 入口常驻,但导入要鉴权。已登录就直接开文件选择器;
+        // 没登录就在这个页面里问密码 —— 别把人踢到 /parent 再自己找回来。
+        // (parentAuthed / refreshParentAuth 是本页已有的,别重复定义)
+        async function shelfImport() {
+            const input = document.getElementById('import-file');
+            if (!input) return;
+            await refreshParentAuth();
+            if (parentAuthed) {
+                input.click();
                 return;
             }
+            openImportPin(() => input.click());
+        }
 
-            const formData = new FormData();
-            formData.append('epub', file);
+        function openImportPin(onSuccess) {
+            const modal = document.getElementById('import-pin-modal');
+            const input = document.getElementById('import-pin-input');
+            const err = document.getElementById('import-pin-error');
+            if (!modal) { if (onSuccess) onSuccess(); return; }
+            pendingImportFiles = onSuccess;
+            if (err) err.textContent = '';
+            if (input) { input.value = ''; }
+            modal.hidden = false;
+            if (input) setTimeout(() => input.focus(), 40);
+        }
 
-            // R22: 导入三段式(选文件 → 导入中 → 解析完成),照设计稿 C。
-            // 成功不用 alert —— 弹窗会打断阅读,孩子看到的应该是新书自己出现在架子上。
-            const importCard = document.querySelector('.import-card');
-            if (importCard) {
-                importCard.querySelector('.text').textContent = '导入中…';
-                importCard.querySelector('.hint').textContent = file.name;
+        function closeImportPin() {
+            const modal = document.getElementById('import-pin-modal');
+            if (modal) modal.hidden = true;
+            pendingImportFiles = null;
+        }
+
+        async function submitImportPin() {
+            const input = document.getElementById('import-pin-input');
+            const err = document.getElementById('import-pin-error');
+            const pin = (input && input.value || '').trim();
+            if (!/^\d{4}$/.test(pin)) {
+                if (err) err.textContent = '请输入 4 位数字密码';
+                return;
+            }
+            try {
+                const r = await fetch('/api/parent/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ pin })
+                });
+                const j = await r.json();
+                if (j.success) {
+                    const cb = pendingImportFiles;
+                    closeImportPin();
+                    parentAuthed = true;      // 网格里的「导入新书」卡这时才出现
+                    if (cb) cb();
+                } else {
+                    if (err) {
+                        err.textContent = j.error || '密码不对';
+                        if (j.remaining) err.textContent += `（还可以试 ${j.remaining} 次）`;
+                    }
+                    if (input) input.value = '';
+                }
+            } catch (e) {
+                if (err) err.textContent = '连不上服务器,请检查服务是否在运行';
+            }
+        }
+
+        // 批量导入:一本一本来,每本的结果都写进进度面板。
+        // 原来是一串 alert() —— 一次选 10 本就是 10 个弹窗,
+        // 而且第一个失败就把后面的全打断了。
+        async function importBooks(files) {
+            const list = Array.from(files || []);
+            if (!list.length) return;
+            const panel = document.getElementById('import-progress');
+            const head = document.getElementById('import-progress-head');
+            const ul = document.getElementById('import-progress-list');
+            if (panel && ul) {
+                ul.innerHTML = '';
+                if (head) head.textContent = `正在导入 ${list.length} 本…`;
+                panel.hidden = false;
             }
 
+            let okCount = 0;
+            const failed = [];
+            for (let i = 0; i < list.length; i++) {
+                const file = list[i];
+                if (head) head.textContent = `正在导入 ${i + 1}/${list.length} · ${file.name}`;
+                const r = await importOne(file);
+                if (r.ok) {
+                    okCount++;
+                    addImportRow(ul, file.name, 'ok', `${r.chapters} 章 · ${r.sentences} 句`);
+                } else if (r.needAuth) {
+                    // 会话过期了(或者家长在另一台设备上登出)。
+                    // 别让用户重新选一遍文件 —— 弹密码框,输完接着导。
+                    closeImportProgress();
+                    openImportPin(() => importBooks(list));
+                    return;
+                } else {
+                    failed.push(`${file.name} —— ${r.error}`);
+                    addImportRow(ul, file.name, 'fail', r.error);
+                }
+            }
+            if (head) {
+                head.textContent = failed.length
+                    ? `导入完成:${okCount} 本成功,${failed.length} 本失败`
+                    : `导入完成:${okCount} 本都进书架了`;
+            }
+            loadBookList();
+        }
+
+        function addImportRow(ul, name, kind, meta) {
+            if (!ul) return;
+            const li = document.createElement('li');
+            li.className = 'ip-item ip-item--' + kind;
+            const icon = document.createElement('span');
+            icon.className = 'ico ' + (kind === 'ok' ? 'ico-check' : 'ico-close');
+            icon.setAttribute('aria-hidden', 'true');
+            const nameEl = document.createElement('span');
+            nameEl.className = 'ip-name';
+            nameEl.textContent = name;
+            const metaEl = document.createElement('span');
+            metaEl.className = 'ip-meta';
+            metaEl.textContent = meta || '';
+            li.append(icon, nameEl, metaEl);
+            ul.appendChild(li);
+        }
+
+        function closeImportProgress() {
+            const panel = document.getElementById('import-progress');
+            if (panel) panel.hidden = true;
+        }
+
+        // 单本导入。返回 {ok, chapters, sentences} 或 {ok:false, error}
+        async function importOne(file) {
+            const formData = new FormData();
+            formData.append('file', file);
             try {
                 const res = await fetch('/api/book/import', { method: 'POST', body: formData });
                 const data = await res.json();
-
                 if (data.success) {
-                    loadBookList();
-                } else if (res.status === 401) {
-                    // R10: 之前 401 之后只 alert "未授权", 家长不知道去哪儿登录
-                    if (confirm('导入需要家长登录。\n\n是否现在跳转到登录页? (默认 PIN: 0000)')) {
-                        window.location.href = '/parent';
-                    }
-                    loadBookList();
-                } else if (res.status === 409) {
-                    alert('导入失败 (重复):\n\n' + data.error + '\n\n建议: 重命名文件后重试, 或先去 /parent 删除旧书');
-                    loadBookList();
-                } else {
-                    alert('导入失败: ' + (data.error || `HTTP ${res.status}`));
-                    loadBookList();
+                    return {
+                        ok: true,
+                        chapters: data.total_chapters || 0,
+                        sentences: data.total_sentences || 0
+                    };
                 }
+                let msg = data.error || `HTTP ${res.status}`;
+                if (res.status === 409) msg = '已经有一本同名书了,改个文件名再试';
+                else if (res.status === 401) msg = '需要家长密码';
+                else if (res.status === 413) msg = '文件太大了';
+                return { ok: false, error: msg, needAuth: res.status === 401 };
             } catch (err) {
-                alert('导入失败 (网络错误)');
-                loadBookList();
+                return { ok: false, error: '网络错误,连不上服务器' };
             }
         }
 

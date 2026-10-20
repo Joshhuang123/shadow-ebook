@@ -2356,6 +2356,178 @@
         }
         .book-list-page:has(#book-grid:empty) .continue-card { margin-bottom: 0; }
 
+        /* ============================================================
+           导入新书:常驻入口 + 批量进度 + 家长验证
+           ------------------------------------------------------------
+           这个工具最容易变成「一次性」:书架上只有一本书时,
+           导入入口被藏进网格末尾那张卡里,孩子和未登录的家长
+           在整页上根本找不到它。现在入口常驻在书架标题行右边。
+           ============================================================ */
+
+        .shelf-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: var(--space-4);
+            margin: 0 0 8px;
+        }
+        .shelf-head .section-title { margin: 0; }
+        .shelf-import-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            min-height: 44px;
+            padding: 0 16px;
+            background: transparent;
+            border: 1px solid var(--rule-strong);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-family: var(--font-ui);
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: background-color var(--duration-fast) var(--ease-out),
+                        color var(--duration-fast) var(--ease-out),
+                        border-color var(--duration-fast) var(--ease-out);
+        }
+        .shelf-import-btn .ico { width: 16px; height: 16px; }
+        .shelf-import-btn:hover {
+            background: var(--tint-primary);
+            border-color: rgba(184, 106, 78, 0.36);
+            color: var(--primary-fill);
+        }
+        .shelf-hint {
+            margin: 0 0 26px;
+            font-size: 13px;
+            font-weight: 300;
+            color: var(--text-disabled);
+        }
+
+        /* 导入进度:每本书一行,成功/失败都写清楚。
+           原来是一串 alert(),批量导入时根本没法看。 */
+        .import-progress {
+            margin: 0 0 30px;
+            padding: 16px 18px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--rule);
+            border-radius: var(--radius-lg);
+        }
+        .import-progress-head {
+            font-family: var(--font-display);
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+        .import-progress-list { list-style: none; margin: 0; padding: 0; }
+        .ip-item {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            padding: 7px 0;
+            border-bottom: 1px solid var(--rule);
+            font-size: 13.5px;
+        }
+        .ip-item:last-child { border-bottom: none; }
+        .ip-item .ico { width: 15px; height: 15px; flex: none; align-self: center; }
+        .ip-item--ok .ico { color: var(--color-secondary); }
+        .ip-item--fail .ico { color: var(--danger); }
+        .ip-name { color: var(--text-primary); min-width: 0; }
+        .ip-meta {
+            margin-left: auto;
+            color: var(--text-secondary);
+            font-size: 12.5px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .ip-item--fail .ip-meta { color: var(--danger); }
+        .import-progress-close {
+            margin-top: 12px;
+            min-height: 40px;
+            padding: 0 14px;
+            background: transparent;
+            border: 1px solid var(--rule-strong);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-family: var(--font-ui);
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .import-progress-close:hover { background: var(--bg-dark); color: var(--text-primary); }
+
+        /* 家长验证弹窗:在这个页面里问密码,输完接着导,
+           不用跳去 /parent 再自己找回来。 */
+        .import-pin-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 260;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-5);
+            background: var(--bg-overlay);
+        }
+        .import-pin-modal[hidden] { display: none; }
+        .import-pin-card {
+            width: min(420px, 100%);
+            background: var(--bg-card);
+            border: 1px solid var(--rule);
+            border-radius: var(--radius-xl);
+            padding: 26px 26px 22px;
+            box-shadow: var(--shadow-xl);
+        }
+        .import-pin-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .import-pin-head .ico { width: 18px; height: 18px; color: var(--color-primary); }
+        .import-pin-head h3 {
+            margin: 0;
+            font-family: var(--font-display);
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .import-pin-desc {
+            margin: 0 0 16px;
+            font-size: 13.5px;
+            font-weight: 300;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+        .import-pin-card .form-input {
+            width: 100%;
+            min-height: 48px;
+            padding: 10px 14px;
+            font: inherit;
+            font-size: 18px;
+            letter-spacing: 0.35em;
+            text-align: center;
+            color: var(--text-primary);
+            background: var(--bg);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-md);
+        }
+        .import-pin-card .form-input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+        }
+        .import-pin-error {
+            min-height: 20px;
+            margin: 8px 0 0;
+            font-size: 13px;
+            color: var(--danger);
+        }
+        .import-pin-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: var(--space-2);
+            margin-top: 12px;
+        }
+
         /* 进度条 0% 时也要看得见那根"轨道",
            否则只剩一句孤零零的「第 1 章 / 共 21 章」浮在空白里。 */
         .continue-bar,

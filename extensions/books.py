@@ -18,6 +18,8 @@ import zipfile
 from pathlib import Path
 from typing import Optional
 from flask import abort, jsonify, request, send_from_directory, session
+
+from extensions import book_formats
 from werkzeug.utils import secure_filename
 
 from extensions.auth import require_parent_auth, _api_rate_limit_ok
@@ -65,7 +67,30 @@ def _clean_text(raw_html: str) -> str:
     text = re.sub(r'<!--.*?-->', ' ', text, flags=re.S)
     text = re.sub(r'<[^>]+>', ' ', text)
     text = html.unescape(text)
+    text = _normalize_ligatures(text)
     text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+
+# 排版连字(fi / fl / ff ...)还原成普通字母。
+# PDF 提取出来的文本里这些是 U+FB01 这类字符,大部分衬线字体会渲染成
+# 连字形态,但有些字体(尤其子集化的中文宋体)没有对应字形,直接显示成方框。
+# 一本书里出现几十个方框,孩子读起来就是坏掉了。
+_LIGATURES = {
+    '\ufb00': 'ff', '\ufb01': 'fi', '\ufb02': 'fl', '\ufb03': 'ffi',
+    '\ufb04': 'ffl', '\ufb05': 'st', '\ufb06': 'st', '\u0153': 'oe',
+    '\u0152': 'OE', '\u00c6': 'AE', '\u00e6': 'ae', '\u00df': 'ss',
+    '\u0141': 'L', '\u0142': 'l',
+}
+
+
+def _normalize_ligatures(text: str) -> str:
+    """把排版连字还原成普通字母。"""
+    if not text:
+        return text
+    for k, v in _LIGATURES.items():
+        if k in text:
+            text = text.replace(k, v)
     return text
 
 
@@ -122,10 +147,61 @@ def _audit_chapter(chapter: dict) -> dict:
         "repeated_samples": repeated_groups[:3],
     }
 _SENT_SPLIT = re.compile(r'(?<=[.!?])\s+(?=[A-Z"\'(])')
+# 中文句末标点。英文那套(.!?)对中文完全无效。
+_CJK_SENT_SPLIT = re.compile(r'(?<=[。！？…])\s*')
+_CJK_CHAR_RE = re.compile(r'[\u4e00-\u9fff]')
+
+
+def _split_sentences_cjk(text: str) -> list:
+    """含中文的文本分句。
+
+    2026-10-20 补。原来 _split_sentences 只认 .!?,而且「≥3 词」是按**空格**
+    数 —— 一整段中文只有 1 个「词」,直接被判成不合格丢掉。
+    结果:中文书不管用 EPUB 还是用 TXT 导入,切出来的句子都是空的,
+    孩子打开就是一本没有内容的书。
+
+    做法:先按中文句末标点切大块,每块内部再走原来的英文分句
+    (中英混排时英文句子才不会被粘在一起)。
+    """
+    sentences = []
+    for chunk in _CJK_SENT_SPLIT.split(text):
+        chunk = (chunk or '').strip().strip('。！？…')
+        if not chunk:
+            continue
+        en = _split_sentences_en(chunk)
+        if en:
+            sentences.extend(en)
+            continue
+        # 纯中文片段:按「≥8 字符 且 ≥5 个汉字」收
+        cjk = len(_CJK_CHAR_RE.findall(chunk))
+        if len(chunk) > 8 and (cjk >= 5 or len(chunk.split()) >= 3):
+            sentences.append(chunk)
+    return sentences
 
 
 def _split_sentences(text: str) -> list:
-    """智能分句: 避开称谓缩写 / 国家缩写 / 数字小数点 / 省略号。返回 ≥10 字符且 ≥3 词的句子。"""
+    """智能分句: 避开称谓缩写 / 国家缩写 / 数字小数点 / 省略号。返回 ≥10 字符且 ≥3 词的句子。
+
+    含中文时走 _split_sentences_cjk;**纯英文的判定路径一个字没改** ——
+    同一本英文书用 EPUB 导入和用 TXT 导入,断句必须完全一致,
+    否则孩子点词查义会时灵时不灵。
+    """
+    # 连字还原放在这里(所有文本→句子的唯一收口):
+    # PDF 提取出的文本、EPUB 的 HTML、TXT 都会过这一道,
+    # 任何一条路径漏掉都会在正文里留下方框。
+    text = _normalize_ligatures(text)
+    if _CJK_CHAR_RE.search(text):
+        return _split_sentences_cjk(text)
+    return _split_sentences_en(text)
+
+
+def _split_sentences_en(text: str) -> list:
+    """纯英文分句 —— 老逻辑,一个字没改。
+
+    单独拆出来是为了让 _split_sentences_cjk 能复用它:中文块内部
+    混着的英文句子要走同一套缩写/小数点保护,直接调 _split_sentences
+    会再次命中 CJK 分支,无限递归。
+    """
     PLACEHOLDER = '\x00'
     text = _SENT_ABBREV.sub(r'\1' + PLACEHOLDER, text)
     text = _SENT_INITIAL.sub(r'\1' + PLACEHOLDER, text)
@@ -300,6 +376,12 @@ def _sanitize_book_id(raw: str) -> str:
     历史 bug: 中文书名 sanitize 后变全下划线 + 数字 (e.g. `____2022____`),
     现在 fallback 到 `book_<hash8>`, 既稳定又不依赖 sanitize 后字符集。
     """
+    # 书名里只要有非 ASCII,一律走哈希。
+    # 原来只把 sanitize 后的残骸当结果:「测试 EPUB 书」→ 「epub」,
+    # 「我的 EPUB 书」也是「epub」—— 两本不同的书撞同一个 id,
+    # 第二本直接被判成「已存在」,永远导不进去。
+    if re.search(r'[^\x00-\x7f]', raw or ''):
+        return f'book_{hashlib.md5(raw.encode()).hexdigest()[:8]}'
     s = re.sub(r'[^a-zA-Z0-9_-]', '_', raw.lower()).strip('_')
     if len(s) < 4 or s.replace('_', '') == '':
         return f'book_{hashlib.md5(raw.encode()).hexdigest()[:8]}'
@@ -871,21 +953,82 @@ def register_routes(app):
         if not ok:
             return jsonify({"success": False, "error": f"导入过于频繁, {retry} 秒后再试"}), 429
 
-        if 'epub' not in request.files:
+        # === 文件接收 ===
+        # 字段名不固定:老前端发 'epub',新前端发 'file'。两个都收,
+        # 免得为了改字段名把老页面搞坏。
+        file = None
+        for key in ('file', 'epub', 'book'):
+            if key in request.files:
+                file = request.files[key]
+                break
+        if file is None:
+            file = next(iter(request.files.values()), None)
+        if file is None:
             return jsonify({"success": False, "error": "没有上传文件"})
 
-        file = request.files['epub']
-        if file.filename == '':
+        if not file.filename:
             return jsonify({"success": False, "error": "文件名为空"})
 
-        filename = secure_filename(file.filename)
-        if not filename.endswith('.epub'):
-            return jsonify({"success": False, "error": "只支持 EPUB 格式"})
+        # ⚠️ secure_filename 会把非 ASCII 字符**全删掉** ——
+        # 中文文件名「小王子.txt」会被削成「.txt」,扩展名都没了,
+        # 直接被判成「不支持的格式」。所以:
+        #   · 扩展名 / 书名 → 从**原始文件名**取
+        #   · secure_filename 只用来防路径穿越,不参与格式判断
+        # 书名最终还会过 _sanitize_book_id(非 ASCII 会转成哈希 id),
+        # 标题本身原样存进 DB,不会丢。
+        original_name = file.filename
+        filename = secure_filename(original_name) or 'book'
+        ext = Path(original_name).suffix.lower()
+        stem = Path(original_name).stem.strip() or '未命名' 
+        if ext not in book_formats.SUPPORTED_EXTENSIONS:
+            return jsonify({
+                "success": False,
+                "error": f'不支持的格式 {ext or "(无后缀)"}。'
+                         f'目前支持:{"、".join(book_formats.SUPPORTED_EXTENSIONS)}',
+            }), 400
 
+        raw = file.read()
+        if len(raw) > book_formats.MAX_UPLOAD_BYTES:
+            return jsonify({
+                "success": False,
+                "error": f'文件太大({len(raw) / 1048576:.0f}MB),'
+                         f'上限 {book_formats.MAX_UPLOAD_BYTES // 1048576}MB',
+            }), 413
+
+        # === 非 EPUB:走转换器 ===
+        # PDF / TXT / MD / HTML / DOCX 统一转成和 EPUB 一样的
+        # {chapters:[{name,sentences}], cover, ...} 结构,后面完全复用。
+        if ext != '.epub':
+            try:
+                # 传**原始文件名**:secure_filename 之后的中文名会被削成
+                # 「.txt」,而 Path('.txt').suffix 是空的(点开头被当成隐藏文件),
+                # 转换器会以为这文件没有扩展名。
+                book_data = book_formats.convert(raw, original_name)
+            except book_formats.ConversionError as e:
+                return jsonify({"success": False, "error": str(e)}), 400
+            except Exception as e:
+                logger.exception('%s 导入失败', ext)
+                return jsonify({"success": False,
+                                "error": f'导入失败: {type(e).__name__}'}), 500
+            # 判重和 EPUB 一样:在写盘之前拦
+            if get_db().execute('SELECT 1 FROM books WHERE id = ?',
+                                (book_data['id'],)).fetchone():
+                return jsonify({
+                    "success": False,
+                    "error": f'书籍 ID {book_data["id"]!r} 已存在, '
+                             f'请重命名文件后重试 (例: {book_data["id"]}_v2{ext})',
+                    "retryable": False,
+                    "book_id": book_data['id'],
+                }), 409
+            return _save_imported_book(book_data)
+
+        # === EPUB:走原来那条老路(里面有二十来个历史 bug 的修复) ===
         try:
-            epub_data = io.BytesIO(file.read())
+            # 用上面已经读出来的 raw —— 同一个流不能读两遍,
+            # 第二次 read() 拿到的是空内容(会变成 BadZipFile)
+            epub_data = io.BytesIO(raw)
             # .epub 后缀剥除 (用切片避免 'foo.epub.backup' 被误处理)
-            book_title = filename[:-5] if filename.endswith('.epub') else filename
+            book_title = stem
             chapters = []
             cover_path = None
 
@@ -1021,7 +1164,12 @@ def register_routes(app):
                     chapters.append({"name": current_chapter, "sentences": current_sentences})
 
                 # Fallback: 每 50 句一章
-                if len(chapters) == 0 or all(len(ch.get('sentences', [])) == 0 for ch in chapters):
+                # 条件里加了「所有章都不足 3 句」:下面 merged_chapters 会把
+                # 不足 3 句的章全丢掉,原来的条件只看「有没有章」,
+                # 结果是「每章都短」的书走到最后变成 0 章 —— 空的。
+                if (len(chapters) == 0
+                        or all(len(ch.get('sentences', [])) == 0 for ch in chapters)
+                        or all(len(ch.get('sentences', [])) < 3 for ch in chapters)):
                     chapters = []
                     current_sentences = []
                     FALLBACK_FILE_CAP = 20
@@ -1053,11 +1201,28 @@ def register_routes(app):
 
                 # 合并太短章节 + 过滤空
                 merged_chapters = [ch for ch in chapters if ch.get('sentences') and len(ch['sentences']) >= 3]
+                if not merged_chapters:
+                    # 整本会空时的兜底:放宽到「≥1 句」。
+                    # 「≥3 句」是为了滤掉「只有一行标题」的碎章,但有些书
+                    # 每章本来就只有一两句 —— 按 ≥3 整本丢光,孩子拿到的是空书。
+                    merged_chapters = [ch for ch in chapters if ch.get('sentences')]
                 total_sentences = sum(len(ch['sentences']) for ch in merged_chapters)
 
+                # ⚠️ 一章都没切出来 = 这本书在家长眼里是「导入成功了」,
+                # 孩子打开却是一页空白。宁可当场报错,也不要留一本空书在架子上。
+                if not merged_chapters or total_sentences == 0:
+                    logger.warning('EPUB 解析出 0 章 0 句,拒绝入库: %s', filename)
+                    return jsonify({
+                        "success": False,
+                        "error": '这本书里没读到正文 —— 可能只有图片、'
+                                 '或者内容在加密的章节里。'
+                                 '换个版本试试,或先用 PDF / TXT 格式。',
+                    }), 400
+
             # === Phase 3a: 写入 SQLite (不再写 JSON) ===
-            book_id = _sanitize_book_id(book_title)
-            book_data = {
+            # 写库这一步抽成公共函数了 —— 多格式(EPUB / PDF / TXT / ...)
+            # 走同一条下游管线,否则同一种书用不同格式导进来行为会不一致。
+            return _save_imported_book({
                 "book": book_title,
                 "id": book_id,
                 "chapters": merged_chapters,
@@ -1073,26 +1238,6 @@ def register_routes(app):
                 "subjects": opf_meta.get('subjects') or [],
                 "rights": opf_meta.get('rights'),
                 "toc": toc_entries,  # 真 TOC, 无则 []
-            }
-            # 蓝思值导入时算一次存起来,列表/详情接口直接读,不再每次全量扫句子
-            book_data['lexile'] = calc_lexile(book_data)
-            conn = get_db()
-            now = int(time.time() * 1000)
-            conn.execute(
-                'INSERT OR REPLACE INTO books (id, data_json, imported_at, updated_at) '
-                'VALUES (?, ?, ?, ?)',
-                (book_id, json.dumps(book_data, ensure_ascii=False), now, now)
-            )
-            _invalidate_books_list_cache()
-            return jsonify({
-                "success": True,
-                "book_id": book_id,
-                "book_title": book_title,
-                "author": opf_meta.get('creator'),
-                "total_chapters": len(merged_chapters),
-                "total_sentences": total_sentences,
-                "has_cover": bool(cover_path),
-                "has_toc": bool(toc_entries),
             })
 
         except Exception as e:
@@ -1103,3 +1248,36 @@ def register_routes(app):
     def serve_covers(filename):
         """提供封面图片"""
         return send_from_directory(str(COVERS_DIR), filename)
+
+
+def _save_imported_book(book_data: dict):
+    """把转换好的书写进 SQLite,返回给前端的 jsonify 响应。
+
+    抽出来的原因:以前「解析 → 写库」是一整块,EPUB 独占。
+    现在多格式共用同一条管线(EPUB 走原解析器,其它格式走
+    extensions/book_formats.py),写库这一步必须一模一样 ——
+    否则两种格式导进来的书,下游(查词/朗读/跟读/蓝思值)行为会不一样。
+    """
+    book_id = book_data['id']
+    # 蓝思值导入时算一次存起来,列表/详情接口直接读,不再每次全量扫句子
+    book_data['lexile'] = calc_lexile(book_data)
+    conn = get_db()
+    now = int(time.time() * 1000)
+    conn.execute(
+        'INSERT OR REPLACE INTO books (id, data_json, imported_at, updated_at) '
+        'VALUES (?, ?, ?, ?)',
+        (book_id, json.dumps(book_data, ensure_ascii=False), now, now)
+    )
+    _invalidate_books_list_cache()
+    chapters = book_data.get('chapters') or []
+    return jsonify({
+        "success": True,
+        "book_id": book_id,
+        "book_title": book_data.get('book'),
+        "author": book_data.get('creator'),
+        "total_chapters": len(chapters),
+        "total_sentences": sum(len(c.get('sentences') or []) for c in chapters),
+        "has_cover": bool(book_data.get('cover')),
+        "has_toc": bool(book_data.get('toc')),
+        "source_format": book_data.get('source_format', 'epub'),
+    })

@@ -6,3 +6,8 @@ gunicorn==23.0.0
 # R18: LLM 抽象层 + 语法动态出题
 python-dotenv>=1.0.0,<2.0
 jsonschema>=4.21.0,<5.0
+# 多格式导入:PDF / Word。
+# 没装也能跑 —— 只是这两种格式会明确报「服务器缺少解析组件」,
+# 不会静默失败。Pillow 是占位封面用的,通常系统自带。
+pypdf>=4.0.0
+python-docx>=1.1.0

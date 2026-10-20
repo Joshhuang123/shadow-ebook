@@ -70,7 +70,9 @@ _API_RATE = {}  # (ip, bucket) -> [timestamp, ...]
 _API_LIMITS = {
     'tts':         {'max': 30,  'window': 60},     # 防 TTS 缓存爆
     'sync':        {'max': 60,  'window': 60},     # 防 anon 上报刷数据
-    'import':      {'max': 10,  'window': 3600},   # 防 100MB EPUB 上传被滥用
+    'import':      {'max': 60,  'window': 3600},   # 防 100MB 上传被滥用。
+    #   原来 10/小时 —— 家长想一次把一柜子书导进来,导入第 11 本就被 429 挡了,
+    #   而提示只说「导入过于频繁」,看不出是本小时导满 10 本了。60 够用。
     'pregenerate': {'max': 10,  'window': 60},     # 防 anon 反复打 status (R8: 扫 100k 文件慢)
     'export':      {'max': 10,  'window': 60},     # 防已登录家长按错键 1 分钟 60 次 1MB JSON (R8)
     'grammar':     {'max': 120, 'window': 60},     # D6: 出题 — 命中缓存便宜,LLM 才花钱,120 够用

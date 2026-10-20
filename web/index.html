@@ -71,16 +71,56 @@
                 <div class="shelf-empty-art" aria-hidden="true"><span class="ico ico-book ico--xl" aria-hidden="true"></span></div>
                 <h2 class="shelf-empty-title">开始你的第一本书吧!</h2>
                 <p class="shelf-empty-sub">点下面的「导入书籍」,把你的一本书加进来。</p>
-                <button class="btn btn-primary shelf-empty-btn" data-action="clickTriggerImportFile"><span class="ico ico-download" aria-hidden="true"></span>导入书籍</button>
+                <button class="btn btn-primary shelf-empty-btn" data-action="shelfImport"><span class="ico ico-download" aria-hidden="true"></span>导入书籍</button>
                 <p class="shelf-empty-hint" id="shelf-empty-hint"></p>
             </section>
 
-            <h2 class="section-title" id="shelf-title" hidden>我的书架 <span class="shelf-count" id="shelf-count"></span></h2>
+            <!-- 书架标题行:右边就是「导入新书」的常驻入口。
+                 以前这个入口只藏在网格最后一张「导入新书」卡里,而且
+                 **只有家长登录后才出现** —— 孩子和未登录的家长在整页
+                 上找不到任何地方能加书,这个工具就变成了「一次性」的。 -->
+            <div class="shelf-head" id="shelf-head" hidden>
+                <h2 class="section-title" id="shelf-title">我的书架 <span class="shelf-count" id="shelf-count"></span></h2>
+                <button class="shelf-import-btn" data-action="shelfImport" title="导入自己的电子书">
+                    <span class="ico ico-plus" aria-hidden="true"></span>导入新书
+                </button>
+            </div>
+            <p class="shelf-hint" id="shelf-hint" hidden>
+                支持 EPUB / PDF / TXT / Word —— 导入后自动转成可以逐句读的书,一次可以选多本
+            </p>
+
+            <!-- 导入进度:每本书一行,成功失败都写清楚。
+                 原来是一串 alert(),批量导入时根本没法看。 -->
+            <div class="import-progress" id="import-progress" hidden>
+                <div class="import-progress-head" id="import-progress-head"></div>
+                <ul class="import-progress-list" id="import-progress-list"></ul>
+                <button class="import-progress-close" data-action="closeImportProgress">知道了</button>
+            </div>
+
             <div class="book-grid" id="book-grid">
                 <!-- 动态加载 -->
             </div>
 
-            <input type="file" id="import-file" accept=".epub">
+            <input type="file" id="import-file" accept=".epub,.pdf,.txt,.text,.md,.markdown,.html,.htm,.docx" multiple>
+        </div>
+
+        <!-- 导入前���家长验证:以前点「导入」只会跳到 /parent 登录页,
+             登录完还要自己再点回来导书。现在就在原地输密码,输完接着导。 -->
+        <div class="import-pin-modal" id="import-pin-modal" hidden>
+            <div class="import-pin-card" role="dialog" aria-modal="true" aria-labelledby="import-pin-title">
+                <div class="import-pin-head">
+                    <span class="ico ico-lock" aria-hidden="true"></span>
+                    <h3 id="import-pin-title">家长验证</h3>
+                </div>
+                <p class="import-pin-desc">导入书籍需要家长密码。输完就可以直接把书放进书架。</p>
+                <input type="password" id="import-pin-input" class="form-input"
+                       inputmode="numeric" maxlength="4" placeholder="4 位数字" autocomplete="off">
+                <p class="import-pin-error" id="import-pin-error"></p>
+                <div class="import-pin-actions">
+                    <button class="btn btn-secondary" data-action="closeImportPin">取消</button>
+                    <button class="btn btn-primary" data-action="submitImportPin">确定</button>
+                </div>
+            </div>
         </div>
 
         <!-- 阅读器页 (R24 按设计稿重排:顶栏定位 / 中间大字号 / 底栏三个动作 / 抽屉收纳) -->
