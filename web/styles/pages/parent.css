@@ -874,6 +874,38 @@
 .kg-ms-item.is-learning b { color: var(--text-primary); }
 .kg-ms-total { margin-left: auto; color: var(--text-disabled); font-size: 0.92em; }
 
+/* 音素层:还不稳的音 */
+.kg-phoneme-block {
+    margin: 0 0 8px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+}
+.kg-phoneme-block[hidden] { display: none; }
+.kg-ph-row { align-items: baseline; }
+.kg-ph-label {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.95em;
+    font-weight: 500;
+    color: var(--color-primary);
+    min-width: 52px;
+}
+.kg-ph-body {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.85em;
+    font-weight: 300;
+    color: var(--text-secondary);
+}
+.kg-ph-hint { margin-right: 8px; }
+.kg-ph-example { color: var(--text-primary); }
+.kg-ph-count {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.75em;
+    color: var(--text-disabled);
+}
+
 /* 考纲对照区 */
 .kg-exam-picker {
     display: flex;

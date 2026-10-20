@@ -160,6 +160,7 @@
             loadTtsSettings();
             loadExamScopes();
             loadMasterySummary();
+            loadPhonemeGaps();
         }
 
         // 知识图谱:下一个该练什么 + 哪个前置卡着几个下游。
@@ -200,6 +201,29 @@
                             ${g.blocks.map(b => b.label).join('、')}</span>
                     </div>`).join('');
             }
+        }
+
+        // 音素层:跟读里哪些音还不稳
+        async function loadPhonemeGaps() {
+            const block = el('kgPhonemeBlock');
+            const list = el('kgPhonemeList');
+            if (!block || !list) return;
+            try {
+                const r = await fetch('/api/kg/phonemes');
+                const j = await r.json();
+                if (!j.success || !j.list || !j.list.length) { block.hidden = true; return; }
+                list.innerHTML = j.list.map(p => {
+                    const example = p.example
+                        ? ` <span class="kg-ph-example">在「${p.example}」里</span>` : '';
+                    const hint = p.hint ? `<span class="kg-ph-hint">${p.hint}</span>` : '';
+                    return `<div class="kg-row kg-ph-row">
+                        <span class="kg-ph-label">/${p.label}/</span>
+                        <span class="kg-ph-body">${hint}${example}</span>
+                        <span class="kg-ph-count">读对 ${p.hits} · 读错 ${p.misses}</span>
+                    </div>`;
+                }).join('');
+                block.hidden = false;
+            } catch (e) { /* 没数据就不显示 */ }
         }
 
         // 掌握度汇总:已掌握 / 在学 / 还没开始

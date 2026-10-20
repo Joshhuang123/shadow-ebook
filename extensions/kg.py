@@ -800,6 +800,21 @@ def register_routes(app):
         res = record_mastery(items)
         return jsonify({'success': True, **res, **mastery_summary()})
 
+    @app.route('/api/kg/phonemes')
+    def kg_phonemes():
+        """音素层:跟读里哪些**音**还不稳。
+
+        词级差异只说「这个词读错了」,但 18254 个词没法练。
+        这里下沉到音素 —— 「/f/ 还不稳」才是能练的单位。
+        """
+        from extensions import phonemes as _ph
+        try:
+            return jsonify({'success': True, **_ph.summary()})
+        except Exception as e:
+            logger.warning('音素层读取失败: %s', e)
+            return jsonify({'success': False, 'error': '音素层还没初始化',
+                            'shaky': 0, 'counts': {}, 'list': []})
+
     @app.route('/api/kg/seed', methods=['POST'])
     def kg_seed():
         """家长页点一下就把语法前置图灌进去。幂等,重复调不会重复插。"""

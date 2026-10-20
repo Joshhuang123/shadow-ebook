@@ -165,6 +165,19 @@ CREATE TABLE IF NOT EXISTS kg_mastery (
   strength       REAL NOT NULL DEFAULT 0.0,         -- 0..1 衰减后的掌握强度
   updated_at     INTEGER NOT NULL
 );
+
+-- 音素层的练习记录。跟读读不准时,词级差异下沉到音素:
+-- 「这个词读错了」没法练(18254 个词),「/f/ 还不稳」才能练。
+-- strength 用指数移动平均(先验 0.5 = 未知),和语法点的「取最好成绩」
+-- 是两套语义:语法点会了就是会了,音素是「稳不稳」。
+CREATE TABLE IF NOT EXISTS kg_phoneme_practice (
+  phoneme_id     TEXT PRIMARY KEY,             -- 'phoneme:AH'
+  strength       REAL NOT NULL DEFAULT 0.5,    -- EMA,0.5 = 未知
+  hits           INTEGER NOT NULL DEFAULT 0,   -- 读对次数
+  misses         INTEGER NOT NULL DEFAULT 0,   -- 读错次数
+  example        TEXT,                         -- 最近一次出问题的词
+  updated_at     INTEGER NOT NULL
+);
 """
 
 

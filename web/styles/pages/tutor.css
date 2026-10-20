@@ -289,7 +289,15 @@
         }
         .feedback-item:last-child { border-bottom: none; }
         /* 识别文本是辅助信息,压到次要层级 */
-        .feedback-item--muted { opacity: 0.6; font-size: 0.85em; }
+        /* 音素提示:这是「能练」的那一条,比错词列表更有用 */
+.feedback-item--phoneme {
+    background: var(--tint-accent);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+}
+.feedback-item--phoneme .feedback-icon { color: var(--color-accent); }
+
+.feedback-item--muted { opacity: 0.6; font-size: 0.85em; }
 
         .muted-note { color: var(--text-secondary); }
 

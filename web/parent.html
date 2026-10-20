@@ -224,6 +224,13 @@
                 <div id="kgExamView" class="kg-list" hidden></div>
 
                 <div class="kg-mastery-summary" id="kgMasterySummary" hidden></div>
+
+                <!-- 音素层:跟读里哪些「音」还不稳。词级差异说「这个词读错了」,
+                     但 18254 个词没法练;下沉到音素才知道是 /f/ 还是 /tʃ/。 -->
+                <div class="kg-phoneme-block" id="kgPhonemeBlock" hidden>
+                    <div class="kg-subtitle">发音上还不稳的音(来自跟读)</div>
+                    <div id="kgPhonemeList" class="kg-list"></div>
+                </div>
                 <div id="kgPathList" class="kg-list">
                     <div class="kg-empty">加载中…</div>
                 </div>

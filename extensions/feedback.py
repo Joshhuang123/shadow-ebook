@@ -168,6 +168,43 @@ def _diff_words(sentence: str, transcript: str) -> list:
     return pairs[:5]
 
 
+def _phoneme_tips(alignment: list) -> list:
+    """给孩子的音素提示:「这个词里的 /f/ 还不太稳」。
+
+    精确归因(能确定是哪个音)才给提示;粗粒度归因只说「这个词还不稳」——
+    说不出是哪个音的时候别乱指。
+    """
+    from extensions import phonemes as _ph
+    tips = []
+    seen = set()
+    for expected, got, is_error in (alignment or []):
+        if not is_error or not expected:
+            continue
+        blamed, precise = _ph.blame_phonemes(expected, got or '')
+        if not blamed:
+            continue
+        key = (expected, tuple(blamed))
+        if key in seen:
+            continue
+        seen.add(key)
+        item = {
+            'word': expected,
+            'heard': got or '',
+            'phonemes': [],
+            'precise': precise,
+        }
+        for p in blamed:
+            info = _ph.phoneme_info(p)
+            item['phonemes'].append({
+                'id': info['id'], 'label': info['label'],
+                'hint': info['hint'], 'vowel': info['vowel'],
+            })
+        tips.append(item)
+        if len(tips) >= 5:
+            break
+    return tips
+
+
 # === 路由 ===
 def register_routes(app):
     @app.route('/api/recording/feedback', methods=['POST'])
@@ -247,6 +284,19 @@ def register_routes(app):
         similarity = difflib.SequenceMatcher(None, sentence.lower(), transcript.lower()).ratio()
         error_pairs = _diff_words(sentence, transcript)
 
+        # === Step 3b: 下沉到音素层 ===
+        # 词级差异只说「这个词读错了」,18254 个词没法练。
+        # 归因到音素才知道是 /f/ 还是 /tʃ/ 不稳 —— 那才是能练的单位。
+        # 图谱没灌数据时这一步自然什么都不做,不能拖垮反馈。
+        phoneme_tips = []
+        try:
+            from extensions import phonemes as _ph
+            alignment = _ph.word_alignment(sentence, transcript)
+            _ph.record_alignment(alignment)
+            phoneme_tips = _phoneme_tips(alignment)
+        except Exception as e:
+            logger.warning('音素归因失败(不影响反馈): %s', e)
+
         # === Step 4: LLM 生成反馈 ===
         try:
             llm_t0 = time.monotonic()
@@ -272,6 +322,7 @@ def register_routes(app):
                 "errors": [{"got": g, "expected": e, "tip": ""} for g, e in error_pairs],
                 "feedback": None,
                 "ai_unavailable": True,
+                "phoneme_tips": phoneme_tips,
             })
 
         return jsonify({
@@ -281,6 +332,7 @@ def register_routes(app):
             "errors": [{"got": g, "expected": e, "tip": ""} for g, e in error_pairs],
             "feedback": feedback,
             "ai_unavailable": False,
+            "phoneme_tips": phoneme_tips,
         })
 
 

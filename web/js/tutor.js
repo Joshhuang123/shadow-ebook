@@ -575,6 +575,23 @@
                 </div>`;
             });
 
+            // 音素提示:「这个词里的 /f/ 还不稳」——
+            // 比「这个词读错了」可练得多:词有 18254 个,音只有几十个。
+            // 粗粒度归因(说不出是哪个音)就不乱指,只说这个词还不稳。
+            (data.phoneme_tips || []).forEach(t => {
+                const phs = t.phonemes || [];
+                if (!phs.length) return;
+                const names = phs.map(p => '/' + p.label + '/').join(' ');
+                const hint = phs[0] && phs[0].hint ? '（' + phs[0].hint + '）' : '';
+                const body = t.precise
+                    ? `「${escapeHtml(t.word)}」里的 ${names} 还不稳${escapeHtml(hint)}`
+                    : `「${escapeHtml(t.word)}」这个词的音还不稳 —— 慢慢读几遍`;
+                html += `<div class="feedback-item feedback-item--phoneme">
+                    <span class="feedback-icon feedback-bad"><span class="ico ico-mic" aria-hidden="true"></span></span>
+                    <span>${body}</span>
+                </div>`;
+            });
+
             // 建议
             if (fb.suggestion) {
                 html += `<div class="feedback-item">
