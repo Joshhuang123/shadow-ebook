@@ -1125,22 +1125,25 @@
         }
 
         .word-modal-close {
-            width: 32px;
-            height: 32px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
-            background: var(--bg-dark);
-            border: none;
+            background: transparent;
+            border: 1px solid var(--rule-strong);
             color: var(--text-secondary);
             cursor: pointer;
-            font-size: 18px;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: background-color var(--duration-fast) var(--ease-out),
+                        color var(--duration-fast) var(--ease-out);
         }
+        .word-modal-close .ico { width: 16px; height: 16px; margin-right: 0; }
 
         .word-modal-close:hover {
-            background: var(--border);
-            color: var(--text-primary);
+            background: var(--tint-primary);
+            border-color: rgba(184, 106, 78, 0.32);
+            color: var(--primary-fill);
         }
 
         .word-modal-meanings {
