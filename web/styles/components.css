@@ -389,7 +389,7 @@ body .top-nav .nav-link.active::after {
 .top-nav .nav-brand .logo {
     background: var(--tint-primary);
     border: 1px solid rgba(184, 106, 78, 0.16);
-    border-radius: 13px;
+    border-radius: var(--radius-lg);
 }
 .top-nav .nav-brand .logo .ico {
     width: 21px;
@@ -487,7 +487,7 @@ body .top-nav .voice-picker::after {
     background: transparent;
     color: var(--text-secondary);
     border: 1px solid var(--rule-strong);
-    border-radius: 13px;
+    border-radius: var(--radius-lg);
     transition: background-color var(--duration-fast) var(--ease-out),
                 color var(--duration-fast) var(--ease-out),
                 border-color var(--duration-fast) var(--ease-out);
@@ -520,28 +520,41 @@ body .top-nav .voice-picker::after {
 .page-head-eyebrow {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    margin: 0 0 12px;
+    gap: 9px;
+    margin: 0 0 13px;
     font-family: var(--font-ui);
-    font-size: 11px;
+    font-size: 11.5px;
     font-weight: 600;
-    letter-spacing: 0.22em;
+    letter-spacing: 0.26em;
     text-transform: uppercase;
     color: var(--color-primary);
 }
 .page-head-eyebrow .ico { width: 14px; height: 14px; }
+/* 标签后面拖一根渐隐的短线(deck 的 device):
+   它把「这是个小标签」这件事说清楚了,比光靠字距更稳。 */
+.page-head-eyebrow::after {
+    content: '';
+    width: 46px;
+    height: 1px;
+    background: linear-gradient(90deg,
+        rgba(184, 106, 78, 0.42) 0%, transparent 100%);
+}
 .page-head-title {
     font-family: var(--font-display);
-    font-size: 38px;
-    line-height: 1.1;
-    font-weight: 600;
-    letter-spacing: -0.015em;
+    font-size: 44px;
+    line-height: 1.12;
+    /* 宋体在小字号下笔画细,标题要够重才立得住(和 deck 的 700/900 一致) */
+    font-weight: 700;
+    letter-spacing: 0.005em;
     color: var(--text-primary);
     margin: 0 0 10px;
 }
 .page-head-sub {
-    font-size: 14.5px;
-    line-height: 1.6;
+    font-size: 15px;
+    line-height: 1.65;
+    /* 细字重:标题 700 + 正文 300 的对比,和 deck 的字重逻辑一样。
+       太小的字(<=13px)不用 300 —— 浅底上细笔画会发虚,影响可读性。 */
+    font-weight: 300;
     color: var(--text-secondary);
     margin: 0;
     max-width: 40em;
@@ -554,7 +567,7 @@ body .top-nav .voice-picker::after {
     justify-content: center;
     width: 38px;
     height: 38px;
-    border-radius: 11px;
+    border-radius: var(--radius-md);
     background: var(--tint-primary);
     border: 1px solid rgba(184, 106, 78, 0.16);
     color: var(--primary-fill);
@@ -624,7 +637,7 @@ body .top-nav .nav-brand { flex-shrink: 0; }
     padding: 0;
     margin-left: var(--space-2);
     border: 1px solid var(--rule-strong);
-    border-radius: 13px;
+    border-radius: var(--radius-lg);
     background: transparent;
     color: var(--text-secondary);
     cursor: pointer;

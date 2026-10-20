@@ -96,7 +96,7 @@
             background: linear-gradient(135deg, #B86A4E 0%, #B86F4D 100%);
             color: white;
             padding: 30px;
-            border-radius: 15px;
+            border-radius: var(--radius-lg);
             text-align: center;
             margin: 20px 0;
         }
@@ -113,7 +113,7 @@
         .sentence-grammar {
             background: rgba(255,255,255,0.2);
             padding: 8px 15px;
-            border-radius: 20px;
+            border-radius: var(--radius-xl);
             font-size: 0.9em;
             display: inline-block;
             margin-top: 10px;
@@ -202,7 +202,7 @@
             margin: 15px 0;
             padding: 15px;
             background: var(--bg-dark);
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
         }
         .waveform-comparison.hidden { display: none; }
         .waveform-row {
@@ -226,7 +226,7 @@
             background: #B86A4E;
             color: white;
             border: none;
-            border-radius: 15px;
+            border-radius: var(--radius-lg);
             font-size: 0.8em;
             cursor: pointer;
         }
@@ -251,7 +251,7 @@
         .feedback {
             background: var(--bg-dark);
             padding: 20px;
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             margin: 15px 0;
         }
         .feedback-item {
@@ -324,7 +324,7 @@
             padding: 15px 20px;
             background: var(--bg-dark);
             border: 2px solid var(--border);
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             cursor: pointer;
             transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
             font-size: 1.1em;
@@ -394,7 +394,7 @@
             }
             .card {
                 padding: 20px 15px;
-                border-radius: 16px;
+                border-radius: var(--radius-lg);
             }
             .btn {
                 padding: 16px 32px;

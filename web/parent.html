@@ -10,7 +10,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>家长中心 - 影子电子书</title>
-    <link rel="stylesheet" href="/kid-touch.css">
+    <!-- 儿童触摸优化 CSS 不在这里加载。
+         它用 !important 硬改整个设计系统(border-radius: 24px !important、
+         font-size: 20px !important),结果就是家长页跟其它页长得不一样 ——
+         导航是 24px 圆角的大药丸,卡片是 20px 圆角。
+         48px 触控下限已经由设计系统本身保证(见 components.css / 各页 CSS),
+         不需要再挂一套并行的覆盖样式。 -->
     <link rel="stylesheet" href="/fonts/fonts.css">
     <link rel="apple-touch-icon" href="/icon-192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">

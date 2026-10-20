@@ -131,22 +131,28 @@
         /* 大数字直接印在纸上,不再装进白盒子里。
            杂志的「数据页」就是这么排的:数字是大标题,周围留白,
            上下各一条线 —— 纸的质感比卡片更能托住它。 */
+        /* 大数字:做成 deck 里的「数据块」—— 左边一道主色竖条,
+           右边一层极淡的暖色渐层往纸里化开,数字左对齐站在竖条旁边。
+           居中的一大坨数字放在这么宽的版心里,左右全是空的,像没做完。 */
         .streak-hero {
             background: transparent;
             border: none;
             border-top: 1px solid var(--rule);
             border-bottom: 1px solid var(--rule);
+            border-left: 2px solid var(--color-primary);
             border-radius: 0;
-            padding: 40px 24px 34px;
+            padding: 34px 28px 30px 30px;
             margin-bottom: 40px;
-            text-align: center;
+            text-align: left;
+            background-image: linear-gradient(90deg,
+                var(--tint-primary) 0%, transparent 62%);
         }
         .streak-hero-value {
             font-family: var(--font-display);
-            font-size: 92px;
+            font-size: 88px;
             line-height: 1;
-            font-weight: 600;
-            letter-spacing: -0.03em;
+            font-weight: 700;
+            letter-spacing: -0.02em;
             color: var(--primary-fill);
             font-variant-numeric: tabular-nums;
         }
@@ -162,14 +168,16 @@
         /* 数字等宽,9→10 不会左右跳 */
 
         .streak-hero-label {
-            font-size: 20px;
-            font-weight: 600;
+            font-family: var(--font-display);
+            font-size: 22px;
+            font-weight: 700;
             color: var(--text-primary);
-            margin: 4px 0 0;
+            margin: 6px 0 0;
         }
         .streak-hero-note {
             margin: 8px 0 0;
             font-size: 15px;
+            font-weight: 300;
             color: var(--text-secondary);
         }
 
@@ -353,7 +361,7 @@
             padding: 15px;
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             margin-bottom: 10px;
         }
         .book-rec-icon {
@@ -374,7 +382,7 @@
             padding: 4px 10px;
             background: rgba(204, 120, 92, 0.2);
             color: var(--color-primary-light);
-            border-radius: 20px;
+            border-radius: var(--radius-xl);
             font-size: 0.8em;
         }
 
@@ -389,7 +397,7 @@
             padding: 6px 14px;
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 20px;
+            border-radius: var(--radius-xl);
             font-size: 0.85em;
             cursor: pointer;
             transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;

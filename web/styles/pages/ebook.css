@@ -46,7 +46,7 @@
             height: 40px;
             flex-shrink: 0;
             background: linear-gradient(135deg, var(--color-primary), #D89B7E);
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -63,7 +63,7 @@
             color: var(--text-secondary);
             text-decoration: none;
             padding: 10px 18px;
-            border-radius: 20px;
+            border-radius: var(--radius-xl);
             font-size: 1em;
             font-weight: 600;
             /* 不换行:导航是 4 个固定词,竖排成四行会占掉整个首屏 */
@@ -85,7 +85,7 @@
         .voice-select {
             background: var(--bg-card);
             border: 2px solid var(--border);
-            border-radius: 20px;
+            border-radius: var(--radius-xl);
             padding: 8px 14px;
             color: var(--text-primary);
             font-size: 0.9em;
@@ -552,7 +552,7 @@
         .book-info-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: var(--radius-lg);
             padding: 20px 24px;
             margin-bottom: 20px;
             display: flex;
@@ -694,7 +694,7 @@
         /* 发音评分面板 */
         .pronunciation-card {
             background: var(--bg-card);
-            border-radius: 16px;
+            border-radius: var(--radius-lg);
             padding: 20px;
         }
 
@@ -873,7 +873,7 @@
 
         .review-card {
             background: var(--bg-card);
-            border-radius: 16px;
+            border-radius: var(--radius-lg);
             padding: 30px;
             margin: 20px 0;
         }
@@ -1093,7 +1093,7 @@
 
         .word-modal {
             background: var(--bg-card);
-            border-radius: 20px;
+            border-radius: var(--radius-xl);
             padding: 28px;
             width: 100%;
             max-width: 420px;
@@ -1436,10 +1436,11 @@
             border-radius: var(--radius-pill);
             background: var(--tint-primary);
             color: var(--color-primary);
-            font-family: var(--font-ui);
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.02em;
+            /* 页码用等宽:「31 / 778」这种数字用比例字体会忽宽忽窄 */
+            font-family: var(--font-mono);
+            font-size: 11.5px;
+            font-weight: 500;
+            letter-spacing: 0.04em;
             font-variant-numeric: tabular-nums;
         }
 
@@ -1760,7 +1761,7 @@
             border: none;
             /* 圆角矩形而不是全药丸:实心键有"键帽"的实体感,
                全圆角会变成一个漂浮的标签。 */
-            border-radius: 16px;
+            border-radius: var(--radius-lg);
             font-size: var(--text-lg);
             font-weight: var(--font-semibold);
             letter-spacing: 0.03em;
@@ -1797,7 +1798,7 @@
             background: transparent;
             color: var(--text-secondary);
             border: 1px solid var(--rule-strong);
-            border-radius: 16px;
+            border-radius: var(--radius-lg);
             font-size: var(--text-sm);
             font-weight: var(--font-medium);
             font-family: var(--font-ui);
@@ -1930,8 +1931,10 @@
             flex: none;
             width: 20px;
             text-align: right;
-            font-family: var(--font-sans);
-            font-size: 11.5px;
+            /* 编号用等宽:数字对不齐,一列看着就散 */
+            font-family: var(--font-mono);
+            font-size: 11px;
+            letter-spacing: 0.06em;
             font-variant-numeric: tabular-nums;
             color: var(--text-disabled);
         }
@@ -2254,7 +2257,7 @@
             width: 168px;
             height: 224px;
             flex-shrink: 0;
-            border-radius: 3px 9px 9px 3px;
+            border-radius: 2px 4px 4px 2px;
             overflow: hidden;
             background: var(--bg-dark);
             border: none;
@@ -2323,7 +2326,7 @@
             background: var(--primary-fill);
             color: var(--text-on-primary);
             border: none;
-            border-radius: 14px;
+            border-radius: var(--radius-lg);
             font-size: 15.5px;
             font-weight: 600;
             letter-spacing: 0.02em;

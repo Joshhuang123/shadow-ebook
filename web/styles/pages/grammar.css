@@ -185,7 +185,7 @@
 
         .exam-tab {
             padding: 10px 24px;
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             border: 1px solid var(--border);
             background: transparent;
             color: var(--text-secondary);
@@ -214,24 +214,30 @@
             display: block;
         }
 
-        /* 级别标签 */
+        /* 级别标签:deck 的做法是「一枚印刷体的小标签」——
+           发丝线描边、等宽小字、字距拉开,不要实心色块。
+           实心色块在一页里出现十几次,就成了彩色便签墙。 */
         .level-badge {
             display: inline-block;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 0.75em;
-            font-weight: 600;
-            margin-left: 8px;
+            padding: 3px 8px;
+            border: 1px solid currentColor;
+            border-radius: 2px;
+            font-family: var(--font-mono);
+            font-size: 10.5px;
+            font-weight: 500;
+            letter-spacing: 0.12em;
+            line-height: 1.4;
+            margin-left: 10px;
+            vertical-align: 2px;
+            background: transparent;
         }
 
         .level-badge.ket {
-            background: rgba(122, 154, 101, 0.2);
-            color: #6B8A52;
+            color: var(--color-secondary);
         }
 
         .level-badge.pet {
-            background: rgba(212, 165, 116, 0.2);
-            color: #D4A574;
+            color: var(--color-primary);
         }
 
         .grammar-card[data-level="ket"] {
@@ -275,7 +281,7 @@
             max-width: 800px;
             margin: 40px auto;
             background: var(--bg-card);
-            border-radius: 20px;
+            border-radius: var(--radius-xl);
             padding: 32px;
             position: relative;
         }
@@ -330,7 +336,7 @@
         .formula-box {
             background: var(--bg-dark);
             padding: 16px 24px;
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             font-family: 'Noto Serif SC', serif;
             font-size: 1.1em;
             color: var(--color-primary-light);
@@ -391,7 +397,7 @@
         .tip-box {
             background: rgba(122, 154, 101, 0.1);
             border: 1px solid var(--color-secondary);
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             padding: 16px;
             margin: 16px 0;
         }
@@ -430,7 +436,7 @@
 
         .tense-box {
             padding: 20px;
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
         }
 
         .tense-box.blue {
@@ -535,7 +541,7 @@
             max-width: 600px;
             width: 90%;
             background: var(--bg-card);
-            border-radius: 20px;
+            border-radius: var(--radius-xl);
             padding: 32px;
             position: relative;
         }
@@ -556,7 +562,7 @@
         .practice-progress {
             background: var(--bg-dark);
             padding: 8px 16px;
-            border-radius: 20px;
+            border-radius: var(--radius-xl);
             font-size: 0.9em;
             color: var(--text-secondary);
         }
@@ -577,7 +583,7 @@
             padding: 16px 20px;
             background: var(--bg-dark);
             border: 2px solid var(--border);
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             cursor: pointer;
             transition: transform 200ms ease-out, background-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
             font-size: 1em;

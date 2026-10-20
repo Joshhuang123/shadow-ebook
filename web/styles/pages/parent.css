@@ -70,13 +70,18 @@
             padding: 90px 20px 40px;
         }
 
+        /* 家长页原来是一摞白卡片 —— 全站最「App」的一页。
+           同样压平:区块直接坐在纸上,靠发丝线 + 留白分层。
+           这一页信息密度高(表格、设置项、开关),但层级靠线表达
+           完全够用,白盒子只是徒增噪声。 */
         .card {
-            background: var(--bg-card);
-            border: 1px solid var(--rule);
-            border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: var(--shadow-sm);
+            background: transparent;
+            border: none;
+            border-top: 1px solid var(--rule);
+            border-radius: 0;
+            padding: 26px 0 6px;
+            margin-bottom: 40px;
+            box-shadow: none;
         }
 
         .card-title {
@@ -103,7 +108,7 @@
             justify-content: center;
             width: 64px;
             height: 64px;
-            border-radius: 20px;
+            border-radius: var(--radius-xl);
             background: var(--tint-primary);
             color: var(--primary-fill);
             margin-bottom: 22px;
@@ -137,7 +142,7 @@
             text-align: center;
             font-size: 2em;
             border: 3px solid var(--border);
-            border-radius: 16px;
+            border-radius: var(--radius-lg);
             outline: none;
             font-weight: bold;
         }
@@ -178,10 +183,13 @@
             gap: 16px;
         }
 
+        /* 小指标块:不填色,只留一根上边线 —— 纸上的四个小条目,
+           而不是四个米色方块。数字用衬线,和页面其它地方一套语言。 */
         .stat-card {
-            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
-            border-radius: 16px;
-            padding: 20px;
+            background: transparent;
+            border: 1px solid var(--rule);
+            border-radius: 0;
+            padding: 18px 14px 16px;
             text-align: center;
         }
 
@@ -191,6 +199,7 @@
         }
 
         .stat-card .value {
+            font-family: var(--font-display);
             font-size: 2.2em;
             font-weight: 700;
             color: var(--color-primary);
@@ -367,7 +376,7 @@
             align-items: center;
             padding: 16px;
             background: var(--bg-dark);
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             margin-bottom: 10px;
         }
 
@@ -401,7 +410,7 @@
             right: 0;
             bottom: 0;
             background: #D6CFC0;
-            border-radius: 16px;
+            border-radius: var(--radius-lg);
             transition: 0.3s;
         }
 
@@ -435,7 +444,7 @@
         .btn {
             padding: 14px 24px;
             border: none;
-            border-radius: 16px;
+            border-radius: var(--radius-lg);
             font-size: 1em;
             font-weight: 600;
             cursor: pointer;
@@ -490,7 +499,7 @@
         .time-limit-setting {
             background: var(--tint-accent);
             border: 2px solid var(--color-accent);
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             padding: 16px;
         }
 
@@ -592,7 +601,9 @@
     }
     .btn-preset {
         padding: 6px 14px;
-        min-height: 36px;
+        /* 48px 触控下限(之前靠 kid-touch.css 的 !important 撑着,
+           那个文件已经摘掉了,这里自己保证) */
+        min-height: 48px;
         border: 1px solid var(--border-primary);
         border-radius: var(--radius-pill);
         background: var(--surface-primary, transparent);
@@ -714,7 +725,7 @@
     align-items: center;
     justify-content: center;
     min-width: 56px;
-    min-height: 40px;
+    min-height: 48px;          /* 48px 触控下限 */
     padding: 0 12px;
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -863,6 +874,9 @@
         }
 
         .link-btn {
+            display: inline-flex;
+            align-items: center;
+            min-height: 48px;          /* 48px 触控下限 */
             background: none;
             border: none;
             padding: 2px 4px;
