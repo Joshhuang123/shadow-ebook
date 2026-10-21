@@ -29,6 +29,9 @@
     --bg-card:       #FCFBF8;
     --bg-dark:       #EAE5DA;
     --bg-overlay:    rgba(45, 42, 38, 0.5);
+    /* 抽屉遮罩:只提示「点空白处可关」,不把正文压暗。
+       跟读时孩子要一边看句子一边录音,正文一暗就没法读了。 */
+    --bg-scrim:      rgba(45, 42, 38, 0.16);
     --bg-gradient-start: #F7F4EE;
     --bg-gradient-end:   #EDE6D9;
 
@@ -229,6 +232,7 @@
     --bg-card:       #252220;
     --bg-dark:       #1F1C18;
     --bg-overlay:    rgba(0, 0, 0, 0.65);
+    --bg-scrim:      rgba(0, 0, 0, 0.32);
     --bg-gradient-start: #1F1B17;
     --bg-gradient-end:   #15110D;
 
@@ -295,6 +299,7 @@
         --bg-card:       #252220;
         --bg-dark:       #1F1C18;
         --bg-overlay:    rgba(0, 0, 0, 0.65);
+        --bg-scrim:      rgba(0, 0, 0, 0.32);
         --bg-gradient-start: #1F1B17;
         --bg-gradient-end:   #15110D;
 

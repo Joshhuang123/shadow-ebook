@@ -229,6 +229,14 @@
             initFontSize();
             document.getElementById('book-list-page').classList.add('hidden');
             document.getElementById('reader-page').classList.add('active');
+            // 侧栏的初始状态:宽屏常驻一列,窄屏收起成浮层。
+            // (进阅读器时重置一次 —— 上次读一半收起过,不该带到这一本。)
+            const page = document.getElementById('reader-page');
+            const drawer = document.getElementById('sidebar');
+            page.classList.remove('side-collapsed');
+            drawer.classList.toggle('open', isWideSidebar());
+            document.getElementById('drawer-scrim').classList.remove('open');
+            syncSidebarButton(false);
         }
 
         // R10: 全局缓存家长登录状态, 让 import 卡片显示"需先登录"提示
@@ -247,10 +255,37 @@
 
         // R24: 侧栏从「常驻第三列」改成抽屉。设计稿底栏只有三个动作
         // (字号 / 朗读 / 更多),六块功能全部收进 ☰ 后面。
+        //
+        // 2026-10-21 改:孩子在 iPad 横屏上跟读,侧栏藏着不方便 ——
+        // 「跟读评分」那块的录音键在里面,每读一章都要多点一次 ☰;
+        // 而拉开时遮罩把正文压成阴影,又没法一边看句子一边读。
+        // 所以**宽屏(≥1000px)侧栏常驻**:它是右侧一列,正文往左让,
+        // 不浮在上面,也没有遮罩。窄屏(竖屏平板/手机)仍是浮层,
+        // 但遮罩调淡了,不再把正文压暗。
+        const WIDE_SIDEBAR = '(min-width: 1000px)';
+        // matchMedia 不一定在:分页测试用 Node 沙箱跑这段脚本,
+        // 那个沙箱里没有 matchMedia。缺了就当窄屏(浮层),
+        // 宁可退回旧行为,也不要让整段脚本在沙箱里炸掉。
+        const isWideSidebar = () => (typeof window.matchMedia === 'function')
+            && window.matchMedia(WIDE_SIDEBAR).matches;
+
         function toggleSidebar() {
             const drawer = document.getElementById('sidebar');
+            const page = document.getElementById('reader-page');
+            const scrim = document.getElementById('drawer-scrim');
+
+            if (isWideSidebar()) {
+                // 宽屏:收 / 放这一列
+                const collapsed = page.classList.toggle('side-collapsed');
+                drawer.classList.toggle('open', !collapsed);
+                scrim.classList.remove('open');
+                document.removeEventListener('keydown', escCloseDrawer);
+                syncSidebarButton(collapsed);
+                return;
+            }
+
             const open = drawer.classList.toggle('open');
-            document.getElementById('drawer-scrim').classList.toggle('open', open);
+            scrim.classList.toggle('open', open);
             // 键盘可达:抽屉开着时 Esc 关闭
             if (open) document.addEventListener('keydown', escCloseDrawer);
             else document.removeEventListener('keydown', escCloseDrawer);
@@ -262,6 +297,48 @@
             const drawer = document.getElementById('sidebar');
             if (drawer.classList.contains('open')) toggleSidebar();
         }
+
+        // ☰ 按钮的提示语要跟着状态走:宽屏是「收起侧栏 / 展开侧栏」,
+        // 窄屏是「更多功能」。别让孩子猜这个键是干什么的。
+        function syncSidebarButton(collapsed) {
+            const btn = document.querySelector('.drawer-open');
+            if (!btn) return;
+            const wide = isWideSidebar();
+            const label = wide
+                ? (collapsed ? '展开侧栏' : '收起侧栏')
+                : '更多功能';
+            btn.setAttribute('title', label);
+            btn.setAttribute('aria-label', label);
+            btn.setAttribute('aria-expanded', String(wide ? !collapsed : drawerIsOpen()));
+        }
+        function drawerIsOpen() {
+            const drawer = document.getElementById('sidebar');
+            return !!(drawer && drawer.classList.contains('open'));
+        }
+
+        // 从窄屏拖到宽屏(或反过来):浮层状态要收干净。
+        // 窄屏开着浮层拖到宽屏 → 遮罩还挂着会盖住正文。
+        let lastWide = isWideSidebar();
+        window.addEventListener('resize', () => {
+            const wide = isWideSidebar();
+            if (wide === lastWide) return;
+            lastWide = wide;
+            const page = document.getElementById('reader-page');
+            const drawer = document.getElementById('sidebar');
+            const scrim = document.getElementById('drawer-scrim');
+            scrim.classList.remove('open');
+            document.removeEventListener('keydown', escCloseDrawer);
+            if (wide) {
+                // 宽屏:常驻一列,按宽屏的状态重置
+                page.classList.remove('side-collapsed');
+                drawer.classList.add('open');
+            } else {
+                // 窄屏:回到浮层,默认收起
+                page.classList.remove('side-collapsed');
+                drawer.classList.remove('open');
+            }
+            syncSidebarButton(page.classList.contains('side-collapsed'));
+        });
 
         // R10: 简易 toast (章节边界未识别等临时提示用)
         function showToast(msg, ms) {

@@ -1861,7 +1861,10 @@
         .drawer-scrim {
             position: fixed;
             inset: 0;
-            background: var(--bg-overlay);
+            /* 遮罩只负责「点空白处关闭」,不负责把正文压暗。
+               原来用 --bg-overlay(0.5 黑),一拉开正文就变成一片阴影 ——
+               而这恰恰是孩子要一边看着句子一边跟读的地方。 */
+            background: var(--bg-scrim);
             opacity: 0;
             pointer-events: none;
             transition: opacity var(--duration-base) var(--ease-out);
@@ -1895,6 +1898,72 @@
             display: flex;
             flex-direction: column;
             gap: var(--space-4);
+        }
+
+        /* --- 宽屏:侧栏常驻,不再浮在正文上面 ---
+           孩子在 iPad 横屏上跟读,侧栏(目录 + 跟读评分 + 生词本)收在
+           ☰ 后面有两个问题:每读一章都要多点一次;而拉开时那层遮罩把
+           正文压成一片阴影 —— 偏偏「一边看句子一边录音」就是这页的用途。
+           所以宽屏(≥1000px)把侧栏变成右侧**常驻的一列**:正文往左让,
+           不盖它,遮罩直接不要。☰ 变成「收起 / 展开」。
+           窄屏(竖屏平板、手机)还是浮层,但遮罩已经调淡了。 */
+        @media (min-width: 1000px) {
+            .reader-page {
+                --drawer-w: clamp(300px, 26vw, 360px);
+            }
+            .reader-drawer {
+                position: fixed;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                width: var(--drawer-w);
+                /* 常驻一列时不需要投影 —— 投影是「浮在内容上面」的信号 */
+                box-shadow: none;
+                border-left: 1px solid var(--border);
+                transform: translateX(0);
+            }
+            /* 正文让出右侧那一列 */
+            .reader-bar,
+            .reader-stage,
+            .reader-foot {
+                padding-right: calc(var(--drawer-w) + var(--space-5));
+                transition: padding-right var(--duration-base) var(--ease-out);
+            }
+            /* 收起:侧栏滑走,正文补回那一条 */
+            .reader-page.side-collapsed .reader-drawer {
+                transform: translateX(100%);
+            }
+            .reader-page.side-collapsed .reader-bar,
+            .reader-page.side-collapsed .reader-stage,
+            .reader-page.side-collapsed .reader-foot {
+                padding-right: var(--space-5);
+            }
+            /* 常驻一列的时候没有「浮层」,遮罩用不着 */
+            .drawer-scrim { display: none; }
+
+            /* 侧栏常驻 → 高度是固定的,得把顶部压紧一点:
+               「跟读评分」那块(朗读/跟读/录音)在第 4 张卡,
+               不压紧的话录音键正好卡在折叠线下面,孩子要滚半天。
+               压封面、压简介、压目录高度,录音键就留在首屏里了。 */
+            .drawer-body .book-info-card { padding: var(--space-2) var(--space-3); gap: var(--space-3); }
+            .drawer-body .book-info-cover,
+            .drawer-body .book-info-cover-fallback { width: 48px; height: 66px; }
+            .drawer-body .book-info-title {
+                font-size: var(--text-sm);
+                /* 书名最多两行,再多就把整张卡往下推 */
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+            /* 出版信息(作者/出版社/系列/年份/语言/ISBN)有六行,
+               在侧栏这么窄的地方会把卡片撑到近 180px。只留两行。 */
+            .drawer-body .book-info-meta {
+                max-height: 2.6em;
+                overflow: hidden;
+            }
+            .drawer-body .book-info-description { max-height: 3.2em; }
+            .drawer-body .toc-list { max-height: 190px; }
         }
 
         /* 抽屉里的复用类 */

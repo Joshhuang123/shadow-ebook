@@ -246,10 +246,6 @@
                         <div class="toc-list" id="toc-list"></div>
                     </div>
 
-                    <button class="btn btn-secondary quiz-btn" id="btn-comp" data-action="showComprehensionModal">
-                        <span class="ico ico-target" aria-hidden="true"></span>章节测验
-                    </button>
-
                     <!-- 跟读评分 -->
                     <div class="pronunciation-card">
                         <div class="sidebar-title"><span class="ico ico-mic" aria-hidden="true"></span>跟读评分</div>
@@ -282,6 +278,12 @@
                             点击麦克风，录音跟读
                         </div>
                     </div>
+
+                    <!-- 章节测验放在跟读后面:侧栏常驻时,录音键要留在首屏,
+                         测验是偶尔做的事,往下放不碍事。 -->
+                    <button class="btn btn-secondary quiz-btn" id="btn-comp" data-action="showComprehensionModal">
+                        <span class="ico ico-target" aria-hidden="true"></span>章节测验
+                    </button>
 
                     <div class="sidebar-card">
                         <div class="sidebar-title"><span class="ico ico-quote" aria-hidden="true"></span>句子翻译</div>
