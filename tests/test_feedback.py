@@ -5,6 +5,7 @@
 whisper 模型加载很慢,所有测试都 mock 掉,只测业务逻辑。
 """
 import io
+import types
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -325,25 +326,36 @@ def test_endpoint_works_when_no_weak_words(client, monkeypatch):
     assert resp.get_json()["success"] is True
 
 
-# === D2: whisper 懒加载加锁 — 并发首调只 load 一次 ===
-def test_whisper_lock_prevents_concurrent_loads(monkeypatch):
-    """多线程并发调 _get_whisper,whisper.load_model 应该只被调一次。"""
-    monkeypatch.setattr(feedback, '_WHISPER_MODEL', None)
+# === 词级差异:标点不能算进错词 ===
+def test_diff_words_strips_punctuation():
+    """转写里的句号是模型加的,不该显示成「把 earthy. 读成 early」。"""
+    from extensions.feedback import _diff_words
+    assert _diff_words('He usually gets up early.',
+                       'He usually gets up earthy.') == [('earthy', 'early')]
 
-    # 把 whisper 模块塞进 sys.modules,让 import whisper 成功
-    import sys
-    import types
-    fake_whisper = types.ModuleType('whisper')
+
+def test_diff_words_ignores_punctuation_only_difference():
+    """只有标点不同 → 不算错词。"""
+    from extensions.feedback import _diff_words
+    assert _diff_words('I want three ships.', 'I want three ships!') == []
+
+
+# === D2: ASR 懒加载加锁 — 并发首调只 load 一次 ===
+def test_whisper_lock_prevents_concurrent_loads(monkeypatch):
+    """多线程并发调 _get_whisper,底层加载应该只被调一次。"""
+    monkeypatch.setattr(feedback, '_ASR', None)
+
     call_count = {'n': 0}
 
-    def slow_load(name):
+    def slow_load():
         import time as _t
         _t.sleep(0.05)  # 模拟加载耗时,确保并发线程有机会撞 race
         call_count['n'] += 1
         return MagicMock()
 
-    fake_whisper.load_model = slow_load
-    monkeypatch.setitem(sys.modules, 'whisper', fake_whisper)
+    # 直接替换加载入口 —— 跟具体后端(faster / openai)解耦,
+    # 不然测「加锁」还得先凑齐某个后端的依赖
+    monkeypatch.setattr(feedback, '_load_asr', slow_load)
 
     import threading
     results = []
@@ -360,20 +372,83 @@ def test_whisper_lock_prevents_concurrent_loads(monkeypatch):
         t.join()
 
     assert call_count['n'] == 1, f"应该只 load 一次,实际 {call_count['n']} 次"
+    assert len(results) == 8, "每个线程都该拿到模型"
 
 
 def test_whisper_lock_fast_path_when_already_loaded(monkeypatch):
-    """模型已加载时,_get_whisper 不该再调 whisper.load_model。"""
+    """模型已加载时,_get_whisper 不该再走加载。"""
     fake_model = MagicMock()
-    monkeypatch.setattr(feedback, '_WHISPER_MODEL', fake_model)
+    monkeypatch.setattr(feedback, '_ASR', fake_model)
 
-    # 故意让 import whisper 失败 — 验证 fast-path 不走 import 也不会触雷
-    import sys
-    monkeypatch.delitem(sys.modules, 'whisper', raising=False)
-    sys.modules['whisper'] = None  # ImportError
+    def boom():
+        raise AssertionError("已加载时不该再加载模型")
+
+    monkeypatch.setattr(feedback, '_load_asr', boom)
 
     result = feedback._get_whisper()
-    assert result is fake_model, "已加载时直接返回,不该 import whisper"
+    assert result is fake_model, "已加载时直接返回"
+
+
+# === faster-whisper 适配层:把 CTranslate2 的生成器包装成 openai-whisper 的形状 ===
+def test_faster_adapter_normalizes_to_dict():
+    """适配层必须返回 {'text': ...},调用方只认这一个契约。"""
+    adapter = feedback._FasterWhisperAdapter.__new__(feedback._FasterWhisperAdapter)
+
+    class _Seg:
+        def __init__(self, text):
+            self.text = text
+
+    class _FakeCT2:
+        def __init__(self):
+            self.kwargs = None
+
+        def transcribe(self, path, **kwargs):
+            self.kwargs = kwargs
+            return (iter([_Seg(' I want '), _Seg('three ships. ')]), {'language': 'en'})
+
+    fake = _FakeCT2()
+    adapter.model = fake
+
+    out = adapter.transcribe('/tmp/x.webm', language='en', fp16=False)
+
+    assert out == {'text': 'I want three ships.'}, '文本要拼好并去掉首尾空白'
+    # 孩子录音前后常有静音 —— 必须开 VAD
+    assert fake.kwargs['vad_filter'] is True
+    assert fake.kwargs['language'] == 'en'
+    assert fake.kwargs['beam_size'] == feedback._WHISPER_BEAM
+
+
+def test_load_asr_raises_runtime_error_when_nothing_installed(monkeypatch):
+    """两个后端都没装 → RuntimeError(上层回 503,不是 500)。"""
+    import sys
+    monkeypatch.setitem(sys.modules, 'faster_whisper', None)  # ImportError
+    monkeypatch.setitem(sys.modules, 'whisper', None)          # ImportError
+    monkeypatch.setattr(feedback, '_WHISPER_BACKEND', 'auto')
+
+    try:
+        feedback._load_asr()
+        raise AssertionError('应该抛 RuntimeError')
+    except RuntimeError as e:
+        assert 'faster-whisper' in str(e), '提示里要写清楚怎么装'
+
+
+def test_load_asr_wraps_backend_failure_into_runtime_error(monkeypatch):
+    """后端装上了但加载炸了(缓存损坏等)→ 也必须是 RuntimeError。"""
+
+    class _Boom:
+        def __init__(self, name):
+            raise OSError('model.bin 损坏')
+
+    import sys
+    monkeypatch.setitem(sys.modules, 'faster_whisper', types.ModuleType('faster_whisper'))
+    monkeypatch.setattr(sys.modules['faster_whisper'], 'WhisperModel', _Boom, raising=False)
+    monkeypatch.setattr(feedback, '_WHISPER_BACKEND', 'faster')
+
+    try:
+        feedback._load_asr()
+        raise AssertionError('应该抛 RuntimeError')
+    except RuntimeError as e:
+        assert '模型加载失败' in str(e), f'提示要说人话: {e}'
 
 
 # === D6: feedback 端点用 'feedback' 桶(独立于 global) ===

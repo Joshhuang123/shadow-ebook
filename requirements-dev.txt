@@ -3,11 +3,30 @@
 -r requirements.txt
 pytest==9.0.3
 Pillow==11.1.0
-# R19: 跟读 AI 反馈用 — openai-whisper + torch (ASR 模型推理)。
+# R19: 跟读 AI 反馈用 (ASR 模型推理)。
 # 生产服务器可选:不装也能跑(feedback 接口返回 503,前端降级到静态反馈)。
-# 模型文件(~150MB for base,~500MB for small)首次请求时下载,缓存到 ~/.cache/whisper/
-openai-whisper==20250625
-torch==2.10.0
+#
+# 首选 faster-whisper:用 CTranslate2 替代 torch,**省掉 2~3GB 的 torch**,
+# 而且 CPU 上 int8 量化更快。模型文件首次请求时下载,缓存在
+# WHISPER_CACHE_DIR(默认 ~/.cache/shadow-whisper)。
+#   模型大小:tiny ~75MB / base ~145MB / small ~480MB / large ~1.5GB
+# 孩子的句子很短,base 够用;要更小就 WHISPER_MODEL=tiny。
+#
+# 实测体积(2026-10 macOS/arm64):
+#   faster-whisper 装完 venv 87MB → 298MB(+211MB)
+#   模型 base 141MB(放 ~/.cache/shadow-whisper/base)
+#   官方 openai-whisper + torch 另需 +2.5GB
+faster-whisper==1.2.1
+# ⚠️ av 必须钉在 15.1.0:
+#   faster-whisper 1.2.1 声明的是 `av>=11`(没上限),但它调用的
+#   av.open(metadata_errors=...) 在 av>=16 被移除了,装新版会报
+#   TypeError: open() got an unexpected keyword argument 'metadata_errors';
+#   而 av 14.x 没有 cp312 轮子(装不上)。15.1.0 是唯一能用的版本。
+av==15.1.0
+# 官方包(要 torch)。只在你需要 openai-whisper 特有行为时再装:
+#   WHISPER_BACKEND=openai
+# openai-whisper==20250625
+# torch==2.10.0
 playwright==1.60.0
 pywebview==6.1
 PyAudio==0.2.14

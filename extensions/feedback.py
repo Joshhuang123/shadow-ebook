@@ -6,6 +6,7 @@ Does NOT own: tutor UI (web/js/tutor.js), TTS for original audio (tts.py), sente
 import difflib
 import logging
 import os
+import re
 import tempfile
 import threading
 import time
@@ -20,36 +21,126 @@ from extensions.parent_data import get_weak_words
 
 logger = logging.getLogger(__name__)
 
+# 单词:只留字母和撇号 —— 和 phonemes._WORD_RE 保持一致
+_WORD_RE = re.compile(r"[a-z']+")
 
-# === Whisper 模型懒加载 (单例,首次请求才装,避免 import 时拖慢启动) ===
-_WHISPER_MODEL = None
-_WHISPER_MODEL_NAME = os.environ.get("WHISPER_MODEL", "base")  # base/small/medium/large
+
+# === ASR 模型懒加载 (单例,首次请求才装,避免 import 时拖慢启动) ===
+_ASR = None
+# 模型大小:tiny / base / small / medium / large
+# 体积差得很远(tiny ~75MB,base ~145MB,small ~480MB,large ~1.5GB),
+# 而孩子的句子很短,base 够用;要更小就改 tiny。
+_WHISPER_MODEL_NAME = os.environ.get("WHISPER_MODEL", "base")
+# 用哪个后端:
+#   faster(默认)—— CTranslate2,不需要 torch,省 2~3GB
+#   openai       —— 官方包,要 torch
+#   auto         —— 有 faster 就用 faster,否则退化到 openai
+_WHISPER_BACKEND = os.environ.get("WHISPER_BACKEND", "auto")
+# CPU 上用 int8 量化:体积和速度都更好,识别精度对短句影响很小
+_WHISPER_COMPUTE = os.environ.get("WHISPER_COMPUTE", "int8")
+# beam=1(贪心)最快;句子短,贪心足够
+_WHISPER_BEAM = int(os.environ.get("WHISPER_BEAM", "1"))
+# 模型缓存目录(想放外置盘就改这个)。
+# 默认 ~/.cache/shadow-whisper —— 里面直接放 <模型名>/ 的目录结构。
+_WHISPER_CACHE = (os.environ.get("WHISPER_CACHE_DIR")
+                  or os.path.expanduser("~/.cache/shadow-whisper"))
 _WHISPER_LOCK = threading.Lock()  # 防 Flask threaded 下并发首调加载两遍
 
 
+class _FasterWhisperAdapter:
+    """把 faster-whisper 的 API 包装成和 openai-whisper 一样的形状。
+
+    为什么要这层:两个包都能用,但 API 不一样(一个是 dict,
+    一个是 segment 生成器)。统一成 `transcribe(path, language=...)`
+    返回 `{'text': ...}`,调用方就不用知道底下装的是哪个。
+    """
+
+    def __init__(self, name: str):
+        from faster_whisper import WhisperModel
+        kwargs = {'device': 'cpu', 'compute_type': _WHISPER_COMPUTE}
+        # 已经有本地模型就直接用目录,别再去连 HF
+        # (国内连 HF 只有 30KB/s,模型 138MB 能下一小时)
+        local = os.path.join(_WHISPER_CACHE, name) if _WHISPER_CACHE else ''
+        if local and os.path.isdir(local) and os.path.exists(
+                os.path.join(local, 'model.bin')):
+            logger.info('使用本地 ASR 模型: %s', local)
+            self.model = WhisperModel(local, **kwargs)
+            return
+        if _WHISPER_CACHE:
+            kwargs['download_root'] = _WHISPER_CACHE
+        self.model = WhisperModel(name, **kwargs)
+
+    def transcribe(self, path, language='en', fp16=False):
+        segments, _info = self.model.transcribe(
+            path,
+            language=language,
+            beam_size=_WHISPER_BEAM,
+            # 孩子录音前后常有静音和杂音,先切掉
+            vad_filter=True,
+            vad_parameters={'min_silence_duration_ms': 500},
+        )
+        # faster-whisper 的 segment.text 自带前导空格,直接用 ' '.join
+        # 会拼出双空格,词级比对就会多出「空词」。这里压平。
+        raw = ''.join(s.text for s in segments)
+        text = ' '.join(raw.split())
+        return {'text': text}
+
+
+def _load_asr():
+    """按后端偏好加载 ASR 模型。失败抛 RuntimeError 让上层降级。
+
+    任何「装好了但用不了」的情况(缓存损坏、av 版本不兼容、模型文件不全)
+    都必须变成 RuntimeError —— 上层只认这个,会给孩子回一个「语音识别
+    暂时不可用」,而不是 500 白屏。
+    """
+    backend = _WHISPER_BACKEND
+    if backend in ('auto', 'faster'):
+        try:
+            return _FasterWhisperAdapter(_WHISPER_MODEL_NAME)
+        except ImportError:
+            if backend == 'faster':
+                raise RuntimeError(
+                    'faster-whisper 未安装。运行: pip install faster-whisper'
+                )
+            logger.info('faster-whisper 没装,退化到 openai-whisper')
+        except RuntimeError:
+            raise
+        except Exception as e:
+            raise RuntimeError(
+                f'语音识别模型加载失败: {type(e).__name__}: {e}'
+            ) from e
+    try:
+        import whisper  # type: ignore
+    except ImportError:
+        raise RuntimeError(
+            'ASR 没装。运行: pip install faster-whisper(推荐,省空间)'
+            ' 或 pip install openai-whisper'
+        )
+    try:
+        return whisper.load_model(_WHISPER_MODEL_NAME)
+    except Exception as e:
+        raise RuntimeError(
+            f'语音识别模型加载失败: {type(e).__name__}: {e}'
+        ) from e
+
+
 def _get_whisper():
-    """懒加载 whisper 模型。失败抛 RuntimeError 让上层降级。
+    """懒加载 ASR 模型。
 
     D2: 加锁防止并发首调 race。Lock 包整个 if+load,确保只 load 一次。
     后续命中缓存走 fast-path 不加锁 (Lock 自身开销几微秒,可忽略)。
     """
-    global _WHISPER_MODEL
-    if _WHISPER_MODEL is not None:
-        return _WHISPER_MODEL
+    global _ASR
+    if _ASR is not None:
+        return _ASR
     with _WHISPER_LOCK:
-        if _WHISPER_MODEL is not None:  # double-check:别的线程可能已经装好
-            return _WHISPER_MODEL
-        try:
-            import whisper  # type: ignore
-        except ImportError:
-            raise RuntimeError(
-                "whisper 未安装。运行: pip install openai-whisper (或 pip install -r requirements-dev.txt)"
-            )
+        if _ASR is not None:  # double-check:别的线程可能已经装好
+            return _ASR
         t0 = time.monotonic()
-        logger.info(f"加载 whisper 模型 {_WHISPER_MODEL_NAME} (首次较慢)...")
-        _WHISPER_MODEL = whisper.load_model(_WHISPER_MODEL_NAME)
-        logger.info(f"whisper 模型加载完成 took={int((time.monotonic() - t0) * 1000)}ms")
-    return _WHISPER_MODEL
+        logger.info(f"加载 ASR 模型 {_WHISPER_MODEL_NAME} (后端 {_WHISPER_BACKEND}, 首次较慢)...")
+        _ASR = _load_asr()
+        logger.info(f"ASR 模型加载完成 took={int((time.monotonic() - t0) * 1000)}ms")
+    return _ASR
 
 
 # === LLM 输出 schema ===
@@ -147,9 +238,14 @@ def _diff_words(sentence: str, transcript: str) -> list:
     """用 difflib 找 sentence 和 transcript 的词级差异。
 
     返回 [(got, expected), ...] 最多 5 条。
+
+    分词要**去掉标点**:转写里 "earthy." 和原句 "early" 比的是词,
+    不是 "earthy." 和 "early" —— 否则界面上会显示「把 earthy. 读成 early」,
+    那个句号是转写带出来的,不是孩子读错的一部分。
+    和 phonemes.word_alignment 用同一套分词,两边的词才对得上。
     """
-    sent_words = sentence.lower().split()
-    trans_words = transcript.lower().split()
+    sent_words = _WORD_RE.findall((sentence or '').lower())
+    trans_words = _WORD_RE.findall((transcript or '').lower())
     matcher = difflib.SequenceMatcher(None, sent_words, trans_words)
     pairs = []
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
