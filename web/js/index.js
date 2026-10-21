@@ -1002,18 +1002,19 @@
         function jumpTo(index) {
             currentSentenceIndex = index;
             updateDisplay();
-            translateSentence(sentences[index]);
+            translateSentence(sentences[index], { quiet: true });
             scrollToCurrentSentence();
             playCurrentSentence();
         }
 
-        // ========== 整屏翻页(底栏按钮) ==========
-        // 这两个只给底栏的「上一页 / 下一页」按钮用,方向键不走这里 ——
-        // 方向键是一句一句挪的(见 keydown 那段)。两者分工:
-        //   方向键 → 上下句,走到本页最后一句时页面自然翻过去
-        //   按钮   → 一次跳一整屏,快速略过
-        // 加这两个按钮的起因:一屏只放几句,而 prevSentence/nextSentence 一次只 +1,
-        // 连按好几次才看到换页,而且界面上没有任何翻页入口,完全无从发现。
+        // ========== 整屏翻页(侧栏的「上一页 / 下一页」) ==========
+        // 底栏那两个键是**逐句**的(上一句/下一句),页级挪到了侧栏目录卡里。
+        // 方向键也是一句一句挪的(见 keydown 那段)。三者分工:
+        //   底栏 / ← → → 上一句、下一句(精确控制读哪一句,走到底自动翻页)
+        //   侧栏        → 上一页、下一页(一次跳一整屏,快速略过)
+        //   PageUp/PageDown → 同侧栏
+        // 页级之所以降级:一屏只放几句(3~10 句),而逐句一次只 +1,
+        // 家长要的是「把��子停在第 76 句上跟读」,页级帮不上这个忙。
         function prevPage() {
             if (!sentences || !sentences.length) return;
             currentSentenceIndex = Math.max(0, currentSentenceIndex - sentencesPerPage);
@@ -1040,6 +1041,18 @@
                 .forEach(b => b.disabled = page <= 0);
             document.querySelectorAll('[data-action="nextPage"]')
                 .forEach(b => b.disabled = page >= lastPage);
+            const pos = document.getElementById('page-pos');
+            if (pos) pos.textContent = `${page + 1} / ${lastPage + 1} 页`;
+        }
+
+        // 逐句按钮的禁用态:第一句不能再往前,最后一句不能再往后。
+        // 不用置灰也没关系(点了不动),但置灰能告诉家长「到头了」。
+        function updateSentenceButtons() {
+            const total = sentences ? sentences.length : 0;
+            document.querySelectorAll('[data-action="prevSentence"]')
+                .forEach(b => b.disabled = currentSentenceIndex <= 0);
+            document.querySelectorAll('[data-action="nextSentence"]')
+                .forEach(b => b.disabled = currentSentenceIndex >= total - 1);
         }
 
         // 导航
@@ -1047,7 +1060,7 @@
             if (currentSentenceIndex > 0) {
                 currentSentenceIndex--;
                 updateDisplay();
-                translateSentence(sentences[currentSentenceIndex]);
+                translateSentence(sentences[currentSentenceIndex], { quiet: true });
                 scrollToCurrentSentence();
             }
         }
@@ -1056,41 +1069,65 @@
             if (currentSentenceIndex < sentences.length - 1) {
                 currentSentenceIndex++;
                 updateDisplay();
-                translateSentence(sentences[currentSentenceIndex]);
+                translateSentence(sentences[currentSentenceIndex], { quiet: true });
                 scrollToCurrentSentence();
             }
         }
 
         // 翻译句子
-        async function translateSentence(sentence) {
+        //
+        // 逐句移动(上一句/下一句)会连着触发好几次翻译:每一下都往
+        // mymemory 发一次请求,每一下还弹一个 5 秒的 toast —— 连点几下
+        // 就是一串提示盖在正文上,正好挡住要读的那一句。
+        // 所以:
+        //   1) 防抖:停下来 500ms 才真去翻,中间的请求直接丢掉;
+        //   2) quiet(逐句移动、跳章用):不弹 toast —— 翻译直接写进
+        //      侧栏那张卡,宽屏侧栏常驻,本来就看得见。
+        //      点句子主动要看翻译时(不 quiet)才弹,那是用户明确要的。
+        let _translateTimer = null;
+        let _translateSeq = 0;
+
+        function translateSentence(sentence, opts) {
+            const quiet = !!(opts && opts.quiet);
             const el = document.getElementById('translation-content');
             if (el) el.innerHTML = '<div class="translation-loading">翻译中...</div>';
 
-            // R10: sidebar 折叠时用户看不到 translation-content, 同时弹 toast
-            showToast('翻译中...', 1500);
+            const seq = ++_translateSeq;
+            if (_translateTimer) clearTimeout(_translateTimer);
+            _translateTimer = setTimeout(() => {
+                _translateTimer = null;
+                _doTranslate(sentence, el, seq, quiet);
+            }, 500);
+        }
 
+        async function _doTranslate(sentence, el, seq, quiet) {
             try {
                 const res = await fetch(
                     `https://api.mymemory.translated.net/get?q=${encodeURIComponent(sentence)}&langpair=en|zh-CN`
                 );
                 const data = await res.json();
+                // 已经被更晚的一次翻译顶掉了,这次的结果丢弃
+                if (seq !== _translateSeq) return;
 
                 if (data.responseStatus === 200 && data.responseData?.translatedText) {
                     const text = data.responseData.translatedText;
                     if (el) el.innerHTML = `<div class="sentence-translation-text">${text}</div>`;
-                    showToast(text, 5000);  // 弹 5s, 折叠 sidebar 也能看到
+                    // 宽屏侧栏常驻,译文就写在那儿,不用再弹一遍;
+                    // 窄屏侧栏是收起的,弹一下让家长一眼看到。
+                    if (!quiet || !isWideSidebar()) showToast(text, 5000);
                 } else {
                     if (el) el.innerHTML = '<div class="translation-content">翻译失败</div>';
-                    showToast('翻译失败: API 未返回结果', 3000);
+                    if (!quiet) showToast('翻译失败: API 未返回结果', 3000);
                 }
             } catch (err) {
+                if (seq !== _translateSeq) return;
                 if (el) el.innerHTML = '<div class="translation-content">翻译失败</div>';
-                showToast('翻译失败: 网络错误', 3000);
+                if (!quiet) showToast('翻译失败: 网络错误', 3000);
             }
         }
 
         function clearTranslation() {
-            document.getElementById('translation-content').innerHTML = '点击上方句子，查看翻译';
+            document.getElementById('translation-content').innerHTML = '翻到哪句，这里就显示哪句的译文';
         }
 
         // 查词
@@ -2263,6 +2300,7 @@
                 chEl.textContent = ch ? (ch.name || ch.title || '') : '';
             }
             updatePageButtons();
+            updateSentenceButtons();
             scheduleProgressSave();
         }
 
@@ -2344,6 +2382,14 @@
                 }
                 else if (e.key === 'ArrowRight') {
                     nextSentence();
+                }
+                else if (e.key === 'PageUp') {
+                    e.preventDefault();
+                    prevPage();
+                }
+                else if (e.key === 'PageDown') {
+                    e.preventDefault();
+                    nextPage();
                 }
                 else if (e.key === ' ' || e.key === 'Enter') {
                     e.preventDefault();

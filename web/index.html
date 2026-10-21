@@ -190,9 +190,14 @@
 
             <footer class="reader-foot">
                 <div class="reader-foot-left">
-                    <div class="page-nav">
-                        <button class="page-btn" data-action="prevPage" title="上一页 (←)"><span class="ico ico-arrow-left" aria-hidden="true"></span><span class="page-btn-text">上一页</span></button>
-                        <button class="page-btn" data-action="nextPage" title="下一页 (→)"><span class="page-btn-text">下一页</span><span class="ico ico-arrow-right" aria-hidden="true"></span></button>
+                    <!-- 上一句 / 下一句:这是**精确控制读哪一句**的方式。
+                         家长要把孩子停在某一句上跟读,靠的就是这两个键;
+                         走到底会自动翻到下一页(页是按句算出来的)。
+                         页级翻页(上一页/下一页)在侧栏的目录卡里 ——
+                         它是「快速略过一整屏」的动作,不该占底栏的主位。 -->
+                    <div class="sentence-nav">
+                        <button class="page-btn" data-action="prevSentence" title="上一句 (←)" aria-label="上一句"><span class="ico ico-arrow-left" aria-hidden="true"></span><span class="page-btn-text">上一句</span></button>
+                        <button class="page-btn" data-action="nextSentence" title="下一句 (→)" aria-label="下一句"><span class="page-btn-text">下一句</span><span class="ico ico-arrow-right" aria-hidden="true"></span></button>
                     </div>
                     <div class="font-stepper">
                         <button class="font-step" data-action="changeFontSize" data-arg="-2" title="缩小字号" aria-label="缩小字号">A<span class="font-step-sign">−</span></button>
@@ -243,6 +248,15 @@
                     <!-- 目录 -->
                     <div class="sidebar-card">
                         <div class="sidebar-title"><span class="ico ico-layers" aria-hidden="true"></span>目录</div>
+
+                        <!-- 页级翻页:底栏那两个键是「上一句/下一句」了,
+                             页级挪到这里 —— 快速略过一整屏用,不用抢主位。 -->
+                        <div class="page-jump">
+                            <button class="page-jump-btn" data-action="prevPage" title="上一页 (PageUp)"><span class="ico ico-arrow-left" aria-hidden="true"></span>上一页</button>
+                            <span class="page-jump-pos" id="page-pos">1 / 1 页</span>
+                            <button class="page-jump-btn" data-action="nextPage" title="下一页 (PageDown)">下一页<span class="ico ico-arrow-right" aria-hidden="true"></span></button>
+                        </div>
+
                         <div class="toc-list" id="toc-list"></div>
                     </div>
 
@@ -288,7 +302,7 @@
                     <div class="sidebar-card">
                         <div class="sidebar-title"><span class="ico ico-quote" aria-hidden="true"></span>句子翻译</div>
                         <div class="translation-content" id="translation-content">
-                            点击上方句子，查看翻译
+                            翻到哪句，这里就显示哪句的译文
                         </div>
                     </div>
 

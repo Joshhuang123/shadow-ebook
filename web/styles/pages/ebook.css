@@ -1686,7 +1686,7 @@
         }
         .reader-foot-right { display: flex; justify-content: flex-end; flex: none; }
 
-        .page-nav { display: flex; align-items: center; gap: var(--space-2); }
+        .sentence-nav { display: flex; align-items: center; gap: var(--space-2); }
         .page-btn {
             display: inline-flex;
             align-items: center;
@@ -2051,9 +2051,12 @@
         .chapter-jump .page-btn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
         .chapter-jump .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-        /* --- 底栏翻屏(2026-09-30):一屏 3 句,一次 +1 翻不动,必须有可见按钮 --- */
-        .page-nav { display: flex; gap: var(--space-2); }
-        .page-nav .page-btn {
+        /* --- 底栏逐句(2026-10-21):上一句 / 下一句 ---
+           原来这里是「上一页 / 下一页」,但家长要的是「把��子停在
+           第 76 句上跟读」—— 精确到句,不是精确到屏。
+           页级翻页降级到侧栏目录卡里,底栏这两个键是主位。 */
+        .sentence-nav { display: flex; gap: var(--space-2); }
+        .sentence-nav .page-btn {
             min-height: 48px;
             padding: 0 var(--space-3);
             background: none;
@@ -2065,11 +2068,52 @@
             white-space: nowrap;
             cursor: pointer;
         }
-        .page-nav .page-btn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
-        .page-nav .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        /* 窄屏先牺牲字号按钮,保证翻页按钮始终够大可点 */
+        .sentence-nav .page-btn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
+        .sentence-nav .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        /* 窄屏先牺牲字号按钮,保证逐句按钮始终够大可点 */
         @media (max-width: 480px) {
-            .page-nav .page-btn { padding: 0 var(--space-2); font-size: var(--text-xs); }
+            .sentence-nav .page-btn { padding: 0 var(--space-2); font-size: var(--text-xs); }
+        }
+
+        /* --- 页级翻页:侧栏目录卡里 ---
+           「快速略过一整屏」的动作,不该跟「上一句/下一句」抢底栏主位。
+           侧栏宽屏常驻,这一行一直看得见。 */
+        .page-jump {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            margin: var(--space-2) 0 var(--space-3);
+        }
+        .page-jump-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            min-height: 48px;          /* 48px 触控下限 */
+            padding: 0 var(--space-3);
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-family: var(--font-ui);
+            font-size: var(--text-xs);
+            cursor: pointer;
+            transition: background-color var(--duration-fast) var(--ease-out),
+                        color var(--duration-fast) var(--ease-out),
+                        border-color var(--duration-fast) var(--ease-out);
+        }
+        .page-jump-btn:hover:not(:disabled) {
+            color: var(--color-primary);
+            border-color: var(--color-primary);
+            background: var(--tint-primary);
+        }
+        .page-jump-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .page-jump-btn .ico { width: 14px; height: 14px; }
+        .page-jump-pos {
+            flex: 1;
+            text-align: center;
+            font-size: var(--text-xs);
+            color: var(--text-secondary);
+            font-variant-numeric: tabular-nums;  /* 页码跳动时不抖 */
         }
 
         .record-wrap { display: flex; justify-content: center; }
@@ -2102,6 +2146,11 @@
            朗读键和字号档依然完整 —— 这两个不能省。 */
         @media (max-width: 900px) {
             .page-btn { padding: 0 12px; }
+        }
+        /* 「上一句/下一句」的字样是**主操作**,不能只留个箭头 ——
+           箭头分不清是翻句还是翻屏(页级翻页已经挪到侧栏了)。
+           一直留到手机竖屏(≤560px)才收,那时底栏本来就改成了两行网格。 */
+        @media (max-width: 560px) {
             .page-btn-text { display: none; }
         }
         @media (max-width: 760px) {
