@@ -551,6 +551,23 @@
         }
 
         // R19: 显示 AI 反馈 (whisper ASR + LLM 生成)
+        // 音素提示条:「这个词里的 /f/ 还不稳」——
+        // 比「这个词读错了」可练得多:词有 18254 个,音只有几十个。
+        // 粗粒度归因(说不出是哪个音)就不乱指,只说这个词还不稳。
+        function phonemeTipHtml(t) {
+            const phs = t.phonemes || [];
+            if (!phs.length) return '';
+            const names = phs.map(p => '/' + p.label + '/').join(' ');
+            const hint = phs[0] && phs[0].hint ? '（' + phs[0].hint + '）' : '';
+            const body = t.precise
+                ? `「${escapeHtml(t.word)}」里的 ${names} 还不稳${escapeHtml(hint)}`
+                : `「${escapeHtml(t.word)}」这个词的音还不稳 —— 慢慢读几遍`;
+            return `<div class="feedback-item feedback-item--phoneme">
+                <span class="feedback-icon feedback-bad"><span class="ico ico-mic" aria-hidden="true"></span></span>
+                <span>${body}</span>
+            </div>`;
+        }
+
         function renderAIFeedback(data) {
             const feedback = document.getElementById('feedback');
             const content = document.getElementById('feedback-content');
@@ -575,21 +592,9 @@
                 </div>`;
             });
 
-            // 音素提示:「这个词里的 /f/ 还不稳」——
-            // 比「这个词读错了」可练得多:词有 18254 个,音只有几十个。
-            // 粗粒度归因(说不出是哪个音)就不乱指,只说这个词还不稳。
+            // 音素提示
             (data.phoneme_tips || []).forEach(t => {
-                const phs = t.phonemes || [];
-                if (!phs.length) return;
-                const names = phs.map(p => '/' + p.label + '/').join(' ');
-                const hint = phs[0] && phs[0].hint ? '（' + phs[0].hint + '）' : '';
-                const body = t.precise
-                    ? `「${escapeHtml(t.word)}」里的 ${names} 还不稳${escapeHtml(hint)}`
-                    : `「${escapeHtml(t.word)}」这个词的音还不稳 —— 慢慢读几遍`;
-                html += `<div class="feedback-item feedback-item--phoneme">
-                    <span class="feedback-icon feedback-bad"><span class="ico ico-mic" aria-hidden="true"></span></span>
-                    <span>${body}</span>
-                </div>`;
+                html += phonemeTipHtml(t);
             });
 
             // 建议
@@ -631,6 +636,90 @@
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#39;');
+        }
+
+        // 没有 AI 文案时,用**算出来的事实**说话。
+        //
+        // 服务端在 LLM 没配的时候照样会返回转写、词级差异和音素归因
+        // (ai_unavailable=true)。这些是**算出来的**,不是猜的 —— 直接显示。
+        //
+        // 早先这里是直接掉到 showFeedback() 的随机鼓励:
+        // 孩子把 fish 读成 wish,界面却说「很棒!继续保持!🎉」。
+        // 那不是安慰,是在骗人 —— 而且把唯一能练的信息(哪个音不稳)丢掉了。
+        function renderStaticFeedback(data) {
+            const feedback = document.getElementById('feedback');
+            const content = document.getElementById('feedback-content');
+
+            const errors = data.errors || [];
+            const sim = typeof data.similarity === 'number' ? data.similarity : 0;
+            const simPct = Math.round(sim * 100);
+
+            let html = '';
+
+            // 总体:先说实话,再给台阶
+            if (!errors.length && sim >= 0.85) {
+                html += `<div class="feedback-item">
+                    <span class="feedback-icon feedback-good"><span class="ico ico-target" aria-hidden="true"></span></span>
+                    <span><strong>读得很准</strong> · 相似度 ${simPct}%</span>
+                </div>`;
+            } else if (errors.length) {
+                html += `<div class="feedback-item">
+                    <span class="feedback-icon feedback-bad"><span class="ico ico-target" aria-hidden="true"></span></span>
+                    <span><strong>有 ${errors.length} 个地方要再练练</strong> · 相似度 ${simPct}%</span>
+                </div>`;
+            } else {
+                html += `<div class="feedback-item">
+                    <span class="feedback-icon feedback-good"><span class="ico ico-target" aria-hidden="true"></span></span>
+                    <span><strong>录下来了</strong> · 相似度 ${simPct}%</span>
+                </div>`;
+            }
+
+            // 词级差异:读错的、漏读的、多读的都摆出来
+            errors.forEach(err => {
+                let body;
+                if (err.expected && err.got) {
+                    body = `把 <code>${escapeHtml(err.got)}</code> 读成 <code>${escapeHtml(err.expected)}</code>`;
+                } else if (err.expected) {
+                    body = `<code>${escapeHtml(err.expected)}</code> 这次没读出来`;
+                } else if (err.got) {
+                    body = `多读了一个 <code>${escapeHtml(err.got)}</code>`;
+                } else {
+                    return;
+                }
+                html += `<div class="feedback-item">
+                    <span class="feedback-icon feedback-bad"><span class="ico ico-bulb" aria-hidden="true"></span></span>
+                    <span>${body}${err.tip ? ' — ' + escapeHtml(err.tip) : ''}</span>
+                </div>`;
+            });
+
+            // 音素提示(最可练的部分)
+            (data.phoneme_tips || []).forEach(t => {
+                html += phonemeTipHtml(t);
+            });
+
+            // 建议 + 鼓励
+            html += `<div class="feedback-item">
+                <span class="feedback-icon feedback-good"><span class="ico ico-pencil" aria-hidden="true"></span></span>
+                <span>照着原音再读一遍,重点练上面提到的那个音</span>
+            </div>`;
+            html += `<div class="feedback-item">
+                <span class="feedback-icon feedback-good"><span class="ico ico-spark" aria-hidden="true"></span></span>
+                <span>${errors.length ? '差一点点,再读几遍就好啦!💪' : '继续保持!🌟'}</span>
+            </div>`;
+
+            // 转写文本(给家长看)
+            if (data.transcript) {
+                html += `<div class="feedback-item feedback-item--muted">
+                    <span class="feedback-icon"><span class="ico ico-pencil" aria-hidden="true"></span></span>
+                    <span>识别: "${escapeHtml(data.transcript)}"</span>
+                </div>`;
+            }
+
+            content.innerHTML = html;
+            feedback.classList.remove('hidden');
+
+            document.getElementById('record-status').textContent = '✅ 录音完成';
+            document.getElementById('record-status').className = 'record-status record-done';
         }
 
         // R19: 调用 /api/recording/feedback 拿 AI 反馈
@@ -691,11 +780,18 @@
             const sentenceText = typeof sent === 'string' ? sent : sent.text;
 
             fetchAIFeedback(blob, sentenceText).then(data => {
-                if (data && data.feedback) {
+                if (!data) {
+                    // 接口都没通(网络/服务端挂了)→ 只能给通用建议,
+                    // 但**不能**说「很棒」—— 我们根本不知道他读得怎么样。
+                    showFeedback({ unknown: true });
+                    return;
+                }
+                if (data.feedback) {
                     renderAIFeedback(data);
                 } else {
-                    // AI 不可用 → 降级到静态反馈
-                    showFeedback();
+                    // LLM 没配/调用失败,但转写、差异、音素归因都拿到了 ——
+                    // 用事实说话,别用随机夸奖糊弄。
+                    renderStaticFeedback(data);
                 }
             });
 
@@ -796,7 +892,10 @@
         }
 
         // 显示反馈
-        function showFeedback() {
+        // unknown=true:这次分析没跑成,我们不知道他读得怎么样 ——
+        // 所以不能说「很棒」(那是骗人),只给练习建议。
+        function showFeedback(opts) {
+            const unknown = !!(opts && opts.unknown);
             const feedback = document.getElementById('feedback');
             const content = document.getElementById('feedback-content');
 
@@ -807,7 +906,10 @@
             const wordCount = sentence.split(' ').length;
 
             // 多样化的反馈内容
-            const encouragements = [
+            const encouragements = unknown ? [
+                "录音收到了,这次没分析出结果,再读一次试试?",
+                "听到了,但没分析出来 —— 再来一遍?"
+            ] : [
                 "很棒！继续保持！🎉",
                 "发音不错，再接再厉！💪",
                 "朗读流畅，发音清晰！✨",

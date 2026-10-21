@@ -137,6 +137,22 @@ def test_word_alignment_marks_missed_word():
 
 # === 记录与状态 ===
 
+def test_missed_word_does_not_blame_phonemes():
+    """漏读不算到音素头上。
+
+    whisper 自己就会改写句子(实测把「The little prince saw a fish.」
+    转成「little Prince saw a fish.」,开头那个 The 被归一化掉),
+    当成「孩子漏读」就会冤枉 /DH/ /AH/。
+    孩子没出声也可能是声音小或忘词,跟发音准不准无关。
+    """
+    P.record_alignment(P.word_alignment("I want three ships.", "I want ships."))
+    rows = {r['phoneme_id']: r for r in
+            get_db().execute('SELECT * FROM kg_phoneme_practice')}
+    # three 的音素不该被记成 miss
+    for pid, r in rows.items():
+        assert r['misses'] == 0, f'{pid} 被误记成读错'
+
+
 def test_record_hits_and_misses():
     P.record_alignment(P.word_alignment(
         "The little prince saw a fish.", "The litter prince saw a wish."))
@@ -223,7 +239,7 @@ def test_decay_makes_long_unpracticed_phoneme_unstable_again():
     衰减影响的是**读错过、但很久没再练**的那个音的状态:
     它从「基本会了」退回「还得练」,并排到更前面。
     """
-    # 先错一次,再连��读对 → 状态升到 familiar
+    # 先错一次,再连读对 → 状态升到 familiar
     P.record_alignment(P.word_alignment("a fish", "a wish"))
     for _ in range(3):
         P.record_alignment(P.word_alignment("a fish", "a fish"))
@@ -266,3 +282,72 @@ def test_phoneme_tip_not_precise_when_unknown():
     assert tips
     assert tips[0]['precise'] is False
     assert tips[0]['phonemes']
+
+
+# === 音素提示语 ===
+# 只说「/f/ 还不稳」孩子没法照做,得跟一句怎么发。
+
+def test_phoneme_info_falls_back_to_code_table():
+    """图谱里没有这个音素节点时,也要给得出提示语。"""
+    db = get_db()
+    db.execute("DELETE FROM kg_node WHERE id = 'phoneme:TH'")
+    db.commit()
+    info = P.phoneme_info('TH')
+    assert info['hint'], '图谱缺节点也不能让提示语空掉'
+    assert '舌尖' in info['hint']
+    assert info['vowel'] is False
+
+
+def test_phoneme_info_prefers_graph_attrs():
+    """图谱里改过提示语,以图谱为准(家长可以在图谱上改)。"""
+    db = get_db()
+    db.execute(
+        "UPDATE kg_node SET attrs = ? WHERE id = 'phoneme:F'",
+        ('{"vowel": false, "hint": "我自己写的说明"}',))
+    db.commit()
+    assert P.phoneme_info('F')['hint'] == '我自己写的说明'
+
+
+def test_all_consonants_have_actionable_hints():
+    """每个辅音都得有一句能照做的说明 —— 这是「可练」的前提。"""
+    missing = [p for p in P.CONSONANT_HINTS if not P.CONSONANT_HINTS[p].strip()]
+    assert not missing, f'这些辅音没有提示语: {missing}'
+    assert len(P.CONSONANT_HINTS) == 24, \
+        'ARPAbet 辅音是 24 个(元音 15,共 39),少一个就有一个音说不出怎么发'
+    assert len(P.VOWEL_HINTS) == 15, 'ARPAbet 元音是 15 个'
+    for ph in ('F', 'TH', 'SH', 'R', 'W', 'L', 'V'):
+        assert P.CONSONANT_HINTS[ph].strip(), f'{ph} 没有提示语'
+
+
+def test_oy_is_a_vowel():
+    """OY 是双元音,以前被误标成辅音。"""
+    assert 'OY' in P.VOWEL_HINTS
+    assert P.phoneme_info('OY')['vowel'] is True
+
+
+def test_seed_phoneme_hints_fills_empty_and_is_idempotent():
+    """回填把空提示补上;再跑一次不改任何东西。"""
+    db = get_db()
+    db.execute("UPDATE kg_node SET attrs = '{\"vowel\": false, \"hint\": \"\"}' "
+               "WHERE id = 'phoneme:F'")
+    db.commit()
+
+    n1 = P.seed_phoneme_hints()
+    assert n1 >= 1
+    assert P.phoneme_info('F')['hint'] == P.CONSONANT_HINTS['F']
+
+    n2 = P.seed_phoneme_hints()
+    assert n2 == 0, '回填必须幂等,重复点不能一直改'
+    assert P.phoneme_info('F')['hint'] == P.CONSONANT_HINTS['F']
+
+
+def test_seed_phoneme_hints_does_not_touch_practice_records():
+    """回填只改图谱节点,不能顺手清了孩子的练习记录。"""
+    P.record_alignment(P.word_alignment("a fish", "a wish"))
+    before = get_db().execute(
+        "SELECT COUNT(*) FROM kg_phoneme_practice").fetchone()[0]
+    assert before > 0
+    P.seed_phoneme_hints()
+    after = get_db().execute(
+        "SELECT COUNT(*) FROM kg_phoneme_practice").fetchone()[0]
+    assert after == before

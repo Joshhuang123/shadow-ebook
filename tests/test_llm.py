@@ -228,3 +228,59 @@ def test_chat_json_default_uses_parse_and_validate():
     with patch("urllib.request.urlopen", return_value=_mock_urlopen_response(payload)):
         obj = client.chat_json([{"role": "user", "content": "x"}], schema)
     assert obj["q"] == "x"
+
+# === provider 工厂:按环境里有没有 key 自动选 ===
+def test_provider_autodetect_prefers_deepseek(monkeypatch):
+    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "dk")
+    monkeypatch.setenv("MINIMAX_API_KEY", "mk")
+    monkeypatch.setenv("MOONSHOT_API_KEY", "sk")
+    client = llm.get_llm_client()
+    assert isinstance(client, llm.DeepSeekClient)
+
+
+def test_provider_autodetect_falls_back_to_moonshot(monkeypatch):
+    """机器上只配了 MOONSHOT_API_KEY 时,不能装作没看见 —— 否则跟读点评
+    一直走「AI 不可用」,用户还以为是自己没配好。"""
+    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.delenv("MINIMAX_API_KEY", raising=False)
+    monkeypatch.setenv("MOONSHOT_API_KEY", "sk")
+    client = llm.get_llm_client()
+    assert isinstance(client, llm.MoonshotClient)
+    assert client.base_url.startswith("https://api.moonshot.cn")
+
+
+def test_provider_autodetect_falls_back_to_minimax(monkeypatch):
+    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.setenv("MINIMAX_API_KEY", "mk")
+    client = llm.get_llm_client()
+    assert isinstance(client, llm.MiniMaxClient)
+
+
+def test_explicit_provider_wins(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "moonshot")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "dk")
+    monkeypatch.setenv("MOONSHOT_API_KEY", "sk")
+    assert isinstance(llm.get_llm_client(), llm.MoonshotClient)
+
+
+def test_unknown_provider_raises():
+    import os
+    old = os.environ.get("LLM_PROVIDER")
+    os.environ["LLM_PROVIDER"] = "nope"
+    try:
+        with pytest.raises(RuntimeError, match="未知 LLM_PROVIDER"):
+            llm.get_llm_client()
+    finally:
+        if old is None:
+            os.environ.pop("LLM_PROVIDER", None)
+        else:
+            os.environ["LLM_PROVIDER"] = old
+
+
+def test_moonshot_client_uses_openai_compat_endpoint():
+    c = llm.MoonshotClient(api_key="sk")
+    assert c.base_url == "https://api.moonshot.cn/v1"
+    assert c.model == llm.MoonshotClient.DEFAULT_MODEL

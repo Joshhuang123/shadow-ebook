@@ -111,6 +111,41 @@ python3 app.py
 
 > **iOS Safari 提示**：跟读功能需要麦克风权限，仅在 HTTPS 站点下浏览器才会授权。本机请用 `./start_https.sh`（首次会生成自签名证书）。详细 HTTPS 配置见 `certs/README.md`（如果有的话）或直接用 mkcert：`./scripts/gen_https_cert.sh`。
 
+#### 可选：装跟读识音（ASR）
+
+不装也能用 —— 跟读页会降级成「只转写、不做 AI 点评」。装了才能听出孩子读成了什么：
+
+```bash
+# 语音识别用 faster-whisper（不装 torch，省 2~3GB）
+pip install -r requirements-dev.txt
+```
+
+国内下载走镜像会快很多（直连只有 93KB/s）：
+
+```bash
+pip install -i https://mirrors.aliyun.com/pypi/simple/ faster-whisper
+```
+
+模型 141MB，首次跟读时自动下载到 `~/.cache/shadow-whisper/`。
+体积、加速方法和踩过的坑都写在 [`docs/ASR.md`](docs/ASR.md)。
+
+#### 可选：配 LLM（跟读点评文案）
+
+转写和「哪个音不稳」是**本地算**的，不配 LLM 也能用。
+LLM 只负责把它写成孩子看得懂的话（鼓励 + 针对性建议）。
+
+| 环境变量 | 说明 |
+|---|---|
+| `LLM_PROVIDER` | `deepseek` / `minimax` / `moonshot`。**不设会自动挑**：看环境里配了谁的 key |
+| `LLM_MODEL` | 覆盖默认模型名 |
+| `DEEPSEEK_API_KEY` / `MINIMAX_API_KEY` / `MOONSHOT_API_KEY` | 对应厂商的 key |
+
+没配或调用失败时，跟读反馈**照常显示**：转写、读错的词、哪个音不稳、
+怎么发这个音 —— 全是本地算的。只有「鼓励文案」会退回到固定模板。
+
+> 注意：配了 key 就意味着孩子的录音转写文本会发给你选的厂商。
+> 不配也能用，不想要就别配。
+
 ---
 
 ## 📱 局域网访问

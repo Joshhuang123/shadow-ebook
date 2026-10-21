@@ -820,7 +820,11 @@ def register_routes(app):
         """家长页点一下就把语法前置图灌进去。幂等,重复调不会重复插。"""
         try:
             n, e = seed_grammar_graph()
-            return jsonify({'success': True, 'nodes': n, 'edges': e})
+            # 顺带把音素提示补齐(建图脚本早期只给元音写了提示)
+            from extensions import phonemes as _ph
+            hints = _ph.seed_phoneme_hints()
+            return jsonify({'success': True, 'nodes': n, 'edges': e,
+                            'phoneme_hints': hints})
         except sqlite3.Error as exc:
             logger.error('kg seed failed: %s', exc)
             return jsonify({'success': False, 'error': str(exc)}), 500

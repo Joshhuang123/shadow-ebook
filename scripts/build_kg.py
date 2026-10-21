@@ -309,19 +309,13 @@ def main():
     log(f'✓ 词节点 {len(nodes)},边 {len(edges)},其中语法挂载 {matched}')
     log(f'· 音素 {len(phoneme_nodes)} 个')
 
-    # ARPAbet 元音表:哪些是「孩子最容易读错」的,给跟读页做提示
-    VOWELS = {
-        'IY': '长 ee(像 see)', 'IH': '短 i(像 sit)', 'EY': '长 ay(像 say)',
-        'EH': '短 e(像 bed)', 'AE': '短 a(像 cat)', 'AA': '短 o(像 dog)',
-        'AO': '长 o(像 go)', 'UH': '短 u(像 cup)', 'UW': '长 u(像 blue)',
-        'AH': '轻读 schwa(最常见的英语元音)', 'ER': '卷舌 er(像 bird)',
-        'AY': '长 ay(像 my)', 'OW': '长 o(像 now)', 'AW': '长 aw(像 how)',
-    }
+    # ARPAbet 音素提示表:每个音怎么发,给跟读页和家长页用。
+    # 提示语只有一份,在 extensions/phonemes.py 里(代码兜底 + 回填共用)。
+    from extensions.phonemes import PHONEME_HINTS, VOWEL_HINTS
     for ph in sorted(phoneme_nodes):
-        is_vowel = ph in VOWELS
         pnodes = ('phoneme', ph, 1, {
-            'vowel': is_vowel,
-            'hint': VOWELS.get(ph, ''),
+            'vowel': ph in VOWEL_HINTS,
+            'hint': PHONEME_HINTS.get(ph, ''),
         })
         upsert_nodes([(f'phoneme:{ph}',) + pnodes])
 

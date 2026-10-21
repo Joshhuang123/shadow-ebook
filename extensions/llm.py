@@ -160,6 +160,22 @@ class MiniMaxClient(OpenAICompatClient):
         )
 
 
+class MoonshotClient(OpenAICompatClient):
+    """Moonshot / Kimi — OpenAI 兼容协议。
+
+    端点:`api.moonshot.cn/v1`。国内直连,不用绕。
+    """
+    DEFAULT_MODEL = "kimi-k2-0905-preview"
+
+    def __init__(self, api_key: str, model: Optional[str] = None, **kw):
+        super().__init__(
+            base_url="https://api.moonshot.cn/v1",
+            api_key=api_key,
+            model=model or self.DEFAULT_MODEL,
+            **kw,
+        )
+
+
 # === JSON 校验工具 ===
 def _parse_and_validate(raw: str, schema: dict) -> dict:
     """chat_json 默认实现:从 markdown code fence 里抠 JSON,跑 jsonschema 校验。
@@ -193,12 +209,27 @@ def _parse_and_validate(raw: str, schema: dict) -> dict:
 
 
 # === 工厂 ===
+# 谁能用:LLM_PROVIDER 显式指定最优先;没指定就**看环境里有没有对应的 key** ——
+# 之前只有 deepseek / minimax 两条路,机器上明明配了 MOONSHOT_API_KEY,
+# 跟读点评却一直走「AI 不可用」的降级分支,用户以为是自己没配好。
 def get_llm_client() -> BaseLLMClient:
     """按 LLM_PROVIDER 环境变量选 client。LLM_MODEL 可覆盖默认模型名。
 
-    加新 provider:在这里加一个分支就行,业务代码不用动。
+    LLM_PROVIDER 没设时自动挑:deepseek → minimax → moonshot
+    (谁配了 key 用谁)。加新 provider:在这里加一个分支就行,业务代码不用动。
     """
-    provider = os.environ.get("LLM_PROVIDER", "deepseek").lower()
+    provider = os.environ.get("LLM_PROVIDER", "").strip().lower()
+
+    if not provider:
+        # 自动选:按「环境里有没有 key」决定,而不是写死一个
+        if os.environ.get("DEEPSEEK_API_KEY"):
+            provider = "deepseek"
+        elif os.environ.get("MINIMAX_API_KEY"):
+            provider = "minimax"
+        elif os.environ.get("MOONSHOT_API_KEY"):
+            provider = "moonshot"
+        else:
+            provider = "deepseek"  # 没配就按默认走,报错信息里会说清楚
 
     if provider == "deepseek":
         return DeepSeekClient(
@@ -210,7 +241,12 @@ def get_llm_client() -> BaseLLMClient:
             api_key=os.environ.get("MINIMAX_API_KEY", ""),
             model=os.environ.get("LLM_MODEL", MiniMaxClient.DEFAULT_MODEL),
         )
+    if provider == "moonshot":
+        return MoonshotClient(
+            api_key=os.environ.get("MOONSHOT_API_KEY", ""),
+            model=os.environ.get("LLM_MODEL", MoonshotClient.DEFAULT_MODEL),
+        )
 
     raise RuntimeError(
-        f"未知 LLM_PROVIDER={provider!r}。支持: deepseek, minimax"
+        f"未知 LLM_PROVIDER={provider!r}。支持: deepseek, minimax, moonshot"
     )

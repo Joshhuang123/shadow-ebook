@@ -51,6 +51,51 @@ MASTERY_FAMILIAR = 0.60
 
 _WORD_RE = re.compile(r"[a-z']+")
 
+# === 音素人话表 ===
+# 「/f/ 还不稳」这句话本身没用,得跟一句能照做的说明:
+# 「上齿轻咬下唇,气从缝里挤出来」—— 孩子对着镜子就能试。
+# 界面里就是 kid 页「『fish』里的 /F/ 还不稳(上齿轻咬下唇...)」。
+#
+# 音素集 = CMUdict 的 ARPAbet 全集(41 个:15 元音 + 26 辅音)。
+# 元音提示沿用建图脚本里那版措辞(不改,免得已灌的图谱前后不一致)。
+VOWEL_HINTS = {
+    'IY': '长 ee(像 see)', 'IH': '短 i(像 sit)', 'EY': '长 ay(像 say)',
+    'EH': '短 e(像 bed)', 'AE': '短 a(像 cat)', 'AA': '短 o(像 dog)',
+    'AO': '长 o(像 go)', 'UH': '短 u(像 cup)', 'UW': '长 u(像 blue)',
+    'AH': '轻读 schwa(最常见的英语元音)', 'ER': '卷舌 er(像 bird)',
+    'AY': '长 ay(像 my)', 'OW': '长 o(像 now)', 'AW': '长 aw(像 how)',
+    'OY': '长 oy(像 boy)',
+}
+
+CONSONANT_HINTS = {
+    'P': '双唇闭紧再爆开,气从嘴里出来(像 pen)',
+    'B': '双唇闭紧再放开,喉咙要振动(像 bad)',
+    'T': '舌尖顶住上齿龈再弹开,气从喉咙出来(像 ten)',
+    'D': '舌尖顶住上齿龈再弹开,喉咙要振动(像 dog)',
+    'K': '舌根抵住软腭再放开,气从喉咙出来(像 cat)',
+    'G': '舌根抵住软腭再放开,喉咙要振动(像 go)',
+    'F': '上齿轻咬下唇,气从缝里挤出来(像 fish)',
+    'V': '上齿轻咬下唇,喉咙要振动(像 van)',
+    'TH': '舌尖轻放在上下齿之间,让气从缝里挤出来(像 think)',
+    'DH': '舌尖轻放在上下齿之间,喉咙要振动(像 this)',
+    'S': '舌尖靠近上齿龈,气从缝里「嘶」出来(像 sun)',
+    'Z': '舌尖靠近上齿龈,喉咙要振动(像 zoo)',
+    'SH': '嘴唇像吹蜡烛一样圆起,气从缝里出来(像 ship)',
+    'ZH': '嘴唇圆起,舌尖靠近上齿龈,喉咙要振动(像 vision)',
+    'CH': '舌尖顶上齿龈再摩擦,气从缝里出来(像 chair)',
+    'JH': '舌尖顶上齿龈再摩擦,喉咙要振动(像 jump)',
+    'HH': '只是轻轻哈气,嘴不用碰到任何地方(像 hat)',
+    'L': '舌尖顶住上齿龈,气从舌头两边流出来(like look)',
+    'R': '舌尖卷起来,但不碰到任何地方(像 red)',
+    'M': '双唇闭紧,气从鼻子出来(像 mom)',
+    'N': '舌尖顶住上齿龈,气从鼻子出来(像 no)',
+    'NG': '舌根抵住软腭,气从鼻子出来(像 sing)',
+    'W': '双唇收圆往前送,再放开(像 water)',
+    'Y': '舌面抬向硬腭,像在说「衣」(像 yes)',
+}
+
+PHONEME_HINTS = {**VOWEL_HINTS, **CONSONANT_HINTS}
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS kg_phoneme_practice (
     phoneme_id  TEXT PRIMARY KEY,          -- 'phoneme:AH'
@@ -88,25 +133,79 @@ def phonemes_for_word(word: str) -> list:
 
 
 def phoneme_info(phoneme: str) -> dict:
-    """音素的人话信息(提示语、是不是元音)。"""
+    """音素的人话信息(提示语、是不是元音)。
+
+    提示语优先取图谱节点里的 attrs(家长页可以在图谱上改),
+    没有就用代码里的 PHONEME_HINTS 兜底 —— 宁可给一句通用建议,
+    也不要只丢一个「/F/」让家长和孩子干瞪眼。
+    """
     from extensions.db import get_db
+    fallback_hint = PHONEME_HINTS.get(phoneme, '')
+    fallback_vowel = phoneme in VOWEL_HINTS
     db = get_db()
     row = db.execute("SELECT label, level, attrs FROM kg_node WHERE id = ?",
                       (f'phoneme:{phoneme}',)).fetchone()
     if not row:
-        return {'id': phoneme, 'label': phoneme, 'hint': '', 'vowel': False}
+        return {'id': f'phoneme:{phoneme}', 'label': phoneme,
+                'hint': fallback_hint, 'vowel': fallback_vowel}
     import json
     try:
         attrs = json.loads(row['attrs'] or '{}')
     except Exception:
         attrs = {}
+    hint = attrs.get('hint') or fallback_hint
+    vowel = attrs.get('vowel')
+    if vowel is None:
+        vowel = fallback_vowel
     return {
         'id': f'phoneme:{phoneme}',
         'label': row['label'],
         'level': row['level'],
-        'hint': attrs.get('hint', ''),
-        'vowel': bool(attrs.get('vowel')),
+        'hint': hint,
+        'vowel': bool(vowel),
     }
+
+
+def seed_phoneme_hints() -> int:
+    """把音素提示写回图谱节点(幂等)。返回更新的条数。
+
+    建图脚本只给元音写了提示,26 个辅音是空的 —— 而「/f/ 怎么发」
+    恰恰是孩子最需要的一句。回填只动 phoneme:* 节点的 attrs,
+    不碰词节点、边和任何练习记录。
+    """
+    import json
+    import time as _t
+    from extensions.db import get_db
+    db = get_db()
+    now = int(_t.time())
+    updated = 0
+    for ph, hint in PHONEME_HINTS.items():
+        node_id = f'phoneme:{ph}'
+        row = db.execute('SELECT label, attrs FROM kg_node WHERE id = ?',
+                         (node_id,)).fetchone()
+        if not row:
+            db.execute(
+                'INSERT OR REPLACE INTO kg_node (id, kind, label, level, attrs, updated_at) '
+                'VALUES (?, ?, ?, 1, ?, ?)',
+                (node_id, 'phoneme', ph,
+                 json.dumps({'vowel': ph in VOWEL_HINTS, 'hint': hint}, ensure_ascii=False),
+                 now))
+            updated += 1
+            continue
+        try:
+            attrs = json.loads(row['attrs'] or '{}')
+        except Exception:
+            attrs = {}
+        want_vowel = ph in VOWEL_HINTS
+        if attrs.get('hint') == hint and bool(attrs.get('vowel')) == want_vowel:
+            continue
+        attrs['hint'] = hint
+        attrs['vowel'] = want_vowel
+        db.execute('UPDATE kg_node SET attrs = ?, updated_at = ? WHERE id = ?',
+                   (json.dumps(attrs, ensure_ascii=False), now, node_id))
+        updated += 1
+    db.commit()
+    return updated
 
 
 # === 归因 ===
@@ -202,7 +301,15 @@ def record_alignment(alignment: list) -> dict:
             for p in phonemes_for_word(expected):
                 hits[p] = hits.get(p, 0) + 1
             continue
-        blamed, precise = blame_phonemes(expected, got or '')
+        if got is None:
+            # 漏读 → **不**算到音素头上。
+            # 孩子没出声可能是声音小、卡壳、忘词,跟发音准不准没关系。
+            # 而且 whisper 自己就会改写句子:实测它把
+            # 「The little prince saw a fish.」转成「little Prince saw a fish.」——
+            # 开头那个 The 被它归一化掉了,当成「孩子漏读」就会冤枉
+            # /DH/ /AH/ 这两个音。
+            continue
+        blamed, precise = blame_phonemes(expected, got)
         for p in blamed:
             misses[p] = misses.get(p, 0) + 1
             if not examples.get(p):
