@@ -269,16 +269,27 @@ def exam_scope(exam_id: str) -> dict:
 
 
 def course_unit_graph(course_id: str = 'nc2a') -> list:
-    """教材每个单元 → 它的知识点 + 缺哪些前置。
+    """教材每个单元 / 故事书每一章 → 它的知识点 + 缺哪些前置。
 
-    单元的知识点来自 courses.py 的 COURSE_CONTENT(和内容放在一起,
-    改教材时顺手改)。前置来自 GRAMMAR_PREREQS。
+    教材单元的知识点来自 courses.py 的 COURSE_CONTENT(和内容放在一起,
+    改教材时顺手改);故事书(Magic Tree House)的章节映射在 story_kg.py
+    —— 按**正文**抽的,不是按目录名(见 story_kg 的注释)。
+    前置来自 GRAMMAR_PREREQS。
     """
     from extensions import courses
-    if course_id != 'nc2a':
+    if course_id == 'mth29':
+        from extensions import story_kg
+        units = [
+            {'name': name, 'kg': keys,
+             'note': story_kg.MTH_CHAPTER_NOTE.get(name, '')}
+            for name, keys in story_kg.MTH_CHAPTER_KG.items()
+        ]
+    elif course_id == 'nc2a':
+        units = courses.COURSE_CONTENT.get('units', [])
+    else:
         return []
     out = []
-    for i, unit in enumerate(courses.COURSE_CONTENT.get('units', [])):
+    for i, unit in enumerate(units):
         keys = [k for k in (unit.get('kg') or []) if k in GRAMMAR_NODES]
         blocked = []
         for k in keys:
@@ -287,7 +298,7 @@ def course_unit_graph(course_id: str = 'nc2a') -> list:
                     blocked.append({'key': pre,
                                     'label': GRAMMAR_NODES[pre][0],
                                     'level': GRAMMAR_NODES[pre][1]})
-        out.append({
+        item = {
             'index': i,
             'name': unit.get('name'),
             'grammar': [
@@ -295,7 +306,10 @@ def course_unit_graph(course_id: str = 'nc2a') -> list:
                  'level': GRAMMAR_NODES[k][1]} for k in keys
             ],
             'blocked': blocked,
-        })
+        }
+        if unit.get('note'):
+            item['note'] = unit['note']
+        out.append(item)
     return out
 
 

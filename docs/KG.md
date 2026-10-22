@@ -271,11 +271,66 @@ POST /api/kg/seed               把语法前置图灌进去(幂等)
 
 接口:`GET /api/kg/phonemes`
 
+## 故事书的章节 → 知识点(2026-10-22 接上)
+
+新概念的单元映射在 `courses.py`(和内容放一起)。
+Magic Tree House 的章节映射在 **`extensions/story_kg.py`** ——
+单独一个文件,因为章节内容在 `web/js/tutor.js` 里(手抄的正文选段),
+映射必须跟内容对着看。用**章节名**做 key,不用序号:
+章节增删时序号会错位,名字不会。
+
+### 怎么定的:按正文抽,不按目录名
+
+章节标题("The Invitation""The Golden Hall")**推不出**这章练什么语法 ——
+有的标题里根本没有语法信号。所以拿这一章选段里的**每一句**去对,
+句子里出现了这个结构、且读这章的孩子要能读懂它,才算这个知识点。
+
+判据三条:
+
+1. 句子里**出现了**这个结构(不是「这章大概涉及」);
+2. 这个结构**挡住理解**了(读不懂这一句就读不下去);
+3. 出现 2 次以上,或者它本身就是这一章的主干句式。
+
+反面例子(特意没算进去):代词。7 章里章章都有,放进「这一章要会」
+里没有信息量。
+
+每条映射后面都附了**例句**(`story_kg.py` 的注释里),
+方便以后核对:翻到那句话,孩子得能读出来 —— 这才是「要会」的依据。
+
+| 章节 | 要会 | 例句 |
+|---|---|---|
+| 1 The Invitation | 过去完成时 · 现在进行时 · 祈使句 · 动名词/不定式 | Sunlight **had faded**… / clouds **were moving** in / **Wait. Look.** / a bird **sitting** on a branch |
+| 2 Camelot | 过去完成时 · 现在进行时 · 情态动词 · 动名词/不定式 | the tree house **had landed** / Annie **was staring** / He **could** see / towers, **sounding** sad |
+| 4 The Christmas Knight | There be · 现在完成时 · 情态动词 · 动名词/不定式 | **There is** no feast / the darkest castle **I've ever seen** / We **must** find / **to protect** the king |
+| 7 The Magic Spell | 现在完成时 · 情态动词 · 动名词/不定式 · 名词所有格 | the evil knight **has put** a spell / kindness **can** break this / **to break** the spell / **Jack's** hand |
+| 13 The Golden Hall | 被动语态 · 现在完成时 · 现在进行时 · 动名词/不定式 | the hall **was filled with** light / the Christmas **I've been dreaming of** / **were feasting** / **began to spin** |
+| 14 Home | 现在进行时 · 情态动词 · 祈使句 · 动名词/不定式 | the snow **was falling** softly / we **could** go back / **Let's** write / too magical **to forget** |
+| 16 The End | 形容词比较级 · 情态动词 · 名词所有格 · 频率表达 | the **best** Christmas ever / the gift **would stay** / **Morgan's** gift / **ever** |
+
+跟读页上,选中章节就能看到:
+
+> 这一章要会 过去完成时 · 现在进行时 · 祈使句 · 动名词/不定式
+> · 先要会 现在完成时 · 一般现在时 · There be 句型 · 情态动词
+
+「先要会」来自 `GRAMMAR_PREREQS`,和教材那条路是同一套前置边。
+
+### 为什么单独一个文件
+
+`courses.py` 的单元映射是**教材的事实**(改教材时顺手改);
+故事书的映射是**这批选段的性质** —— 换一批选段就得重判,
+和教材表不是一回事。混在一起会让人以为「改了个章节名就等于改了教材」。
+
+接口:`GET /api/kg/course?course=mth29`
+测试:`tests/test_story_kg.py` —— 守三件事:章节名和 `tutor.js` 对得上、
+**顺序**对得上(前端是按序号取 API 的 units 的,顺序错了会显示
+隔壁那章的知识点而且不报错)、每个 key 都真在图谱里。
+
 ## 还没做的
 
 - 教材对照目前只覆盖新概念青少版 2A 的 9 个单元。
-  Magic Tree House 那本书的章节还没映射到知识点 ——
-  它是故事书,知识点要从正文里抽,不是从目录名。
+  Magic Tree House 那本书的**全书 21 章**还没映射 ——
+  现在只映射了跟读页手抄的 7 章选段。
+  其余章节要么补选段,要么直接从全书正文抽(全书正文在 `books` 表里)。
 - 音素层目前只有**跟读**一个数据源。语法练习该反映的是「会不会用」,
   不该混进「读得准不准」—— 所以两类数据是分开的,没混。
 - 跟读页的「发音评分」还只有转写 + 词级差异 + 音素归因,

@@ -250,6 +250,8 @@
             document.getElementById('unit-title').innerHTML = '<span class="ico ico-tree" aria-hidden="true"></span> ' + mth29Chapters[chapterId].name;
             showSentence();
             loadSavedProgress();  // R12: 跳到上次位置
+            // 故事书的章节知识点:按**正文**抽的(后端 story_kg.py)
+            loadUnitKnowledge(chapterId, 'mth29');
         }
 
         // 选择单元
@@ -268,20 +270,25 @@
             document.getElementById('unit-title').innerHTML = '<span class="ico ico-book" aria-hidden="true"></span> ' + units[unitId].name;
             showSentence();
             loadSavedProgress();  // R12: 跳到上次位置
-            loadUnitKnowledge(unitId);
+            loadUnitKnowledge(unitId, 'nc2a');
         }
 
-        // 这个单元的知识点 + 缺的前置(来自知识图谱)
-        async function loadUnitKnowledge(unitId) {
+        // 这个单元/章节的知识点 + 缺的前置(来自知识图谱)
+        // 教材是 nc2a,故事书是 mth29 —— 两边的映射都是手工的(事实),
+        // 区别只在按「单元」还是按「章节」抽。
+        async function loadUnitKnowledge(unitId, courseId) {
             const box = document.getElementById('unit-kg');
             if (!box) return;
+            const cid = courseId || 'nc2a';
             try {
-                const r = await fetch('/api/kg/course?course=nc2a');
+                const r = await fetch('/api/kg/course?course=' + encodeURIComponent(cid));
                 const j = await r.json();
                 const u = (j.units || [])[unitId];
                 if (!u || !u.grammar || !u.grammar.length) { box.hidden = true; return; }
                 const pts = u.grammar.map(g => g.label).join(' · ');
-                let html = '<span class="unit-kg-label">这个单元要会</span>' +
+                // 教材说「单元」,故事书说「章节」
+                const what = cid === 'mth29' ? '这一章要会' : '这个单元要会';
+                let html = '<span class="unit-kg-label">' + what + '</span>' +
                     '<span class="unit-kg-points">' + pts + '</span>';
                 if (u.blocked && u.blocked.length) {
                     html += '<span class="unit-kg-sep">·</span>' +
