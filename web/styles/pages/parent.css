@@ -103,35 +103,25 @@
         .card-title .ico { color: var(--color-primary); width: 19px; height: 19px; }
 
         /* Login Section */
+        /* 登录区:也是扉页式(小标签 + 衬线大标题 + 一根线),左对齐。
+           原来是居中的无衬线 28px 标题配一块淡染底的方锁 —— 那套是
+           「App 开屏页」的说法,和全站的纸 + 墨不是一路。
+           标题交给 .page-head 那套(宋体黑 44px),这里只管左对齐和留白。 */
         .login-section {
-            text-align: center;
-            padding: 60px 20px;
+            text-align: left;
+            padding: 26px 0 6px;
         }
 
         /* 原来是个 4em 的裸 emoji 🔒,又大又黑又居中,像一记警告。
-           换成淡染底的圆角方块 + 主色图标 —— 和页头图标同一套语言。 */
-        .lock-icon-large {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 64px;
-            height: 64px;
-            border-radius: var(--radius-xl);
-            background: var(--tint-primary);
-            color: var(--primary-fill);
-            margin-bottom: 22px;
-        }
-        .lock-icon-large .ico { width: 30px; height: 30px; }
-
-        .login-section h2 {
-            font-size: 1.8em;
-            margin-bottom: 10px;
+           现在锁图标进了小标签(和扉页的图标同一套语言)。 */
+        .login-section .password-input {
+            justify-content: flex-start;
         }
 
-        .login-section p {
-            color: var(--text-secondary);
-            margin-bottom: 30px;
-        }
+        /* 原来这里的 .login-section h2 / .login-section p 是给旧版
+           「居中大标题 + 副标题」写的。标题换成 .page-head 那套之后,
+           它们会**误伤**扉页里的小标签和副标题(选择器 .login-section p
+           比 .page-head-eyebrow 更具体)—— 删掉。 */
 
         .password-input {
             display: flex;
@@ -173,7 +163,9 @@
             margin-top: 26px;
             padding-top: 18px;
             border-top: 1px solid var(--border);
-            text-align: center;
+            /* 跟着上面的标题左对齐 —— 登录区已经改成扉页式了,
+               这一行还居中就成了版心里唯一没对齐的东西。 */
+            text-align: left;
             font-size: var(--text-sm);
             color: var(--text-secondary);
         }
@@ -820,9 +812,13 @@
     .drm-sources { grid-template-columns: minmax(0, 1fr); }
 }
 .drm-source {
+    /* 四个来源原来是四个**圆角描边的盒子** —— 全站早就是
+       「发丝线 + 方角」了(统计页那四个指标块就是 radius 0 的发丝线框),
+       圆角框是上一代的语言,在这里一眼就看出「不是一套」。
+       改成方角发丝线框,和统计页同一种画法。 */
     padding: 14px 16px;
     border: 1px solid var(--rule);
-    border-radius: var(--radius-md);
+    border-radius: 0;
     background: transparent;
 }
 .drm-source-name {
@@ -1037,9 +1033,17 @@
         #ttsCard .setting-item {
             align-items: flex-start;
             gap: 14px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
+            /* 这里原来又填上了白底和一整圈边框 —— 一个比 .setting-item
+               更具体的选择器,把全站压平的那一层**加了回来**。
+               结果就是「阅读声音」这块三个白盒子浮在纸上,一眼就不是一套。
+               压平:透明底 + 一根发丝线,和同一页其它设置项一样。
+               (输入框自己还是白底 —— 那是控件,不是盒子,留着。) */
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--rule);
+            border-radius: 0;
         }
+        #ttsCard .setting-item:last-child { border-bottom: none; }
         #ttsCard .setting-item > div:first-child { flex: 1; min-width: 0; }
         #ttsCard .setting-item .desc { margin-top: 4px; line-height: 1.55; }
         #ttsCard .setting-item code {

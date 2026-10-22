@@ -39,10 +39,17 @@
     <div class="main-container">
         <!-- Login Section -->
         <div id="loginSection" class="card login-section">
-            <div class="lock-icon-large"><span class="ico ico-lock ico--xl" aria-hidden="true"></span></div>
-            <h2>家长模式</h2>
-            <p>请输入密码以查看学习报告</p>
-            
+            <!-- 扉页式页头:和输完密码后的「学习面板」同一套
+                 (小标签 + 宋体大标题 + 一根发丝线,左对齐)。
+                 原来这里是居中的无衬线 28px 标题 + 一块淡染底的方锁,
+                 跟全站的话不是一套 —— 家长打开的第一眼就该看出
+                 「这是同一个东西」。 -->
+            <header class="page-head">
+                <p class="page-head-eyebrow"><span class="ico ico-lock" aria-hidden="true"></span>家长</p>
+                <h1 class="page-head-title">家长模式</h1>
+                <p class="page-head-sub">请输入密码以查看学习报告</p>
+            </header>
+
             <div class="password-input">
                 <input type="password" class="pwd-digit" maxlength="1" id="pwd1" autofocus>
                 <input type="password" class="pwd-digit" maxlength="1" id="pwd2">
