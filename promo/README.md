@@ -1,4 +1,4 @@
-# 推广素材(2026-10-22)
+# 推广素材(2026-10-22 / 10-24)
 
 给 X / 小红书 / 朋友圈用的图文与短视频。
 
@@ -10,46 +10,61 @@
 
 ```
 promo/
-├── cards/            图文卡片(两张一套)
-│   ├── 01-cover.png        1080×1440  封面(小红书 3:4)
-│   ├── 01-cover-x.png      1600×900   封面(X 16:9)
+├── cards/            图文卡片(小红书 3:4 + X 16:9 各一套)
+│   ├── 01-cover.png        1080×1440  封面
+│   ├── 01-cover-x.png      1600×900   封面(X)
 │   ├── 02-reader.png       阅读器
 │   ├── 03-shadow.png       跟读评分
 │   ├── 04-kg.png           知识图谱
 │   ├── 05-parent.png       家长页
 │   └── 06-end.png          结尾
 ├── video/
-│   ├── shadow-ebook-promo-9x16.mp4    1080×1920 · 24 秒 · 30fps(小红书/抖音)
-│   └── shadow-ebook-promo-16x9.mp4    1600×900  · 24 秒 · 30fps(X)
-├── COPY.md           文案(小红书 / X / 朋友圈 三套 + 发布建议)
-└── scripts/          生成脚本(想改文案或换素材时重新生成)
+│   ├── shadow-ebook-promo-9x16.mp4    1080×1920 · 40 秒 · 30fps(小红书/抖音)
+│   ├── shadow-ebook-promo-16x9.mp4    1600×900  · 40 秒 · 30fps(X)
+│   ├── cover-9x16.png                 视频封面(竖版)
+│   └── cover-16x9.png                 视频封面(横版)
+├── POSTS.md           发布文案:小红书 / X / 朋友圈 三套 + 发布节奏建议
+├── COPY.md            图文版的文案(更详细,适合长文)
+└── scripts/           生成脚本(想改文案或换素材时重新生成)
 ```
+
+## 视频:中文旁白 + 烧进画面的字幕
+
+40 秒,六个场景,**TTS 旁白**(edge-tts,zh-CN-XiaoxiaoNeural)+ 字幕跟着念到哪句亮哪句。
+没有背景音乐(留白方便自己配,也免版权问题)。
+
+| 时间 | 场景 | 旁白大意 |
+|---|---|---|
+| 0–6s | 封面 | 这是我自己做的英语阅读器,叫影子电子书 |
+| 6–12s | 阅读器 | 纸的排版、点词查释义、一句一句地走 |
+| 12–20s | 跟读评分 | 不说「词错了」,说「这个 o 的音还不稳」 |
+| 20–27s | 知识图谱 | 教材、考纲、掌握度画在一张图上 |
+| 27–34s | 家长页 | 诊断不是报表 |
+| 34–40s | 结尾 | 不用云端,代码开源了 |
+
+**场景时长由旁白音频的实际长度决定**,不是写死的 —— 改了旁白,画面自己跟上。
+
+跟读那一帧是真的跑出来的:浏览器里注入 MediaStream 当麦克风,
+录下「were working」,原句是「were walking」,界面真的显示
+「『walking』里的 /AO/ 还不稳(长 o 像 go)」。
 
 ## 怎么重新生成
 
 ```bash
 cd ~/shadow-learning
-# 1) 起服务(素材来自真实界面)
-./start_lan.sh
-# 2) 拍真实界面 → 素材
-python3 promo/scripts/capture.py
-# 3) 生成卡片
-python3 promo/scripts/cards.py            # 竖版
-python3 promo/scripts/cards.py --landscape   # 横版
-# 4) 生成视频(两个版本各约 2.5 分钟渲染)
-python3 promo/scripts/video.py 9x16
-python3 promo/scripts/video.py 16x9
+./start_lan.sh                                  # 素材来自真实界面
+python3 promo/scripts/capture.py                # 1) 拍真实界面 → promo/shots/
+python3 promo/scripts/cards.py                  # 2) 出卡片(竖版)
+python3 promo/scripts/cards.py --landscape      #    出卡片(横版)
+python3 promo/scripts/video_vo.py 9x16          # 3) 视频:合成旁白 → 渲帧 → 合成
+python3 promo/scripts/video_vo.py 16x9
 ```
 
-依赖:无头 Chrome(截图/渲染)+ ffmpeg(合成视频)。
-不需要装任何 Python 包 —— 截图用自带的 CDP 驱动,纯标准库。
+依赖:无头 Chrome(截图/渲染)+ ffmpeg(合成)+ edge-tts(旁白,项目自带)。
+Python 只用标准库 —— 截图走自带的 CDP 驱动(`scripts/cdp.py`)。
 
-## 改文案
-
-文案在 `COPY.md` 里,是纯文本,改完直接复制去发。
-卡片上的文字硬编码在 `scripts/cards.py` 的 `CARDS` 列表里,
-视频的字幕在 `scripts/video.py` 的 `SCENES` 列表里 ——
-改完重跑生成脚本即可。
+改了旁白文案:改 `promo/scripts/video_vo.py` 里的 `SEGMENTS`,重跑即可。
+改了图文文案:改 `promo/scripts/cards.py` 里的 `CARDS`,重跑即可。
 
 ## 一件要提醒的事
 
@@ -58,9 +73,3 @@ python3 promo/scripts/video.py 16x9
 但如果你想更稳妥,可以把 `data/books/` 里换成 **Standard Ebooks** 或
 **Project Gutenberg** 的公版书(项目本身就主打「找无 DRM 的版本」),
 重跑截图即可。
-
-## 版本说明
-
-- 图文:6 张一组(小红书发 3:4 竖版,X 发 16:9 横版)
-- 视频:24 秒,6 个场景,无配音(留白方便自己配乐或加旁白)
-- 视频里没有第三方音乐 —— 免版权问题

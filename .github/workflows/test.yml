@@ -3,7 +3,25 @@ name: tests
 on:
   push:
     branches: [main]
+    # 只改文档 / 推广素材不跑测试 —— 那些文件碰不到任何运行时代码,
+    # 跑一遍只是白等两分钟(还多收一封邮件)。
+    paths-ignore:
+      - '**/*.md'
+      - 'promo/**'
+      - 'docs/**'
   pull_request:
+    # PR 上也忽略同样的路径,免得改个 README 也要等 CI
+    paths-ignore:
+      - '**/*.md'
+      - 'promo/**'
+      - 'docs/**'
+
+# 连着推好几次,只跑最后一轮 —— 中间的自动取消。
+# GitHub 只给「失败的 run」发失败通知,被取消的不发,
+# 所以这一条直接解决「推一次收一封邮件」的问题。
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   unit:
