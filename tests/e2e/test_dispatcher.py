@@ -107,8 +107,12 @@ def test_arg_parsing_numeric(page, app_url):
     page.locator('body').wait_for(state='attached', timeout=30000)
     page.wait_for_timeout(300)
 
+    # 起点必须落在允许区间内。字号下限是 24px(FONT_MIN,给孩子的
+    # 最小可读字号),原来这里写 20px —— 20-2=18 会被夹到 24,
+    # 测出来 after=24 而不是 18,测试就红了。
+    # 夹取本身是对的(不该让人把字调到 18px),错的是测试的起点。
     page.evaluate("""() => {
-        document.documentElement.style.setProperty('--sentence-font-size', '20px');
+        document.documentElement.style.setProperty('--sentence-font-size', '30px');
         localStorage.removeItem('sentenceFontSize');
     }""")
     before = page.evaluate(
@@ -125,6 +129,16 @@ def test_arg_parsing_numeric(page, app_url):
         f'changeFontSize(-2) 参数解析错误: before={before} after={after}'
     )
 
+    # 下限夹取:24px 再按 -2 应该还是 24,不是 22
+    page.evaluate("""() => {
+        document.documentElement.style.setProperty('--sentence-font-size', '24px');
+        localStorage.removeItem('sentenceFontSize');
+    }""")
+    font_size_button.evaluate("el => el.click()")
+    page.wait_for_timeout(100)
+    clamped = page.evaluate("() => parseInt(localStorage.getItem('sentenceFontSize'))")
+    assert clamped == 24, f'字号下限应是 24,实际 {clamped}'
+
 
 def test_dispatch_via_child_element(page, app_url):
     """点击 [data-action] 的子元素 (例 button 里的图标) 也应 routing 到 button。
@@ -135,10 +149,16 @@ def test_dispatch_via_child_element(page, app_url):
     page.locator('body').wait_for(state='attached', timeout=30000)
     page.wait_for_timeout(300)
 
-    # themeBtn 是个 button 带文字 '日'/'☾' — 点文字节点
-    rect = page.evaluate("() => { const b = document.getElementById('themeBtn'); const r = b.getBoundingClientRect(); return [r.x + 2, r.y + 2]; }")
+    # 要真的点到**子元素**(按钮里那个图标),不是 button 的某个坐标。
+    # 原来用「按钮左上角 +2px」这种坐标:一是那个像素可能落在 button
+    # 自己的边框/内边距上,压根没测到「点子元素」这条路径;
+    # 二是坐标会随报头改版失效 —— 报头从文字按钮换成图标按钮之后,
+    # 左上角 +2px 已经不是图标了。
+    child = page.locator('#themeBtn .ico').first
+    child.wait_for(state='visible', timeout=30000)
+
     theme_before = page.evaluate("() => document.documentElement.dataset.theme || 'auto'")
-    page.mouse.click(rect[0], rect[1])
+    child.click()
     page.wait_for_timeout(200)
     theme_after = page.evaluate("() => document.documentElement.dataset.theme || 'auto'")
     assert theme_before != theme_after, (

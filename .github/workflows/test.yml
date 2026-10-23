@@ -19,6 +19,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest
+          # Pillow 是「占位封面」和「扫描 PDF 识别」的实现依赖。
+          # requirements.txt 里它是可选的(没装也能跑,只是这两种格式
+          # 明确报「服务器缺少解析组件」),但单元测试要真的验这两条路,
+          # 所以测试环境必须装 —— 不装就是 tests/test_book_formats.py
+          # 那两条一直红。
+          pip install "Pillow==11.1.0"
       - name: 跑单元测试
         run: python -m pytest -q --ignore=tests/e2e
 

@@ -25,9 +25,14 @@ import tempfile
 import time
 from pathlib import Path
 
-from flask import jsonify, request, send_file
+# 注意:flask **不在这里 import**。
+# 这个模块的「备份核心」(create_backup / list_backups)是纯标准库的,
+# scripts/backup.sh 拿它当命令行工具用 —— 那个壳不该要求装 web 框架。
+# 之前 flask 放在模块顶层,于是 scripts/backup.sh 在没有 flask 的
+# python(比如 CI 机器上的系统 python3)下直接 ModuleNotFoundError,
+# 连带三个备份测试全红。路由用的 flask 符号挪进 register_routes 里,
+# 需要时才 import。
 
-from extensions.auth import require_parent_auth, _api_rate_limit_ok
 
 logger = logging.getLogger(__name__)
 
@@ -173,6 +178,11 @@ def resolve(name: str):
 
 
 def register_routes(app):
+    # 只有注册路由时才需要 web 框架 —— extensions.auth 顶层也 import flask,
+    # 所以它也一起挪进来(备份核心本身是纯标准库的)
+    from flask import jsonify, request, send_file
+    from extensions.auth import require_parent_auth, _api_rate_limit_ok
+
     # 备份里含家长 PIN 哈希、全部书目、孩子的阅读进度,四个接口一律要 PIN。
     # 注意:GET /api/backup 也要鉴权 —— 「有哪些备份、什么时候备的」本身就是
     # 隐私信息,孩子端不该看见。
