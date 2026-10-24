@@ -107,8 +107,16 @@ def main():
             print(f"  [{name}] 已有,跳过", flush=True)
         else:
             print(f"  [{name}] {text[:16]}…", flush=True)
-            nid = tts_one(text, name)
-            fetch(nid, name)
+            # 外层无限重试:单句的 80 次心跳(约 40 分钟)用完了,
+            # 上游还没恢复就换一句重来 —— 总有一句能挤进去。
+            while True:
+                try:
+                    nid = tts_one(text, name)
+                    fetch(nid, name)
+                    break
+                except Exception as e:
+                    print(f"  [{name}] 这句 {e}，继续等上游", flush=True)
+                    time.sleep(60)
             time.sleep(1)          # 串行:句与句之间 sleep 1
         d = dur(mp3)
         results.append({"i": i, "scene": scene, "text": text, "mp3": mp3, "dur": d})

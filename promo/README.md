@@ -23,12 +23,23 @@ promo/
 `python3 ~/.minimax/skills/josh-media/scripts/gate.py promo` → 交付门禁
 (标题字数 + 禁忌词 + 三平台简介 + 封面四画幅齐不齐 + 角标与成片时长一致)。
 
-## 视频:沉稳高管 TTS + 烧进画面的字幕
+## 视频:沉稳男声 TTS + 烧进画面的字幕
 
-- **音色**:`Chinese (Mandarin)_Reliable_Executive`(沉稳高管),全系列一个音色不换
-- 旁白用 MiniMax TTS **逐句**合成 → 用每句真实时长重建时间轴
+- **这一版用的是 edge-tts 的 `zh-CN-YunyangNeural`(新闻播报腔,专业可靠)**
+- 原定音色是 MiniMax 的 `Chinese (Mandarin)_Reliable_Executive`(沉稳高管),
+  但 2026-10-25 它的上游整整一个下午都在 429(官方链路和国内镜像同一个上游,
+  一起 429;静默 15 分钟再试也一样;batch 和单句都一样)。
+  脚本已写好留在仓库(`scripts/tts_minimax.py`),上游一恢复重跑就能换成真·沉稳高管:
+  ```bash
+  python3 promo/scripts/tts_minimax.py        # 逐句合成 → timeline.json
+  python3 promo/scripts/video_mm.py 9x16      # 重渲(加 --mux-only 可只重做音频装配)
+  python3 promo/scripts/video_mm.py 16x9
+  python3 promo/scripts/covers.py             # 角标跟着成片时长变,重跑封面
+  ```
+  换音色不需要改任何下游脚本 —— 两个 TTS 脚本输出同一个 timeline.json 格式。
+- 旁白**逐句**合成 → 用每句真实时长重建时间轴
   (句间静音 0.30s、场间 0.75s、片尾 2.75s),字幕跟着句子的 start/end 走
-- 响度归一到 **-16 LUFS**
+- 响度归一到 **-16 LUFS**(实测 -16.0 / -16.2)
 - 没有背景音乐(留白方便自己配,也免版权问题)
 
 | 段 | 内容 |
@@ -67,7 +78,8 @@ cd ~/shadow-learning
 python3 promo/scripts/capture.py                 # 1) 拍真实界面 → promo/shots/
 python3 promo/scripts/cards.py                   # 2) 出卡片(竖版)
 python3 promo/scripts/cards.py --landscape
-python3 promo/scripts/tts_minimax.py             # 3) 逐句合成旁白 → timeline.json
+python3 promo/scripts/tts_edge.py               # 3) 逐句合成旁白 → timeline.json
+                                                 #    (想换 MiniMax 沉稳高管就换 tts_minimax.py)
 python3 promo/scripts/video_mm.py 9x16           # 4) 渲染 + 合成
 python3 promo/scripts/video_mm.py 16x9
 python3 promo/scripts/covers.py                  # 5) 封面投放包(12 张)

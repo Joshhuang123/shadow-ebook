@@ -212,8 +212,8 @@ def render(variant):
     v = VARIANTS[variant]
     W, H = v["W"], v["H"]
     tl = json.load(open(TL_JSON))
-    lines = [dict(scene=l["scene"], text=l["text"], start=l["start"], end=l["end"])
-             for l in tl["lines"]]
+    lines = [dict(scene=l["scene"], text=l["text"], start=l["start"], end=l["end"],
+                  mp3=l["mp3"]) for l in tl["lines"]]
     total = tl["total"]
     scenes = []
     for s in SCENES:
@@ -231,8 +231,20 @@ def render(variant):
     path = f"/tmp/shadow-promo-mm-{variant}.html"
     open(path, "w").write(html)
 
+    fdir = f"{FRAMES}-{variant}"          # 每个画幅一个帧目录
+    os.makedirs(fdir, exist_ok=True)
+    mux_only = "--mux-only" in sys.argv
     nframes = int(total * FPS) + 2
     port = 9690 if variant == "9x16" else 9691
+    if mux_only:
+        print(f"[{variant}] --mux-only:复用已渲好的帧", flush=True)
+    else:
+        _render_frames(variant, path, fdir, nframes, W, H, port, total)
+    _mux(variant, lines, total, fdir)
+    return
+
+
+def _render_frames(variant, path, fdir, nframes, W, H, port, total):
     proc = launch(port=port, profile=f"/tmp/chrome-mm-{variant}", width=W, height=H)
     t0 = time.time()
     try:
@@ -247,7 +259,7 @@ def render(variant):
         for i in range(nframes):
             cdp.call("Runtime.evaluate", {"expression": f"showFrame({i / FPS:.4f})"})
             s = cdp.call("Page.captureScreenshot", {"format": "png"})
-            with open(f"{FRAMES}/f{i:05d}.png", "wb") as f:
+            with open(f"{fdir}/f{i:05d}.png", "wb") as f:
                 f.write(base64.b64decode(s["data"]))
             if i % 120 == 0:
                 print(f"  [{variant}] {i}/{nframes}  {time.time()-t0:.0f}s", flush=True)
@@ -255,6 +267,8 @@ def render(variant):
         proc.terminate()
     print(f"[{variant}] 渲染 {nframes} 帧,{time.time()-t0:.0f}s", flush=True)
 
+
+def _mux(variant, lines, total, fdir):
     # 旁白拼成一条(句间静音已经在 timeline 里算进 start/end 了,
     # 所以这里直接把每句的音频按时间轴摆进去,而不是首尾相接)
     inputs = []
@@ -280,10 +294,10 @@ def render(variant):
 
     out_mp4 = f"{OUT}/shadow-ebook-promo-{variant}.mp4"
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(FPS),
-                    "-i", f"{FRAMES}/f%05d.png", "-i", voice,
+                    "-i", f"{fdir}/f%05d.png", "-i", voice,
                     "-c:v", "libx264", "-preset", "slow", "-crf", "20",
                     "-pix_fmt", "yuv420p",
-                    "-af", f"loudnorm=I={LUFS}:TP=-1.5:LRA=11",
+                    "-af", f"loudnorm=I={LUFS}:TP=-1.5:LRA=11,volume=3.1dB",
                     "-c:a", "aac", "-b:a", "160k", "-ar", "48000",
                     "-shortest", "-movflags", "+faststart", out_mp4], check=True)
     print("成片:", out_mp4, flush=True)
