@@ -12,6 +12,7 @@
 import base64
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -268,6 +269,55 @@ def _render_frames(variant, path, fdir, nframes, W, H, port, total):
     print(f"[{variant}] 渲染 {nframes} 帧,{time.time()-t0:.0f}s", flush=True)
 
 
+def _measure_loudness(path):
+    """量一条音轨的 integrated loudness(I)和 true peak(TP)。
+
+    注意:ebur128 会先打一堆逐帧进度行,里面的 I: 是「到目前为止」的累计值
+    (开头会显示 -70 上下),只有最后 Summary 段才是全程实测值 ——
+    必须只取 Summary,否则会读到开头的假值。
+    """
+    out = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-nostats", "-i", path,
+         "-af", "ebur128=peak=true", "-f", "null", "-"],
+        capture_output=True, text=True, check=True).stderr
+    summary = out.split("Summary:")[-1]
+    m_i = re.search(r"^\s*I:\s*(-?[\d.]+)\s*LUFS", summary, re.M)
+    m_tp = re.search(r"^\s*Peak:\s*(-?[\d.]+)\s*dBFS", summary, re.M)
+    if not (m_i and m_tp):
+        raise RuntimeError(f"响度测量失败:\n{summary[-800:]}")
+    return {"I": float(m_i.group(1)), "TP": float(m_tp.group(1))}
+
+
+# 限制器上限 -1.5 dBFS(采样峰),留出真峰(inter-sample)余量
+_LIMIT = 10 ** (-1.5 / 20)
+
+
+def _normalize_voice(src, dst):
+    """把旁白归一到 -16 LUFS、峰值不过 -1.5 dBTP。
+
+    为什么不用 loudnorm 的动态模式:沉稳高管这版素材波峰因子约 20 dB,
+    loudnorm 内置限制器会把 integrated loudness 压低 1.1 LU(实测落在 -17.1),
+    固定 +3.1dB 更糟 —— 直接顶到 +1.7dBTP(削波)。
+    这里改成「线性增益 + 透明砖墙限制器」,再按实测误差迭代增益:
+    限制器只削最响的几个峰,integrated 不会被拖下来。
+    """
+    gain = 0.0
+    stats = None
+    for _ in range(6):
+        subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-i", src,
+             "-af", (f"volume={gain:.2f}dB,"
+                     f"alimiter=limit={_LIMIT:.4f}:level=disabled:"
+                     f"attack=5:release=50:latency=1"),
+             "-ar", "48000", "-ac", "1", "-c:a", "pcm_s16le", dst], check=True)
+        stats = _measure_loudness(dst)
+        err = LUFS - stats["I"]
+        if abs(err) <= 0.1 and stats["TP"] <= -1.0:
+            break
+        gain += err
+    return stats, gain
+
+
 def _mux(variant, lines, total, fdir):
     # 旁白拼成一条(句间静音已经在 timeline 里算进 start/end 了,
     # 所以这里直接把每句的音频按时间轴摆进去,而不是首尾相接)
@@ -287,17 +337,21 @@ def _mux(variant, lines, total, fdir):
     fc = (";".join(filters) +
           f";{mix}amix=inputs={len(lines)}:normalize=0[mixout];"
           f"[mixout]apad=whole_dur={total},atrim=0:{total}[aout]")
+    raw = f"/tmp/promo_minimax/voice-raw-{variant}.wav"
     voice = f"/tmp/promo_minimax/voice-{variant}.wav"
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error"] + inputs +
                    ["-filter_complex", fc, "-map", "[aout]", "-ar", "48000",
-                    "-ac", "1", "-c:a", "pcm_s16le", voice], check=True)
+                    "-ac", "1", "-c:a", "pcm_s16le", raw], check=True)
+
+    stats, gain = _normalize_voice(raw, voice)
+    print(f"[{variant}] 响度归一 gain={gain:+.2f}dB → "
+          f"{stats['I']:.1f} LUFS / TP {stats['TP']:.1f} dBTP", flush=True)
 
     out_mp4 = f"{OUT}/shadow-ebook-promo-{variant}.mp4"
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(FPS),
                     "-i", f"{fdir}/f%05d.png", "-i", voice,
                     "-c:v", "libx264", "-preset", "slow", "-crf", "20",
                     "-pix_fmt", "yuv420p",
-                    "-af", f"loudnorm=I={LUFS}:TP=-1.5:LRA=11,volume=3.1dB",
                     "-c:a", "aac", "-b:a", "160k", "-ar", "48000",
                     "-shortest", "-movflags", "+faststart", out_mp4], check=True)
     print("成片:", out_mp4, flush=True)

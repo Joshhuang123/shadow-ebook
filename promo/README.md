@@ -25,21 +25,21 @@ promo/
 
 ## 视频:沉稳男声 TTS + 烧进画面的字幕
 
-- **这一版用的是 edge-tts 的 `zh-CN-YunyangNeural`(新闻播报腔,专业可靠)**
-- 原定音色是 MiniMax 的 `Chinese (Mandarin)_Reliable_Executive`(沉稳高管),
-  但 2026-10-25 它的上游整整一个下午都在 429(官方链路和国内镜像同一个上游,
-  一起 429;静默 15 分钟再试也一样;batch 和单句都一样)。
-  脚本已写好留在仓库(`scripts/tts_minimax.py`),上游一恢复重跑就能换成真·沉稳高管:
-  ```bash
-  python3 promo/scripts/tts_minimax.py        # 逐句合成 → timeline.json
-  python3 promo/scripts/video_mm.py 9x16      # 重渲(加 --mux-only 可只重做音频装配)
-  python3 promo/scripts/video_mm.py 16x9
-  python3 promo/scripts/covers.py             # 角标跟着成片时长变,重跑封面
-  ```
-  换音色不需要改任何下游脚本 —— 两个 TTS 脚本输出同一个 timeline.json 格式。
-- 旁白**逐句**合成 → 用每句真实时长重建时间轴
+- **这一版用的是 MiniMax 的 `Chinese (Mandarin)_Reliable_Executive`(沉稳高管)** ——
+  2026-10-25 晚 22:20 上游恢复放行,17 句全部由这个音色合成完毕
+- 中途被 429 卡了一整个下午(官方链路和国内镜像同一个上游,一起 429;
+  静默 15 分钟再试也一样;batch 和单句都一样;连默认音色也 429)。
+  `scripts/tts_edge.py` 是当时的兜底(同一份 timeline.json 格式,下游零改动),
+  留作上游再挂时的应急,成片本身不是它
+- 逐句合成 → 用每句真实时长重建时间轴
   (句间静音 0.30s、场间 0.75s、片尾 2.75s),字幕跟着句子的 start/end 走
-- 响度归一到 **-16 LUFS**(实测 -16.0 / -16.2)
+- 实测 **4.345 字/秒**(沉稳高管 4.2 稳态口径),成片 74.108s
+- 响度归一到 **-16 LUFS**:实测 **-16.1 LUFS / 真峰 -1.1 dBTP**(无削波)
+  - 做法是「线性增益 + 透明砖墙限制器」再按实测误差迭代增益
+    (`scripts/video_mm.py` 的 `_normalize_voice`)
+  - 不用 loudnorm 动态模式:沉稳高管这版波峰因子约 20 dB,
+    loudnorm 内置限制器会把 integrated loudness 压低 1.1 LU(实测 -17.1),
+    之前那种固定 +3.1dB 更糟 —— 换音色后直接顶到 +1.7 dBTP(削波)
 - 没有背景音乐(留白方便自己配,也免版权问题)
 
 | 段 | 内容 |
@@ -78,8 +78,8 @@ cd ~/shadow-learning
 python3 promo/scripts/capture.py                 # 1) 拍真实界面 → promo/shots/
 python3 promo/scripts/cards.py                   # 2) 出卡片(竖版)
 python3 promo/scripts/cards.py --landscape
-python3 promo/scripts/tts_edge.py               # 3) 逐句合成旁白 → timeline.json
-                                                 #    (想换 MiniMax 沉稳高管就换 tts_minimax.py)
+python3 promo/scripts/tts_minimax.py             # 3) 逐句合成旁白 → timeline.json
+                                                  #    (上游 429 时才退到 tts_edge.py)
 python3 promo/scripts/video_mm.py 9x16           # 4) 渲染 + 合成
 python3 promo/scripts/video_mm.py 16x9
 python3 promo/scripts/covers.py                  # 5) 封面投放包(12 张)
