@@ -87,9 +87,12 @@ FAKE_MIC_JS = """
   for (let i = 0; i < bin.length; i++) raw[i] = bin.charCodeAt(i);
 
   window.__fakeMicStream = null;
+  window.__fakeMicReady = false;
   navigator.mediaDevices.getUserMedia = async () => {
     if (window.__fakeMicStream) return window.__fakeMicStream;
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // 手势可能已经过期,显式恢复一次 —— 停在 suspended 就录到静音了
+    try { await ctx.resume(); } catch (e) { /* 浏览器策略拦下了,等下面的 statechange */ }
     const audio = await ctx.decodeAudioData(raw.buffer.slice(0));
     const dest = ctx.createMediaStreamDestination();
     const src = ctx.createBufferSource();
@@ -101,6 +104,7 @@ FAKE_MIC_JS = """
     src.connect(dest);
     src.start(ctx.currentTime + 0.3);
     window.__fakeMicStream = dest.stream;
+    window.__fakeMicReady = true;
     return dest.stream;
   };
 })();
@@ -186,8 +190,9 @@ def fake_mic(page, iso_app):
 def _open_target_sentence(page, app_url) -> None:
     """切到 MTH29 → Chapter 1 → 翻到 walking 那句。
 
-    不能假设「翻 3 次」—— 上次读到哪里会被 restore 回来,
-    起始句不确定,所以按句子文本找,不是按次数。
+    不能假设「翻 3 次」—— 上次读到哪里会被 restore 回来,起始句不确定;
+    而且句子到头时「下一个」按钮是隐藏的,点不了。
+    所以按句子文本双向找:能在后面就往后翻,在前面就往前翻。
     """
     page.goto(app_url + "/tutor")
     page.click('[data-action="selectBook"][data-arg="mth29"]')
@@ -195,11 +200,33 @@ def _open_target_sentence(page, app_url) -> None:
     page.click("#chapter-list .unit-item:first-child")
     page.wait_for_selector("#practice-view:not(.hidden)", timeout=15000)
 
-    for _ in range(20):
-        text = page.inner_text("#sentence-text")
-        if "walking" in text:
+    for _ in range(40):
+        if "walking" in page.inner_text("#sentence-text"):
             return
-        page.click("#btn-next")
+        # 用 JS 触发 click:按钮带 visibility 切换和过渡动画,
+        # Playwright 的可见性判定会在动画中途判 false,点不动。
+        # (事件照旧走 dispatcher,和真人点击同一条路。)
+        #
+        # 方向要看当前是第几句(目标在 Chapter 1 的第 4 句 = 序号 3):
+        # 光「有 next 就点 next」会在末尾来回摆,永远走不到目标。
+        moved = page.evaluate(
+            """(target) => {
+                const t = document.getElementById('progress-text').textContent || '';
+                const cur = parseInt(t.split('/')[0], 10) - 1;
+                const n = document.getElementById('btn-next');
+                const p = document.getElementById('btn-prev');
+                if (cur < target && n && n.style.visibility !== 'hidden') {
+                    n.click(); return 1;
+                }
+                if (cur > target && p && p.style.visibility !== 'hidden') {
+                    p.click(); return -1;
+                }
+                return 0;
+            }""",
+            3,
+        )
+        if not moved:
+            break
         page.wait_for_timeout(120)
     raise AssertionError(f"翻不到目标句,当前:{page.inner_text('#sentence-text')}")
 
@@ -210,8 +237,10 @@ def test_followread_records_and_reports_phoneme(fake_mic, iso_app):
     _open_target_sentence(page, iso_app)
 
     page.click("#btn-record")
-    # 录 2.9 秒:假麦克风 0.3s 起播、整句约 2s,后面留一点静音尾巴
-    page.wait_for_timeout(2900)
+    # 等假麦克风真的出声了再计时(拿不到流就别录了,录出来是静音)
+    page.wait_for_function("() => window.__fakeMicReady === true", timeout=15000)
+    # 录 3.4 秒:假麦克风 0.3s 起播、整句约 2s,后面留静音尾巴
+    page.wait_for_timeout(3400)
     page.click("#btn-stop")
 
     # 本地 ASR 要跑一会儿(首次要加载模型)。

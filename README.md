@@ -110,11 +110,15 @@ python3 app.py
 ```
 🦊 Shadow Learning
 ======================================
-🌐 本机访问: http://localhost:5002
-📱 局域网访问: http://192.168.x.x:5002
+🔐 HTTPS 模式(自签名证书),session cookie 标记 Secure
+🌐 本机访问: https://localhost:5002
+📱 局域网访问: https://192.168.x.x:5002
 ```
 
-> **iOS Safari 提示**：跟读功能需要麦克风权限，仅在 HTTPS 站点下浏览器才会授权。本机请用 `./start_https.sh`（首次会生成自签名证书）。详细 HTTPS 配置见 `certs/README.md`（如果有的话）或直接用 mkcert：`./scripts/gen_https_cert.sh`。
+> **iOS Safari 提示**：跟读功能需要麦克风权限，浏览器只在安全上下文（HTTPS）
+> 下才给。所以「https + 设备信任了这个证书」两件事都得做到，
+> 否则跟读页会明确提示原因，不会静默失败。信任步骤见下面的
+> 「跟读能不能用：麦克风的硬门槛」。
 
 #### 可选：装跟读识音（ASR）
 
@@ -153,16 +157,43 @@ pip install faster-whisper==1.2.1 av==15.1.0
 |---|---|
 | `http://localhost:5002` | ✅ 能用 |
 | `http://192.168.x.x:5002` | ❌ 拿不到麦克风（页面会明确提示，不静默失败） |
-| `https://192.168.x.x:5002` | ✅ 能用（证书需被设备信任） |
+| `https://192.168.x.x:5002` | ✅ 能用（**证书要先被设备信任**） |
 
-要 HTTPS 就生成证书（服务端已经支持，有 `certs/server.crt` 就自动走 HTTPS）：
+**HTTPS 已经接好了**：证书在 `certs/` 时服务自动走 HTTPS（端口不变，还是 5002）。
 
 ```bash
-bash scripts/gen_https_cert.sh
-# 然后重启服务；iPad 首次访问要手动信任这个自签证书
+bash scripts/gen_https_cert.sh     # 生成「本地 CA + 服务器证书」
+bash start_https.sh                # 启动(会自动生成证书)
 ```
 
-证书信任没做之前，「点麦克风没反应」是预期行为，不是坏了。
+生成的是两级结构：
+
+- `certs/ca.crt` —— **根证书，要装到设备上**（装一次就够，以后都不用再装）
+- `certs/server.crt` / `server.key` —— 服务端自己用的叶子证书
+
+**信任根证书**（每台要用麦克风的设备做一次）：
+
+```bash
+# Mac: 加进系统钥匙串（要输自己的密码）
+sudo security add-trusted-cert -d -r trustRoot \
+    -k /Library/Keychains/System.keychain certs/ca.crt
+```
+
+iPad / iPhone：把 `certs/ca.crt` 传到设备上（AirDrop / 邮件 / 微信文件传输助手），
+「设置 → 通用 → VPN 与设备管理」装描述文件，再到「设置 → 通用 → 关于本机 →
+证书信任设置」里打开「完全信任」。
+
+> ⚠️ 只在 Safari 里点「访问此网站」**不够** —— 证书链不可信时浏览器直接
+> `ERR_CERT_AUTHORITY_INVALID`，页面都打不开；就算点过去了也不是安全上下文，
+> 照样不给麦克风。必须走上面的信任流程。
+
+换局域网 IP 了不用重装根证书，重签叶子就行：
+
+```bash
+bash scripts/gen_https_cert.sh --leaf-only
+```
+
+也可以用 mDNS 名字访问 `https://<主机名>.lan:5002` —— 名字不变就不怕换 IP。
 
 跟读的识别全部在本地跑（faster-whisper），**录音不出这台机器**。
 以前阅读器侧栏用的是浏览器的 SpeechRecognition（音频发到 Google 云端，
@@ -198,7 +229,8 @@ LLM 只负责把它写成孩子看得懂的话（鼓励 + 针对性建议）。
 **手机 / 平板访问：**
 1. 确保设备和电脑连着同一个 WiFi
 2. 浏览器打开 `http://电脑IP:5002`
-3. 例如电脑 IP 是 `192.168.1.100`，平板就打开 `http://192.168.1.100:5002`
+3. 例如电脑 IP 是 `192.168.1.100`，平板就打开 `https://192.168.1.100:5002`
+   （有证书时服务走 HTTPS；平板要先信任根证书，见「跟读能不能用：麦克风的硬门槛」）
 
 ### 安装到 iPad / Android 平板
 
@@ -231,7 +263,7 @@ LLM 只负责把它写成孩子看得懂的话（鼓励 + 针对性建议）。
 
 ### 电子书阅读
 
-1. 打开 http://localhost:5002/ebook
+1. 打开 https://localhost:5002/ebook（有证书时）
 2. 点击 **＋ 导入新书** 选择文件（可多选）
 3. 选择章节，点击任意句子开始朗读
 4. 点击单词查词，自动累计生词
@@ -510,7 +542,8 @@ docker compose up -d --build
 docker compose logs -f
 
 # 4. 健康检查
-curl http://localhost:5002/healthz    # → {"status":"ok"}
+curl -k https://localhost:5002/healthz    # → {"status":"ok"}
+# 没有证书时用 http://localhost:5002/healthz
 ```
 
 数据持久化在 `./data/`,镜像只装 `requirements.txt` 里 3 个生产依赖(Flask / edge-tts / gunicorn)。

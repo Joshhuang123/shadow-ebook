@@ -14,8 +14,19 @@ from cdp import CDP, launch, new_tab  # noqa: E402
 
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "shots")
 os.makedirs(OUT, exist_ok=True)
-BASE = "http://localhost:5002"
-ISO = "http://localhost:5003"
+
+
+def _scheme():
+    """有自签证书就走 https,截图时让 Chrome 忽略证书错误就行
+    (截图不需要证书可信,但不忽略的话页面根本打不开)。"""
+    cert = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "certs", "server.crt")
+    return "https" if os.path.exists(cert) else "http"
+
+
+BASE = f"{_scheme()}://localhost:5002"
+ISO = f"{_scheme()}://localhost:5003"
+EXTRA_ARGS = ["--ignore-certificate-errors"] if _scheme() == "https" else []
 W, H = 1440, 900
 
 
@@ -39,7 +50,8 @@ def shot(cdp, path, name, full=False, theme="light", wait=2.6):
     print("  ✓", name)
 
 
-proc = launch(port=9500, profile="/tmp/chrome-promo", width=W, height=H)
+proc = launch(port=9500, profile="/tmp/chrome-promo", width=W, height=H,
+              extra_args=EXTRA_ARGS)
 try:
     tab = new_tab(port=9500, url=f"{BASE}/")
     cdp = CDP(tab["webSocketDebuggerUrl"])

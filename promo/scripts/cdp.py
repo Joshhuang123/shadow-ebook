@@ -120,7 +120,14 @@ class CDP:
         return out
 
 
-def launch(port=9333, profile="/tmp/chrome-cdp-profile", width=1280, height=900):
+def launch(port=9333, profile="/tmp/chrome-cdp-profile", width=1280, height=900,
+           extra_args=None):
+    """起一个无头 Chrome。
+
+    extra_args:额外命令行参数。走自签 HTTPS 时要传
+    ["--ignore-certificate-errors"] —— 截图不需要证书可信,
+    但不忽略的话 Chrome 直接 ERR_CERT_AUTHORITY_INVALID,页面都打不开。
+    """
     subprocess.run(["pkill", "-f", "chrome-cdp-profile"], capture_output=True)
     proc = subprocess.Popen([
         CHROME, "--headless=new", "--disable-gpu", "--no-first-run",
@@ -135,7 +142,8 @@ def launch(port=9333, profile="/tmp/chrome-cdp-profile", width=1280, height=900)
         f"--user-data-dir={profile}",
         f"--window-size={width},{height}",
         "about:blank",
-    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    ] + list(extra_args or []),
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for _ in range(80):
         try:
             with urllib.request.urlopen(f"http://127.0.0.1:{port}/json/version", timeout=1) as r:

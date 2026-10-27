@@ -96,6 +96,12 @@ def browser() -> Browser:
             '--disable-dev-shm-usage',
             '--disable-gpu',
             '--no-sandbox',
+            # 假麦克风要在 AudioContext 里播音频,而 AudioContext 是在
+            # await getUserMedia() 之后创建的 —— 那时用户手势可能已过期,
+            # Chrome 会把 AudioContext 停在 suspended,录出来是静音。
+            # 跟读用例就变成偶发失败(整量跑一次不一定挂,单跑一次过)。
+            # promo/scripts/cdp.py 也是这么绕的。
+            '--autoplay-policy=no-user-gesture-required',
         ]
         # 优先 channel=chrome (系统已装),省掉 150MB 下载
         try:

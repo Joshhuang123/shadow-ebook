@@ -17,7 +17,7 @@ pip install flask edge-tts
 ```bash
 python app.py
 ```
-打开浏览器访问：**http://localhost:5002**
+打开浏览器访问：**https://localhost:5002**（生成了证书时；否则是 http）
 
 ---
 

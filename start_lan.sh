@@ -13,8 +13,21 @@ else
     LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
 fi
 
-echo "📡 局域网地址: http://$LOCAL_IP:5002"
+# 有证书就走 HTTPS —— 浏览器只在安全上下文里给麦克风,
+# 局域网 IP 用明文 http 访问的话,跟读页拿不到麦克风。
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [[ -f "$ROOT_DIR/certs/server.crt" && -f "$ROOT_DIR/certs/server.key" ]]; then
+    SCHEME="https"
+else
+    SCHEME="http"
+fi
+
+echo "📡 局域网地址: ${SCHEME}://$LOCAL_IP:5002"
 echo "📱 在平板/电脑上打开浏览器，访问上面的地址"
+if [[ "$SCHEME" == "http" ]]; then
+    echo "⚠️  没找到 HTTPS 证书,跟读页在平板上用不了麦克风。"
+    echo "   生成证书: bash scripts/gen_https_cert.sh"
+fi
 echo ""
 
 # 检查虚拟环境

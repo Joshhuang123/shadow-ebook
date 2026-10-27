@@ -93,9 +93,12 @@ htmlcov/
 # Node.js
 node_modules/
 
-# HTTPS 自签名证书 (本地生成, 不入库)
-certs/server.crt
-certs/server.key
+# HTTPS 证书 (本地生成, 不入库)
+# CA 私钥尤其不能进仓库 —— 私钥泄露 = 任何设备都能冒充这个服务
+certs/*.crt
+certs/*.key
+certs/*.srl
+certs/*.csr
 
 # R18: 本地 .env(API keys),不入库;.env.example 入库做模板
 .env
