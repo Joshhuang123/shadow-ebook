@@ -134,6 +134,40 @@ pip install -i https://mirrors.aliyun.com/pypi/simple/ faster-whisper
 模型 141MB，首次跟读时自动下载到 `~/.cache/shadow-whisper/`。
 体积、加速方法和踩过的坑都写在 [`docs/ASR.md`](docs/ASR.md)。
 
+只装跟读需要的最小集（不用整包 requirements-dev.txt，它还带 pywebview/PyAudio 这些桌面打包用的）：
+
+```bash
+pip install faster-whisper==1.2.1 av==15.1.0
+```
+
+`av` 必须钉在 15.1.0：faster-whisper 1.2.1 声明的是 `av>=11` 没上限，
+但它调用的 `av.open(metadata_errors=...)` 在 av>=16 被移除了，装新版直接报错。
+
+#### 跟读能不能用：麦克风的硬门槛
+
+浏览器**只在安全上下文**里给麦克风（HTTPS，或 `http://localhost`）。
+用局域网 IP 直连 `http://192.168.x.x:5002` 时 `navigator.mediaDevices`
+整个是 `undefined`，`getUserMedia` 必失败 —— 这是浏览器的硬规则，不是代码 bug。
+
+| 访问方式 | 跟读 |
+|---|---|
+| `http://localhost:5002` | ✅ 能用 |
+| `http://192.168.x.x:5002` | ❌ 拿不到麦克风（页面会明确提示，不静默失败） |
+| `https://192.168.x.x:5002` | ✅ 能用（证书需被设备信任） |
+
+要 HTTPS 就生成证书（服务端已经支持，有 `certs/server.crt` 就自动走 HTTPS）：
+
+```bash
+bash scripts/gen_https_cert.sh
+# 然后重启服务；iPad 首次访问要手动信任这个自签证书
+```
+
+证书信任没做之前，「点麦克风没反应」是预期行为，不是坏了。
+
+跟读的识别全部在本地跑（faster-whisper），**录音不出这台机器**。
+以前阅读器侧栏用的是浏览器的 SpeechRecognition（音频发到 Google 云端，
+国内还不通，表现为「读了没反应」），已经全部换成本地 ASR。
+
 #### 可选：配 LLM（跟读点评文案）
 
 转写和「哪个音不稳」是**本地算**的，不配 LLM 也能用。
