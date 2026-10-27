@@ -777,6 +777,60 @@
             margin-top: 12px;
         }
 
+        /* 提示条变成「用不了」时的样子 —— 跟「还没读」要一眼分得开 */
+        .record-hint--warn {
+            color: var(--color-primary-dark);
+            line-height: 1.6;
+            text-align: left;
+            background: rgba(184, 106, 78, 0.10);
+            border-left: 3px solid var(--color-primary);
+            border-radius: 4px;
+            padding: 10px 12px;
+        }
+
+        /* 跟读详情:错词 + 音素归因 */
+        .pronunciation-detail {
+            margin-top: 12px;
+            padding: 12px;
+            background: var(--bg-dark);
+            border-radius: 10px;
+            font-size: 0.85em;
+            line-height: 1.6;
+        }
+
+        .pronunciation-detail.hidden {
+            display: none;
+        }
+
+        .pron-detail-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            color: var(--text-primary);
+        }
+
+        .pron-detail-row + .pron-detail-row {
+            margin-top: 8px;
+        }
+
+        .pron-detail-row code {
+            background: rgba(184, 106, 78, 0.12);
+            color: var(--color-primary);
+            border-radius: 3px;
+            padding: 0 4px;
+        }
+
+        .pron-detail-dot {
+            flex: 0 0 auto;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-top: 8px;
+        }
+
+        .pron-detail-dot--word { background: var(--text-secondary); }
+        .pron-detail-dot--phoneme { background: var(--color-primary); }
+
         /* 跟读模式切换 */
         .mode-toggle {
             display: flex;

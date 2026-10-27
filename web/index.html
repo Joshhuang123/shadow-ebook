@@ -9,6 +9,7 @@
 <script src="/theme.js"></script>
 <script src="/sync.js"></script>
     <script src="/a11y.js"></script>
+    <script src="/js/mic.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -287,6 +288,9 @@
                                 <div class="transcription-text" id="transcription-text"></div>
                             </div>
                         </div>
+
+                        <!-- 错词 + 音素归因:相似度只是概览,能练的是「音」 -->
+                        <div class="pronunciation-detail hidden" id="pronunciation-detail"></div>
 
                         <div class="record-hint" id="record-hint">
                             点击麦克风，录音跟读

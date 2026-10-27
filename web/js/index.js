@@ -208,7 +208,6 @@
         let isRecording = false;
         let mediaRecorder = null;
         let audioChunks = [];
-        let recognition = null;
         let currentMode = 'read';  // 'read' 或 'shadow'
 
         // 初始化
@@ -2414,21 +2413,39 @@
             if (e.target.id === 'word-modal') closeWordModal();
         });
 
-        // ========== 跟读评分功能 ==========
+        // ========== 跟读评分功能(走本地 ASR) ==========
+        // R21: 不再用浏览器 SpeechRecognition ——
+        //  ① 那个 API 把音频发到 Google 云端,和「孩子的录音不上传云端」直接矛盾;
+        //  ② 国内访问不到它的识别服务,结果永远等不到 →「读了没什么反应」;
+        //  ③ Safari / iPad 根本没有这个 API。
+        // 现在统一走本地 faster-whisper(/api/recording/feedback),
+        // 和 /tutor 页同一条链路,并把音素级归因也带回来。
 
         let audioContext = null;
         let analyser = null;
         let audioStream = null;
+        let recordingTimer = null;
 
         // 切换阅读/跟读模式
         function setMode(mode) {
             currentMode = mode;
             document.getElementById('mode-read').classList.toggle('active', mode === 'read');
             document.getElementById('mode-shadow').classList.toggle('active', mode === 'shadow');
-            document.getElementById('record-hint').textContent = mode === 'read'
-                ? '阅读模式下跳过评分'
-                : '点击麦克风，录音跟读';
+            if (mode === 'read') {
+                setRecordHint('阅读模式下跳过评分');
+            } else {
+                setRecordHint('点击麦克风,录音跟读');
+            }
             document.getElementById('score-display').style.display = 'none';
+            hidePronunciationDetail();
+        }
+
+        // 提示条统一出口。warn 状态让家长一眼看出是「用不了」而不是「还没读」
+        function setRecordHint(text, kind) {
+            const el = document.getElementById('record-hint');
+            if (!el) return;
+            el.textContent = text;
+            el.classList.toggle('record-hint--warn', kind === 'warn');
         }
 
         // 切换录音
@@ -2442,106 +2459,65 @@
 
         // 开始录音
         async function startRecording() {
-            if (!sentences || sentences.length === 0) return;
+            // 第一道门:浏览器给不给麦克风。
+            // 非安全上下文(局域网 IP 直连 http)下 navigator.mediaDevices
+            // 整个是 undefined,以前这里只留一句「无法访问麦克风」,
+            // 表现就是「点了没反应」。现在把原因和下一步都讲清楚。
+            // 这一步要放在句子检查前面 —— 就算这页还没加载书,
+            // 家长也得先知道「为什么按了没反应」。
+            const st = (window.MicGuard && MicGuard.status()) || { ok: true, message: '' };
+            if (!st.ok) {
+                console.warn('麦克风不可用:', st.detail);
+                setRecordHint(st.message, 'warn');
+                return;
+            }
 
-            // 检查浏览器支持
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
-                document.getElementById('record-hint').textContent = '❌ 浏览器不支持语音识别';
+            if (!sentences || sentences.length === 0) {
+                setRecordHint('这页还没加载句子,先打开一本书', 'warn');
                 return;
             }
 
             try {
-                // 获取麦克风
                 audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-
-                // 设置音频分析（用于可视化）
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = audioContext.createAnalyser();
-                const source = audioContext.createMediaStreamSource(audioStream);
-                source.connect(analyser);
-                analyser.fftSize = 256;
-
-                // 播放参考音频
-                await playReferenceAudio();
-
             } catch (err) {
                 console.error('麦克风错误:', err);
-                document.getElementById('record-hint').textContent = '无法访问麦克风';
+                setRecordHint(
+                    window.MicGuard ? MicGuard.describeError(err)
+                                    : '打不开麦克风:' + ((err && err.message) || err),
+                    'warn');
                 return;
             }
+
+            // 声波可视化(拿不到 AudioContext 也不影响录音)
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                audioContext.createMediaStreamSource(audioStream).connect(analyser);
+                analyser.fftSize = 256;
+            } catch (e) {
+                console.warn('可视化不可用(不影响录音):', e);
+            }
+
+            mediaRecorder = new MediaRecorder(audioStream);
+            audioChunks = [];
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data && e.data.size) audioChunks.push(e.data);
+            };
+            mediaRecorder.onstop = processRecording;
+            mediaRecorder.start();
 
             isRecording = true;
             document.getElementById('btn-record').classList.add('recording');
             document.getElementById('btn-record').innerHTML = '<span class="ico ico-stop" aria-hidden="true"></span>';
-            document.getElementById('record-hint').textContent = '正在听，请说话...';
+            setRecordHint('正在听,请跟读…');
 
-            // 开始语音识别
-            recognition = new SpeechRecognition();
-            recognition.lang = 'en-US';
-            recognition.continuous = true;
-            recognition.interimResults = true;
+            // 先放参考音,孩子听着读
+            playReferenceAudio();
 
-            let finalTranscript = '';
-            let silenceCount = 0;
-            let lastResultIndex = -1;
-
-            recognition.onresult = (event) => {
-                let interimTranscript = '';
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                    const transcript = event.results[i][0].transcript;
-                    if (event.results[i].isFinal) {
-                        finalTranscript += transcript;
-                    } else {
-                        interimTranscript += transcript;
-                    }
-                }
-                // 更新提示
-                if (interimTranscript) {
-                    document.getElementById('record-hint').textContent = '听到: ' + interimTranscript;
-                }
-            };
-
-            recognition.onerror = (event) => {
-                console.error('识别错误:', event.error);
-                if (event.error === 'no-speech') {
-                    silenceCount++;
-                    if (silenceCount > 3) {
-                        document.getElementById('record-hint').textContent = '⚠️ 没听到声音，请靠近麦克风';
-                    }
-                } else if (event.error === 'not-allowed') {
-                    document.getElementById('record-hint').textContent = '❌ 请允许麦克风权限';
-                    stopRecording();
-                } else if (event.error !== 'aborted') {
-                    document.getElementById('record-hint').textContent = '❌ 错误: ' + event.error;
-                    stopRecording();
-                }
-            };
-
-            recognition.onend = () => {
-                stopRecording();
-                if (finalTranscript.trim()) {
-                    const original = sentences[currentSentenceIndex];
-                    showPronunciationScore(original, finalTranscript.trim());
-                } else {
-                    document.getElementById('record-hint').textContent = '⚠️ 没听清，请重试';
-                }
-            };
-
-            try {
-                recognition.start();
-            } catch (err) {
-                console.error('启动识别失败:', err);
-                document.getElementById('record-hint').textContent = '❌ 无法启动识别';
-                stopRecording();
-            }
-
-            // 可选：自动停止（15秒）
-            setTimeout(() => {
-                if (isRecording) {
-                    recognition.stop();
-                }
-            }, 15000);
+            // 最多录 20 秒,免得忘了停一直占着麦克风
+            recordingTimer = setTimeout(() => {
+                if (isRecording) stopRecording();
+            }, 20000);
         }
 
         // 停止录音
@@ -2550,14 +2526,20 @@
             document.getElementById('btn-record').classList.remove('recording');
             document.getElementById('btn-record').innerHTML = '<span class="ico ico-mic" aria-hidden="true"></span>';
 
-            if (recognition) {
-                try { recognition.stop(); } catch(e) {}
+            if (recordingTimer) {
+                clearTimeout(recordingTimer);
+                recordingTimer = null;
+            }
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                try { mediaRecorder.stop(); } catch (e) { /* 已经停了 */ }
             }
             if (audioStream) {
                 audioStream.getTracks().forEach(track => track.stop());
+                audioStream = null;
             }
             if (audioContext) {
-                audioContext.close();
+                try { audioContext.close(); } catch (e) { /* ignore */ }
+                audioContext = null;
             }
         }
 
@@ -2580,9 +2562,43 @@
             }
         }
 
+        // 录音结束 → 上传给本地 ASR(faster-whisper),不外传
+        function processRecording() {
+            if (!audioChunks.length) {
+                setRecordHint('没录到声音,再读一次', 'warn');
+                return;
+            }
+            const sentence = sentences[currentSentenceIndex];
+            if (!sentence) {
+                setRecordHint('这句没加载出来,翻一页再试', 'warn');
+                return;
+            }
+            const blob = new Blob(audioChunks, { type: (mediaRecorder && mediaRecorder.mimeType) || 'audio/webm' });
+            const fd = new FormData();
+            fd.append('audio', blob, 'recording.webm');
+            fd.append('sentence', sentence);
+
+            setRecordHint('正在分析发音…');
+            fetch('/api/recording/feedback', { method: 'POST', body: fd })
+                .then(async (resp) => {
+                    let data = null;
+                    try { data = await resp.json(); } catch (e) { /* 不是 JSON */ }
+                    if (!resp.ok || !data || !data.success) {
+                        const msg = (data && data.error) || ('接口返回 ' + resp.status);
+                        setRecordHint('分析失败:' + msg, 'warn');
+                        return;
+                    }
+                    showPronunciationScore(data);
+                })
+                .catch((err) => {
+                    console.error('反馈接口失败:', err);
+                    setRecordHint('分析失败:' + ((err && err.message) || err), 'warn');
+                });
+        }
+
         // 显示发音评分
-        function showPronunciationScore(original, transcribed) {
-            const score = calculateSimilarity(original, transcribed);
+        function showPronunciationScore(data) {
+            const score = Math.round((data.similarity || 0) * 100);
             const level = getScoreLevel(score);
 
             document.getElementById('score-display').style.display = 'block';
@@ -2597,33 +2613,61 @@
 
             // 显示识别结果
             document.getElementById('transcription-result').style.display = 'block';
-            document.getElementById('transcription-text').textContent = transcribed;
+            document.getElementById('transcription-text').textContent = data.transcript || '';
 
-            document.getElementById('record-hint').textContent = '点击麦克风再读一遍';
+            renderPronunciationDetail(data);
+            setRecordHint(data.ai_unavailable
+                ? '读完了(AI 点评暂不可用,下面是本地分析)'
+                : '点击麦克风再读一遍');
         }
 
-        // 计算相似度
-        function calculateSimilarity(original, transcribed) {
-            const orig = original.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
-            const trans = transcribed.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+        // 跟读详情:错词 + 音素归因。
+        // 相似度只是个概览,能练的单位是「音」——
+        // 「walking 里的 /AO/ 还不稳」比「这个词读错了」有用得多。
+        function renderPronunciationDetail(data) {
+            const box = document.getElementById('pronunciation-detail');
+            if (!box) return;
+            const errors = (data.errors || []).filter(e => e.expected && e.got);
+            const tips = data.phoneme_tips || [];
 
-            if (!trans) return 0;
-            if (orig === trans) return 100;
+            if (!errors.length && !tips.length) {
+                box.classList.add('hidden');
+                box.innerHTML = '';
+                return;
+            }
 
-            const origWords = orig.split(/\s+/);
-            const transWords = trans.split(/\s+/);
-
-            let matchCount = 0;
-            transWords.forEach(w => {
-                if (origWords.includes(w)) matchCount++;
+            let html = '';
+            errors.forEach(e => {
+                html += `<div class="pron-detail-row">
+                    <span class="pron-detail-dot pron-detail-dot--word"></span>
+                    <span>把 <code>${escapeHtml(e.got)}</code> 读成 <code>${escapeHtml(e.expected)}</code></span>
+                </div>`;
+            });
+            tips.forEach(t => {
+                const names = (t.phonemes || []).map(p => '/' + escapeHtml(p.label) + '/').join(' ');
+                const hint = (t.phonemes && t.phonemes[0] && t.phonemes[0].hint) ? escapeHtml(t.phonemes[0].hint) : '';
+                const body = t.precise
+                    ? `「${escapeHtml(t.word)}」里的 ${names} 还不稳${hint ? '（' + hint + '）' : ''}`
+                    : `「${escapeHtml(t.word)}」这个词的音还不稳 —— 慢慢读几遍`;
+                html += `<div class="pron-detail-row">
+                    <span class="pron-detail-dot pron-detail-dot--phoneme"></span>
+                    <span>${body}</span>
+                </div>`;
             });
 
-            const matchRate = matchCount / transWords.length;
-            const coverage = matchCount / origWords.length;
-            const score = Math.round((matchRate * 0.6 + coverage * 0.4) * 100);
-
-            return Math.min(100, score);
+            box.innerHTML = html;
+            box.classList.remove('hidden');
         }
+
+        function hidePronunciationDetail() {
+            const box = document.getElementById('pronunciation-detail');
+            if (!box) return;
+            box.classList.add('hidden');
+            box.innerHTML = '';
+        }
+
+        // 计算相似度 —— 移到服务端了(faster-whisper 转写后算,
+        // 前后端两套算法不一致会让同一个录音出现两个分数)。这里不再留一份。
 
         // 获取评分等级
         function getScoreLevel(score) {

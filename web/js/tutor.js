@@ -490,6 +490,18 @@
 
         // 开始录音
         async function startRecording() {
+            // 第一道门:浏览器给不给麦克风。
+            // 局域网 IP 直连 http 时 isSecureContext=false,
+            // navigator.mediaDevices 整个是 undefined —— 以前这里只弹一句
+            // 「无法访问麦克风」,家长看不出为什么,表现就是「点了没反应」。
+            const st = (window.MicGuard && MicGuard.status()) || { ok: true, message: '' };
+            if (!st.ok) {
+                console.warn('麦克风不可用:', st.detail);
+                document.getElementById('record-status').textContent = st.message;
+                document.getElementById('record-status').className = 'record-status record-warn';
+                return;
+            }
+
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
@@ -537,8 +549,11 @@
                 document.getElementById('btn-stop').classList.remove('hidden');
 
             } catch (err) {
-                alert('无法访问麦克风，请检查权限设置: ' + err.message);
                 console.error('Microphone error:', err);
+                document.getElementById('record-status').textContent =
+                    window.MicGuard ? MicGuard.describeError(err)
+                                    : ('无法访问麦克风,请检查权限设置: ' + err.message);
+                document.getElementById('record-status').className = 'record-status record-warn';
             }
         }
 
@@ -767,7 +782,7 @@
             currentAudio = url;
 
             // 显示波形对比
-            showWaveformComparison(url);
+            showWaveformComparison(blob);
 
             // 播放录音（先停止其他音频）
             if (currentAudioElement) currentAudioElement.pause();
@@ -832,7 +847,7 @@
         }
 
         // 显示波形对比
-        async function showWaveformComparison(recordedUrl) {
+        async function showWaveformComparison(recordedBlob) {
             const comparison = document.getElementById('waveform-comparison');
             comparison.classList.remove('hidden');
 
@@ -858,8 +873,10 @@
 
             // 绘制录音波形
             try {
-                const response = await fetch(recordedUrl);
-                const arrayBuffer = await response.arrayBuffer();
+                // 直接从 Blob 取字节,不要 fetch(blob:...) ——
+                // CSP 的 connect-src 没放行 blob:,fetch 会被浏览器挡掉,
+                // 波形对比就永远出不来(media-src 放行了 blob:,播放是好的)。
+                const arrayBuffer = await recordedBlob.arrayBuffer();
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 recordedAudioBuffer = await audioContext.decodeAudioData(arrayBuffer);
                 drawWaveform(recordedCanvas, recordedAudioBuffer, '#6B8A52');

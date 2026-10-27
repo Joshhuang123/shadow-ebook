@@ -201,6 +201,8 @@
         .record-ready { background: #F5EDE5; color: #B86F4D; }
         .record-recording { background: #F5DDDD; color: #C25B56; animation: pulse 1s infinite; }
         .record-done { background: #E5EEDF; color: #5C7A4A; }
+        /* 用不了(权限被拒 / 非 HTTPS 拿不到麦克风)—— 跟「录完了」要分得开 */
+        .record-warn { background: #F5E5DC; color: #A55A40; }
 
         @keyframes pulse {
             0%, 100% { opacity: 1; }
